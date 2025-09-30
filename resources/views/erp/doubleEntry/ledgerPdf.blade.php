@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ $filename ?? 'Ledger Report' }}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff;
+            color: #333;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+        
+        .report-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .report-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .report-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+        
+        .info-left, .info-right {
+            flex: 1;
+        }
+        
+        .info-right {
+            text-align: right;
+        }
+        
+        .summary-section {
+            margin-bottom: 30px;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        
+        .summary-card.primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .summary-card.success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .summary-card.info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .summary-card.warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .summary-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .summary-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+        
+        .ledger-table th {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .ledger-table td {
+            border: 1px solid #dee2e6;
+            padding: 6px 8px;
+            vertical-align: top;
+        }
+        
+        .ledger-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .text-danger {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .text-success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .badge {
+            background-color: #17a2b8;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 10px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 15px;
+            }
+            
+            .ledger-table {
+                font-size: 10px;
+            }
+            
+            .ledger-table th,
+            .ledger-table td {
+                padding: 4px 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="company-name">Your Company Name</div>
+        <div class="report-title">Ledger Report</div>
+        <div class="report-subtitle">{{ $filename ?? 'Generated on ' . date('Y-m-d H:i:s') }}</div>
+    </div>
+
+    <!-- Report Information -->
+    <div class="report-info">
+        <div class="info-left">
+            <strong>Report Period:</strong> {{ request('start_date', date('Y-m-01')) }} to {{ request('end_date', date('Y-m-d')) }}<br>
+            <strong>Generated By:</strong> {{ auth()->user()->name ?? 'System' }}<br>
+            <strong>Generated On:</strong> {{ date('Y-m-d H:i:s') }}
+        </div>
+        <div class="info-right">
+            <strong>Total Records:</strong> {{ count($data) }}<br>
+            <strong>Page:</strong> 1 of 1<br>
+            <strong>Report Type:</strong> Ledger Summary
+        </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary-section">
+        <h3 style="margin-bottom: 15px; color: #007bff;">Summary</h3>
+        <div class="summary-grid">
+            <div class="summary-card primary">
+                <div class="summary-title">Total Debits</div>
+                <div class="summary-value">৳{{ number_format(collect($data)->sum('Debit'), 2) }}</div>
+            </div>
+            <div class="summary-card success">
+                <div class="summary-title">Total Credits</div>
+                <div class="summary-value">৳{{ number_format(collect($data)->sum('Credit'), 2) }}</div>
+            </div>
+            <div class="summary-card info">
+                <div class="summary-title">Net Balance</div>
+                <div class="summary-value">৳{{ number_format(collect($data)->sum('Debit') - collect($data)->sum('Credit'), 2) }}</div>
+            </div>
+            <div class="summary-card warning">
+                <div class="summary-title">Total Entries</div>
+                <div class="summary-value">{{ count($data) }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ledger Table -->
+    <div class="ledger-section">
+        <h3 style="margin-bottom: 15px; color: #007bff;">Ledger Entries</h3>
+        <table class="ledger-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Date</th>
+                    <th style="width: 12%;">Voucher No</th>
+                    <th style="width: 20%;">Account</th>
+                    <th style="width: 25%;">Description</th>
+                    <th style="width: 8%;">Memo</th>
+                    <th style="width: 10%; text-align: right;">Debit</th>
+                    <th style="width: 10%; text-align: right;">Credit</th>
+                    <th style="width: 15%; text-align: right;">Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($data as $entry)
+                    <tr>
+                        <td>{{ $entry['Date'] }}</td>
+                        <td>
+                            <span class="badge">{{ $entry['Voucher No'] }}</span>
+                        </td>
+                        <td>{{ $entry['Account'] }}</td>
+                        <td>{{ Str::limit($entry['Description'], 50) }}</td>
+                        <td>{{ Str::limit($entry['Memo'], 30) }}</td>
+                        <td class="text-right">
+                            @if($entry['Debit'] > 0)
+                                <span class="text-danger">৳{{ number_format($entry['Debit'], 2) }}</span>
+                            @else
+                                <span>-</span>
+                            @endif
+                        </td>
+                        <td class="text-right">
+                            @if($entry['Credit'] > 0)
+                                <span class="text-success">৳{{ number_format($entry['Credit'], 2) }}</span>
+                            @else
+                                <span>-</span>
+                            @endif
+                        </td>
+                        <td class="text-right">
+                            @php
+                                $balance = $entry['Balance'];
+                                $balanceClass = $balance >= 0 ? 'text-success' : 'text-danger';
+                            @endphp
+                            <span class="{{ $balanceClass }}">৳{{ number_format($balance, 2) }}</span>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 20px; color: #666;">
+                            <strong>No ledger entries found for the selected period.</strong>
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Totals Row -->
+    @if(count($data) > 0)
+        <div style="margin-top: 20px;">
+            <table class="ledger-table" style="width: 50%; margin-left: auto;">
+                <tr style="background-color: #f8f9fa; font-weight: bold;">
+                    <td style="text-align: right; border: 1px solid #dee2e6; padding: 8px;">
+                        <strong>Totals:</strong>
+                    </td>
+                    <td style="text-align: right; border: 1px solid #dee2e6; padding: 8px;">
+                        <span class="text-danger">৳{{ number_format(collect($data)->sum('Debit'), 2) }}</span>
+                    </td>
+                    <td style="text-align: right; border: 1px solid #dee2e6; padding: 8px;">
+                        <span class="text-success">৳{{ number_format(collect($data)->sum('Credit'), 2) }}</span>
+                    </td>
+                    <td style="text-align: right; border: 1px solid #dee2e6; padding: 8px;">
+                        @php
+                            $netBalance = collect($data)->sum('Debit') - collect($data)->sum('Credit');
+                            $balanceClass = $netBalance >= 0 ? 'text-success' : 'text-danger';
+                        @endphp
+                        <span class="{{ $balanceClass }}">৳{{ number_format($netBalance, 2) }}</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    @endif
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>
+            <strong>Disclaimer:</strong> This report is generated automatically by the system. 
+            Please verify all amounts and transactions before using this report for official purposes.
+        </p>
+        <p>
+            Generated on {{ date('Y-m-d H:i:s') }} | 
+            Page 1 of 1 | 
+            Report ID: LED-{{ date('YmdHis') }}
+        </p>
+    </div>
+
+    <!-- Print/PDF Specific Styles -->
+    <script>
+        // Add any JavaScript for PDF generation if needed
+        window.onload = function() {
+            // Auto-adjust table column widths for better PDF layout
+            const table = document.querySelector('.ledger-table');
+            if (table) {
+                const cells = table.querySelectorAll('td, th');
+                cells.forEach(cell => {
+                    if (cell.textContent.length > 50) {
+                        cell.style.wordBreak = 'break-word';
+                    }
+                });
+            }
+        };
+    </script>
+</body>
+</html> 
