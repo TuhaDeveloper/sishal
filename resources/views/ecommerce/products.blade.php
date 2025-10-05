@@ -1,10 +1,6 @@
 @extends('ecommerce.master')
 
 @section('main-section')
-    <style>
-        .noUi-connect { background-color: var(--primary-blue) !important; }
-        .wishlist-btn i.fa-heart.active { color: #e53935 !important; }
-    </style>
     <section class="featured-categories pb-3 pt-5">
         <div class="container container-80 featured-plain">
             <h2 class="section-title text-start">Our Products</h2>
@@ -16,46 +12,115 @@
         <div class="row">
             <!-- Sidebar Filters -->
             <form id="filterForm" method="GET" class="col-md-3 mb-4">
-                <div class="card border-0 shadow-sm p-3">
-                    <h5 class="fw-bold mb-3">Filters</h5>
-                    <div class="mb-4">
-                        <h6 class="fw-semibold">Category</h6>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="categories[]" id="catAll" value="all" {{ empty($selectedCategories) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="catAll">All</label>
-                        </div>
-                        @foreach ($categories as $category)
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="categories[]" id="{{ $category->slug }}"
-                                    value="{{ $category->slug }}" {{ in_array($category->slug, $selectedCategories ?? []) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="{{ $category->slug }}">{{ $category->name }}</label>
-                            </div>
-                        @endforeach
+                <div class="filter-card">
+                    <div class="filter-header">
+                        <h5 class="filter-title">
+                            <i class="fas fa-filter me-2"></i>Filters
+                        </h5>
+                        <button type="button" class="btn-clear-filters" id="clearFilters">
+                            <i class="fas fa-times"></i> Clear All
+                        </button>
                     </div>
-                    <div class="mb-4">
-                        <h6 class="fw-semibold">Price Range</h6>
-                        <div id="price-slider" class="mx-3"></div>
-                        <input type="hidden" name="price_min" id="price_min" value="{{ $priceMin }}">
-                        <input type="hidden" name="price_max" id="price_max" value="{{ $priceMax }}">
-                        <div class="d-flex justify-content-between mt-2">
-                            <span id="priceMinValue">{{ $priceMin }}৳</span>
-                            <span id="priceMaxValue">{{ $priceMax }}৳</span>
+                    
+                    <!-- Category Filter -->
+                    <div class="filter-section">
+                        <div class="filter-section-header" data-bs-toggle="collapse" data-bs-target="#categoryFilter" aria-expanded="true">
+                            <h6 class="filter-section-title">
+                                <i class="fas fa-tags me-2"></i>Category
+                            </h6>
+                            <i class="fas fa-chevron-down filter-chevron"></i>
                         </div>
-                        <div class="text-end small text-muted">Max: {{ $maxProductPrice }}৳</div>
-                    </div>
-                    <div>
-                        <h6 class="fw-semibold">Rating</h6>
-                        @for ($i = 4; $i >= 1; $i--)
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="rating{{ $i }}">
-                                <label class="form-check-label" for="rating{{ $i }}">
-                                    @for ($j = 1; $j <= 5; $j++)
-                                        <i class="fa{{ $j <= $i ? 's' : 'r' }} fa-star text-warning"></i>
-                                    @endfor
-                                    &amp; up
-                                </label>
+                        <div class="collapse show" id="categoryFilter">
+                            <div class="filter-options">
+                                <div class="filter-option">
+                                    <input class="filter-checkbox" type="checkbox" name="categories[]" id="catAll" value="all" {{ empty($selectedCategories) ? 'checked' : '' }}>
+                                    <label class="filter-label" for="catAll">
+                                        <span class="checkmark"></span>
+                                        <span class="label-text">All Categories</span>
+                                    </label>
+                                </div>
+                                @foreach ($categories as $category)
+                                    <div class="filter-option">
+                                        <input class="filter-checkbox" type="checkbox" name="categories[]" id="{{ $category->slug }}"
+                                            value="{{ $category->slug }}" {{ in_array($category->slug, $selectedCategories ?? []) ? 'checked' : '' }}>
+                                        <label class="filter-label" for="{{ $category->slug }}">
+                                            <span class="checkmark"></span>
+                                            <span class="label-text">{{ $category->name }}</span>
+                                        </label>
+                                    </div>
+                                @endforeach
                             </div>
-                        @endfor
+                        </div>
+                    </div>
+
+                    <!-- Price Range Filter -->
+                    <div class="filter-section">
+                        <div class="filter-section-header" data-bs-toggle="collapse" data-bs-target="#priceFilter" aria-expanded="true">
+                            <h6 class="filter-section-title">
+                                <i class="fas fa-dollar-sign me-2"></i>Price Range
+                            </h6>
+                            <i class="fas fa-chevron-down filter-chevron"></i>
+                        </div>
+                        <div class="collapse show" id="priceFilter">
+                            <div class="price-filter-container">
+                                <div class="price-inputs">
+                                    <div class="price-input-group">
+                                        <label class="price-label">Min</label>
+                                        <input type="number" class="price-input" id="priceMinInput" 
+                                               value="{{ $priceMin }}" min="0" max="{{ $maxProductPrice }}">
+                                    </div>
+                                    <div class="price-separator">-</div>
+                                    <div class="price-input-group">
+                                        <label class="price-label">Max</label>
+                                        <input type="number" class="price-input" id="priceMaxInput" 
+                                               value="{{ $priceMax }}" min="0" max="{{ $maxProductPrice }}">
+                                    </div>
+                                </div>
+                                <div id="price-slider" class="price-slider"></div>
+                                <input type="hidden" name="price_min" id="price_min" value="{{ $priceMin }}">
+                                <input type="hidden" name="price_max" id="price_max" value="{{ $priceMax }}">
+                                <div class="price-display">
+                                    <span id="priceMinValue">{{ number_format($priceMin) }}৳</span>
+                                    <span class="price-separator">to</span>
+                                    <span id="priceMaxValue">{{ number_format($priceMax) }}৳</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rating Filter -->
+                    <div class="filter-section">
+                        <div class="filter-section-header" data-bs-toggle="collapse" data-bs-target="#ratingFilter" aria-expanded="true">
+                            <h6 class="filter-section-title">
+                                <i class="fas fa-star me-2"></i>Customer Rating
+                            </h6>
+                            <i class="fas fa-chevron-down filter-chevron"></i>
+                        </div>
+                        <div class="collapse show" id="ratingFilter">
+                            <div class="filter-options">
+                                @for ($i = 5; $i >= 1; $i--)
+                                    <div class="filter-option">
+                                        <input class="filter-checkbox" type="checkbox" name="rating[]" id="rating{{ $i }}" value="{{ $i }}" {{ in_array($i, $selectedRatings ?? []) ? 'checked' : '' }}>
+                                        <label class="filter-label rating-label" for="rating{{ $i }}">
+                                            <span class="checkmark"></span>
+                                            <div class="rating-stars">
+                                                @for ($j = 1; $j <= 5; $j++)
+                                                    <i class="fa{{ $j <= $i ? 's' : 'r' }} fa-star {{ $j <= $i ? 'text-warning' : 'text-muted' }}"></i>
+                                                @endfor
+                                            </div>
+                                            <span class="label-text">& up</span>
+                                        </label>
+                                    </div>
+                                @endfor
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Apply Filters Button -->
+                    <div class="filter-actions">
+                        <button type="submit" class="btn-apply-filters">
+                            <i class="fas fa-search me-2"></i>Apply Filters
+                        </button>
                     </div>
                 </div>
             </form>
@@ -170,52 +235,178 @@
                 setTimeout(() => toast.remove(), 400);
             }, 2500);
         }
-        // Reusable initializer so it runs after AJAX navigation
+        // Enhanced filter functionality
         window.initProductsPage = function() {
             try {
+                // Initialize price slider
                 var priceSlider = document.getElementById('price-slider');
                 if (priceSlider && !priceSlider.noUiSlider && window.noUiSlider) {
                     var minValue = document.getElementById('priceMinValue');
                     var maxValue = document.getElementById('priceMaxValue');
                     var priceMinInput = document.getElementById('price_min');
                     var priceMaxInput = document.getElementById('price_max');
+                    var priceMinDirectInput = document.getElementById('priceMinInput');
+                    var priceMaxDirectInput = document.getElementById('priceMaxInput');
                     var maxProductPrice = {{ $maxProductPrice }};
+                    
                     window.noUiSlider.create(priceSlider, {
                         start: [parseInt(priceMinInput.value), parseInt(priceMaxInput.value)],
                         connect: true,
                         step: 1,
                         range: { 'min': 0, 'max': maxProductPrice },
-                        format: { to: function(v){ return Math.round(v); }, from: function(v){ return Number(v); } }
+                        format: { 
+                            to: function(v){ return Math.round(v); }, 
+                            from: function(v){ return Number(v); } 
+                        }
                     });
+                    
                     priceSlider.noUiSlider.on('update', function (values) {
-                        if (minValue) minValue.textContent = `${values[0]}৳`;
-                        if (maxValue) maxValue.textContent = `${values[1]}৳`;
-                        if (priceMinInput) priceMinInput.value = values[0];
-                        if (priceMaxInput) priceMaxInput.value = values[1];
+                        var minVal = Math.round(values[0]);
+                        var maxVal = Math.round(values[1]);
+                        
+                        if (minValue) minValue.textContent = `${minVal.toLocaleString()}৳`;
+                        if (maxValue) maxValue.textContent = `${maxVal.toLocaleString()}৳`;
+                        if (priceMinInput) priceMinInput.value = minVal;
+                        if (priceMaxInput) priceMaxInput.value = maxVal;
+                        if (priceMinDirectInput) priceMinDirectInput.value = minVal;
+                        if (priceMaxDirectInput) priceMaxDirectInput.value = maxVal;
                     });
+                    
                     priceSlider.noUiSlider.on('change', function () {
-                        var form = document.getElementById('filterForm');
-                        if (form) form.submit();
+                        // Auto-submit on slider change
+                        setTimeout(function() {
+                            var form = document.getElementById('filterForm');
+                            if (form) form.submit();
+                        }, 300);
                     });
                 }
 
-                // Category checkboxes
-                document.querySelectorAll('#filterForm input[type=checkbox][name="categories[]"]').forEach(function (checkbox) {
-                    checkbox.onchange = function () {
-                        var form = document.getElementById('filterForm');
-                        if (form) form.submit();
-                    };
+                // Price input synchronization
+                var priceMinDirectInput = document.getElementById('priceMinInput');
+                var priceMaxDirectInput = document.getElementById('priceMaxInput');
+                
+                if (priceMinDirectInput) {
+                    priceMinDirectInput.addEventListener('change', function() {
+                        var value = Math.max(0, Math.min(parseInt(this.value) || 0, {{ $maxProductPrice }}));
+                        this.value = value;
+                        if (priceSlider && priceSlider.noUiSlider) {
+                            var currentValues = priceSlider.noUiSlider.get();
+                            priceSlider.noUiSlider.set([value, currentValues[1]]);
+                        }
+                    });
+                }
+                
+                if (priceMaxDirectInput) {
+                    priceMaxDirectInput.addEventListener('change', function() {
+                        var value = Math.max(0, Math.min(parseInt(this.value) || 0, {{ $maxProductPrice }}));
+                        this.value = value;
+                        if (priceSlider && priceSlider.noUiSlider) {
+                            var currentValues = priceSlider.noUiSlider.get();
+                            priceSlider.noUiSlider.set([currentValues[0], value]);
+                        }
+                    });
+                }
+
+                // Enhanced category checkboxes with "All" logic
+                var categoryCheckboxes = document.querySelectorAll('#filterForm input[type=checkbox][name="categories[]"]');
+                var allCategoryCheckbox = document.getElementById('catAll');
+                
+                categoryCheckboxes.forEach(function (checkbox) {
+                    checkbox.addEventListener('change', function () {
+                        if (this === allCategoryCheckbox && this.checked) {
+                            // Uncheck all other category checkboxes
+                            categoryCheckboxes.forEach(function(cb) {
+                                if (cb !== allCategoryCheckbox) {
+                                    cb.checked = false;
+                                }
+                            });
+                        } else if (this !== allCategoryCheckbox && this.checked) {
+                            // Uncheck "All" if a specific category is selected
+                            if (allCategoryCheckbox) {
+                                allCategoryCheckbox.checked = false;
+                            }
+                        }
+                        
+                        // Check if no categories are selected, then check "All"
+                        var hasSelectedCategory = Array.from(categoryCheckboxes).some(function(cb) {
+                            return cb !== allCategoryCheckbox && cb.checked;
+                        });
+                        
+                        if (!hasSelectedCategory && allCategoryCheckbox) {
+                            allCategoryCheckbox.checked = true;
+                        }
+                        
+                        // Auto-submit on category change
+                        setTimeout(function() {
+                            var form = document.getElementById('filterForm');
+                            if (form) form.submit();
+                        }, 300);
+                    });
                 });
+
+                // Rating checkboxes
+                var ratingCheckboxes = document.querySelectorAll('#filterForm input[type=checkbox][name="rating[]"]');
+                ratingCheckboxes.forEach(function (checkbox) {
+                    checkbox.addEventListener('change', function () {
+                        // Auto-submit on rating change
+                        setTimeout(function() {
+                            var form = document.getElementById('filterForm');
+                            if (form) form.submit();
+                        }, 300);
+                    });
+                });
+
+                // Clear filters functionality
+                var clearFiltersBtn = document.getElementById('clearFilters');
+                if (clearFiltersBtn) {
+                    clearFiltersBtn.addEventListener('click', function() {
+                        // Uncheck all checkboxes
+                        document.querySelectorAll('#filterForm input[type=checkbox]').forEach(function(cb) {
+                            cb.checked = false;
+                        });
+                        
+                        // Check "All" category
+                        if (allCategoryCheckbox) {
+                            allCategoryCheckbox.checked = true;
+                        }
+                        
+                        // Reset price range
+                        var maxProductPrice = {{ $maxProductPrice }};
+                        if (priceSlider && priceSlider.noUiSlider) {
+                            priceSlider.noUiSlider.set([0, maxProductPrice]);
+                        }
+                        
+                        // Clear URL parameters and reload
+                        var url = new URL(window.location);
+                        url.search = '';
+                        window.location.href = url.toString();
+                    });
+                }
 
                 // Sort select
                 var sortSelect = document.getElementById('sortSelect');
                 if (sortSelect) {
-                    sortSelect.onchange = function () {
+                    sortSelect.addEventListener('change', function () {
                         var form = document.getElementById('sortForm');
                         if (form) form.submit();
-                    };
+                    });
                 }
-            } catch(_) {}
+
+                // Collapsible filter sections
+                var filterHeaders = document.querySelectorAll('.filter-section-header');
+                filterHeaders.forEach(function(header) {
+                    header.addEventListener('click', function() {
+                        var chevron = this.querySelector('.filter-chevron');
+                        if (chevron) {
+                            chevron.style.transform = this.getAttribute('aria-expanded') === 'true' 
+                                ? 'rotate(0deg)' : 'rotate(180deg)';
+                        }
+                    });
+                });
+
+            } catch(error) {
+                console.error('Error initializing products page:', error);
+            }
         };
 
         // Initialize on first load and after AJAX injections

@@ -166,6 +166,9 @@
                     <li class="nav-item">
                         <a href="{{ route('productstock.list') }}" class="nav-link {{ request()->is('erp/product-stock*') ? ' active' : '' }}">Product Stock</a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('reviews.index') }}" class="nav-link {{ request()->is('erp/reviews*') ? ' active' : '' }}">Reviews</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -255,6 +258,16 @@
                 </div>
             </a>
         </div>
+        @can('view banners')
+        <div class="nav-item">
+            <a href="{{ route('banners.index') }}" class="nav-link {{ request()->is('erp/banners*') ? ' active' : '' }}">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-image nav-icon"></i>
+                    <span>Banner Management</span>
+                </div>
+            </a>
+        </div>
+        @endcan
         @can('view settings')
         <div class="nav-item">
             <a href="{{ route('settings.index') }}" class="nav-link {{ request()->is('erp/settings*') ? ' active' : '' }}">

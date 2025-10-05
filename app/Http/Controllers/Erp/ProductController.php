@@ -306,6 +306,26 @@ class ProductController extends Controller
         return view('erp.products.show', compact('product'));
     }
 
+    public function reviews($id, Request $request)
+    {
+        $product = Product::findOrFail($id);
+        
+        $query = $product->reviews()->with('user');
+        
+        // Filter by approval status
+        if ($request->filled('status')) {
+            if ($request->status === 'approved') {
+                $query->where('is_approved', true);
+            } elseif ($request->status === 'pending') {
+                $query->where('is_approved', false);
+            }
+        }
+
+        $reviews = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        
+        return view('erp.products.reviews', compact('product', 'reviews'));
+    }
+
     /**
      * Show the form for editing the specified resource.
      */

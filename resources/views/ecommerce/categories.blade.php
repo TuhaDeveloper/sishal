@@ -39,14 +39,3 @@
 </section>
 @endsection
 
-@push('styles')
-    <style>
-        .category-tile .tile-card{background:#fff;border:1px solid #eef0f4;border-radius:16px;padding:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s}
-        .category-tile .tile-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(31,41,55,.08)}
-        .category-tile .tile-img{width:100%;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;overflow:hidden}
-        .category-tile .tile-img img{max-width:100%;max-height:100%;object-fit:contain}
-        .category-tile .tile-title{margin-top:12px;color:#111827;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .section-title{font-size:28px;font-weight:700}
-        @media (max-width:576px){.section-title{font-size:22px}}
-    </style>
-@endpush

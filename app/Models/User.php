@@ -62,4 +62,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(\App\Models\Order::class,'user_id');
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(\App\Models\Review::class);
+    }
 }

@@ -38,6 +38,7 @@
                         </button>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{{ route('product.edit', $product->id) }}"><i class="fas fa-edit me-2"></i>Edit Product</a></li>
+                            <li><a class="dropdown-item" href="{{ route('product.reviews', $product->id) }}"><i class="fas fa-star me-2"></i>View Reviews ({{ $product->totalReviews() }})</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form action="{{ route('product.delete', $product->id) }}" method="POST">

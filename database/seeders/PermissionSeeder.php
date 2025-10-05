@@ -12,9 +12,6 @@ class PermissionSeeder extends Seeder
      */
     public function run(): void
     {
-        // Clear existing permissions
-        Permission::truncate();
-
         // Define permissions with categories
         $permissions = [
             // User Management
@@ -78,14 +75,37 @@ class PermissionSeeder extends Seeder
             // Reports
             ['name' => 'view reports', 'category' => 'Reports'],
             ['name' => 'generate reports', 'category' => 'Reports'],
+            
+            // Banner Management
+            ['name' => 'view banners', 'category' => 'Banner Management'],
+            ['name' => 'create banners', 'category' => 'Banner Management'],
+            ['name' => 'edit banners', 'category' => 'Banner Management'],
+            ['name' => 'delete banners', 'category' => 'Banner Management'],
+            
+            // Branch Management
+            ['name' => 'manage global branches', 'category' => 'Branch Management'],
+            ['name' => 'create branch', 'category' => 'Branch Management'],
+            ['name' => 'view branch details', 'category' => 'Branch Management'],
+            ['name' => 'edit branch', 'category' => 'Branch Management'],
+            ['name' => 'delete branch', 'category' => 'Branch Management'],
+            
+            // POS Management
+            ['name' => 'make sale', 'category' => 'POS Management'],
+            ['name' => 'view sales', 'category' => 'POS Management'],
+            ['name' => 'edit sales', 'category' => 'POS Management'],
+            ['name' => 'delete sales', 'category' => 'POS Management'],
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create([
-                'name' => $permission['name'],
-                'guard_name' => 'web',
-                'category' => $permission['category']
-            ]);
+            Permission::firstOrCreate(
+                [
+                    'name' => $permission['name'],
+                    'guard_name' => 'web'
+                ],
+                [
+                    'category' => $permission['category']
+                ]
+            );
         }
 
         echo "Permissions created successfully!\n";

@@ -9,6 +9,11 @@
 
 @include('ecommerce.components.footer')
 
+<!-- Scroll to Top Button -->
+<button id="scrollToTopBtn" class="scroll-to-top-btn" title="Scroll to top">
+    <i class="fas fa-arrow-up"></i>
+</button>
+
 <!-- Page loading optimization -->
 <div id="page-loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s ease-out;">
     <div style="text-align: center;">
@@ -287,10 +292,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         })(container);
                 }
                 
-                // Update page title
+                // Update page title and meta tags
                 const newTitle = doc.querySelector('title');
                 if (newTitle) {
                     document.title = newTitle.textContent;
+                }
+                
+                // Update meta description if present
+                const newMetaDesc = doc.querySelector('meta[name="description"]');
+                const currentMetaDesc = document.querySelector('meta[name="description"]');
+                if (newMetaDesc && currentMetaDesc) {
+                    currentMetaDesc.setAttribute('content', newMetaDesc.getAttribute('content'));
                 }
                 
                 // Update URL without page reload
@@ -301,6 +313,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Re-initialize any page-specific scripts
                 reinitializePageScripts();
+                
+                // Ensure all styles are properly applied
+                ensureStylesLoaded();
+                
+                // Scroll to top of the page
+                scrollToTop();
                 
                 // Hide loader
                 hidePageLoader();
@@ -406,6 +424,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    function ensureStylesLoaded() {
+        // Force a reflow to ensure all styles are applied
+        const container = document.getElementById('main-content-container');
+        if (container) {
+            // Trigger a reflow by reading a layout property
+            container.offsetHeight;
+            
+            // Force style recalculation for all elements in the container
+            const allElements = container.querySelectorAll('*');
+            allElements.forEach(element => {
+                element.style.display = element.style.display;
+            });
+        }
+    }
+    
+    function scrollToTop() {
+        // Smooth scroll to top of the page
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: 'smooth'
+        });
+        
+        // Also scroll the document element for better compatibility
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        
+        // Ensure we're at the very top
+        setTimeout(() => {
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }, 100);
+    }
+    
     // Initialize AJAX navigation
     initializeAjaxNavigation();
     
@@ -418,8 +471,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle initial page load
     if (window.history.state === null) {
-        // This is the initial page load, no need to do anything special
+        // This is the initial page load, ensure we start at the top
         console.log('Initial page load - master layout loaded');
+        scrollToTop();
     }
     
     // Specific handling for navigation links to ensure consistency
@@ -691,6 +745,23 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             ticking = true;
         }
+    });
+    
+    // Scroll to Top Button functionality
+    const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+    
+    // Show/hide scroll to top button based on scroll position
+    window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+            scrollToTopBtn.classList.add('show');
+        } else {
+            scrollToTopBtn.classList.remove('show');
+        }
+    });
+    
+    // Scroll to top when button is clicked
+    scrollToTopBtn.addEventListener('click', function() {
+        scrollToTop();
     });
 });
 </script>

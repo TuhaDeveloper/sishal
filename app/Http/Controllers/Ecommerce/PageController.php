@@ -27,7 +27,7 @@ class PageController extends Controller
         // Try loading banners if a model exists; otherwise provide empty array
         $banners = [];
         if (class_exists('App\\Models\\Banner')) {
-            $banners = \App\Models\Banner::where('is_active', 1)->orderBy('position')->get();
+            $banners = \App\Models\Banner::currentlyActive()->orderBy('sort_order', 'asc')->get();
         }
         $featuredCategories = ProductServiceCategory::take(6)->get();
         $featuredServices = Product::where('type', 'service')
@@ -41,7 +41,6 @@ class PageController extends Controller
             ->take(10)
             ->get();
         $vlogs = Vlog::where('is_active', 1)
-            ->orderByDesc('is_featured')
             ->latest()
             ->take(4)
             ->get();
@@ -82,13 +81,23 @@ class PageController extends Controller
             $query->where('price', '<=', $request->price_max);
         }
 
+        // Rating filter
+        if ($request->has('rating') && is_array($request->rating) && count($request->rating)) {
+            $minRating = min($request->rating);
+            $query->whereHas('reviews', function($q) use ($minRating) {
+                $q->select('product_id')
+                  ->groupBy('product_id')
+                  ->havingRaw('AVG(rating) >= ?', [$minRating]);
+            });
+        }
+
         // Sorting
         switch ($request->sort) {
             case 'newest':
                 $query->orderByDesc('created_at');
                 break;
             case 'featured':
-                $query->orderByDesc('is_featured');
+                $query->orderByDesc('discount')->orderByDesc('created_at');
                 break;
             case 'lowToHigh':
                 $query->orderBy('price');
@@ -138,7 +147,8 @@ class PageController extends Controller
             'selectedSort' => $request->sort ?? '',
             'priceMin' => $request->price_min ?? 0,
             'priceMax' => $request->price_max ?? $maxProductPrice,
-            'maxProductPrice' => $maxProductPrice
+            'maxProductPrice' => $maxProductPrice,
+            'selectedRatings' => $request->rating ?? []
         ];
         
         // Handle AJAX requests - return only content
@@ -159,7 +169,33 @@ class PageController extends Controller
             }
             
             $pageTitle = $product->name;
-            $relatedProducts = Product::where('category_id',$product->category_id)->where('id','!=', $product->id)->get();
+            
+            // Enhanced related products logic
+            $relatedProducts = Product::where('type', 'product')
+                ->where('status', 'active')
+                ->where('id', '!=', $product->id)
+                ->where(function($query) use ($product) {
+                    // Same category products
+                    $query->where('category_id', $product->category_id)
+                          // Or similar price range products (±20%)
+                          ->orWhere(function($q) use ($product) {
+                              $priceRange = $product->price * 0.2;
+                              $q->whereBetween('price', [
+                                  $product->price - $priceRange,
+                                  $product->price + $priceRange
+                              ]);
+                          });
+                })
+                ->orderByRaw("
+                    CASE 
+                        WHEN category_id = ? THEN 1
+                        WHEN ABS(price - ?) <= ? * 0.2 THEN 2
+                        ELSE 3
+                    END
+                ", [$product->category_id, $product->price, $product->price])
+                ->orderBy('created_at', 'desc')
+                ->take(8)
+                ->get();
 
             // Handle AJAX requests - return only content
             if ($request->ajax()) {
@@ -263,7 +299,7 @@ class PageController extends Controller
 
         $query = Vlog::where('is_active', 1);
         if ($sort === 'featured') {
-            $query->orderByDesc('is_featured')->latest();
+            $query->latest();
         } else {
             $query->latest();
         }

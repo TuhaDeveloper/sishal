@@ -39,4 +39,24 @@ class Product extends Model
         return $this->hasMany(PosItem::class, 'product_id');
     }
 
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function approvedReviews()
+    {
+        return $this->hasMany(Review::class)->approved();
+    }
+
+    public function averageRating()
+    {
+        return $this->reviews()->approved()->avg('rating') ?? 0;
+    }
+
+    public function totalReviews()
+    {
+        return $this->reviews()->approved()->count();
+    }
+
 }

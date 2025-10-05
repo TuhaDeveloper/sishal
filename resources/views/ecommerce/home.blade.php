@@ -50,12 +50,31 @@
 
                 <!-- Right Banner Slider (admin managed) -->
                 <div class="col-lg-9">
-                    <div id="homeHeroCarousel" class="carousel slide hero-carousel" data-bs-ride="carousel">
+                    <div id="homeHeroCarousel" class="carousel slide hero-carousel" data-bs-ride="carousel" data-bs-interval="5000">
                         <div class="carousel-inner">
-                            @if(!empty($banners) && count($banners))
+                            @if(!empty($banners) && count($banners) > 0)
                                 @foreach($banners as $index => $banner)
                                 <div class="carousel-item {{ $index === 0 ? 'active' : '' }}">
-                                    <img src="{{ asset($banner->image) }}" class="d-block w-100 rounded-4 hero-slide-img" alt="banner-{{ $index+1 }}">
+                                    @if($banner->link_url)
+                                        <a href="{{ $banner->link_url }}" target="_blank" class="d-block">
+                                            <img src="{{ $banner->image_url }}" class="d-block w-100 rounded-4 hero-slide-img" alt="{{ $banner->title }}">
+                                        </a>
+                                    @else
+                                        <img src="{{ $banner->image_url }}" class="d-block w-100 rounded-4 hero-slide-img" alt="{{ $banner->title }}">
+                                    @endif
+                                    @if($banner->title || $banner->description)
+                                        <div class="carousel-caption d-none d-md-block">
+                                            @if($banner->title)
+                                                <h5 class="text-white">{{ $banner->title }}</h5>
+                                            @endif
+                                            @if($banner->description)
+                                                <p class="text-white">{{ $banner->description }}</p>
+                                            @endif
+                                            @if($banner->link_url && $banner->link_text)
+                                                <a href="{{ $banner->link_url }}" target="_blank" class="btn btn-primary">{{ $banner->link_text }}</a>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                                 @endforeach
                             @else
@@ -67,6 +86,20 @@
                                 </div>
                             @endif
                         </div>
+                        
+                        @if(!empty($banners) && count($banners) > 1)
+                        <!-- Carousel Indicators -->
+                        <div class="carousel-indicators">
+                            @foreach($banners as $index => $banner)
+                            <button type="button" data-bs-target="#homeHeroCarousel" data-bs-slide-to="{{ $index }}" 
+                                    class="{{ $index === 0 ? 'active' : '' }}" aria-current="{{ $index === 0 ? 'true' : 'false' }}" 
+                                    aria-label="Slide {{ $index + 1 }}"></button>
+                            @endforeach
+                        </div>
+                        @endif
+                        
+                        <!-- Carousel Controls -->
+                        @if(!empty($banners) && count($banners) > 1)
                         <button class="carousel-control-prev" type="button" data-bs-target="#homeHeroCarousel" data-bs-slide="prev">
                             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Previous</span>
@@ -75,6 +108,7 @@
                             <span class="carousel-control-next-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Next</span>
                         </button>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -392,7 +426,7 @@
             var playBtn = document.getElementById('playVideoBtn');
             var videoModal = new bootstrap.Modal(document.getElementById('videoModal'));
             var youtubeVideo = document.getElementById('youtubeVideo');
-            var YOUTUBE_URL = 'https://www.youtube.com/embed/u28np0FD080?autoplay=1'; // Replace YOUR_VIDEO_ID
+            var YOUTUBE_URL = 'https://www.youtube.com/embed/np0FD080?autoplay=1'; // Replace YOUR_VIDEO_ID
 
             playBtn.addEventListener('click', function () {
                 youtubeVideo.src = YOUTUBE_URL;
