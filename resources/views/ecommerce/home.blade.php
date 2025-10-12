@@ -169,7 +169,7 @@
             <div class="d-flex justify-content-between mb-5">
                 <div class="">
                     <h2 class="section-title mb-0 text-start mb-2">Latest Vlogs</h2>
-                    <p class="section-subtitle text-start mb-0">Watch our latest tips, installs and reviews</p>
+                    <p class="section-subtitle text-start mb-0">Watch our latest tips and installs</p>
                 </div>
             </div>
             <div class="row">

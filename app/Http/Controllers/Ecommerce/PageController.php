@@ -35,7 +35,7 @@ class PageController extends Controller
             ->orderByDesc('created_at')
             ->take(4)
             ->get();
-        $bestDealProducts = Product::with(['reviews'])->where('type','product')
+        $bestDealProducts = Product::where('type','product')
             ->orderByDesc('discount')
             ->orderByDesc('created_at')
             ->take(10)
@@ -57,7 +57,7 @@ class PageController extends Controller
     public function products(Request $request)
     {
         $categories = ProductServiceCategory::where('status','active')->get();
-        $query = Product::with(['reviews']);
+        $query = Product::query();
 
         // Get the highest price of all products
         $maxProductPrice = Product::max('price') ?? 0;
@@ -82,15 +82,6 @@ class PageController extends Controller
             $query->where('price', '<=', $request->price_max);
         }
 
-        // Rating filter
-        if ($request->has('rating') && is_array($request->rating) && count($request->rating)) {
-            $minRating = min($request->rating);
-            $query->whereHas('reviews', function($q) use ($minRating) {
-                $q->select('product_id')
-                  ->groupBy('product_id')
-                  ->havingRaw('AVG(rating) >= ?', [$minRating]);
-            });
-        }
 
         // Sorting
         switch ($request->sort) {
@@ -169,6 +160,22 @@ class PageController extends Controller
     public function productDetails($slug, Request $request)
     {
         try {
+            \Log::info('=== PRODUCT DETAILS REQUEST ===', [
+                'slug' => $slug,
+                'url' => $request->url(),
+                'timestamp' => now(),
+                'request_id' => uniqid()
+            ]);
+            
+            // Check all products with similar slugs first
+            $allSimilarProducts = Product::where('slug', 'like', '%' . $slug . '%')
+                ->orWhere('name', 'like', '%' . $slug . '%')
+                ->get(['id', 'name', 'slug']);
+            
+            \Log::info('Similar products found', [
+                'similar_products' => $allSimilarProducts->toArray()
+            ]);
+            
             $product = Product::with([
                 'variations.combinations.attribute', 
                 'variations.combinations.attributeValue',
@@ -180,8 +187,22 @@ class PageController extends Controller
             ])->where('slug', $slug)->first();
             
             if (!$product) {
+                \Log::error('Product not found', [
+                    'slug' => $slug,
+                    'searched_slug' => $slug,
+                    'available_products' => $allSimilarProducts->toArray()
+                ]);
                 abort(404, 'Product not found');
             }
+            
+            \Log::info('Product found successfully', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'searched_slug' => $slug,
+                'match_confirmed' => $product->slug === $slug
+            ]);
+            
             
             $pageTitle = $product->name;
             
@@ -225,7 +246,23 @@ class PageController extends Controller
                 $relatedProduct->is_wishlisted = in_array($relatedProduct->id, $wishlistedIds);
             }
 
-            return view('ecommerce.productDetails', compact('product','relatedProducts','pageTitle'));
+            \Log::info('Returning view with product data', [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'product_slug' => $product->slug,
+                'view_data' => [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'product_slug' => $product->slug
+                ]
+            ]);
+
+            // Add cache-busting headers to prevent caching issues
+            $response = response()->view('ecommerce.productDetails', compact('product','relatedProducts','pageTitle'));
+            $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+            $response->header('Pragma', 'no-cache');
+            $response->header('Expires', '0');
+            return $response;
         } catch (\Exception $e) {
             Log::error('Product details error: ' . $e->getMessage());
             abort(500, 'Error loading product details');
@@ -235,7 +272,7 @@ class PageController extends Controller
     public function search(Request $request)
     {
         $search = $request->search;
-        $products = Product::with(['reviews'])->where(function($query) use ($search) {
+        $products = Product::where(function($query) use ($search) {
             $query->where('name', 'like', '%'.$search.'%')
                   ->orWhereHas('category', function($q) use ($search) {
                       $q->where('name', 'like', '%'.$search.'%');
@@ -320,7 +357,7 @@ class PageController extends Controller
     public function bestDeals(Request $request)
     {
         $pageTitle = 'Best Deal';
-        $query = Product::with(['reviews'])->where('type', 'product');
+        $query = Product::where('type', 'product');
 
         // Prioritize discounted products, then newest
         $query->orderByDesc('discount')->orderByDesc('created_at');
@@ -357,7 +394,7 @@ class PageController extends Controller
         $maxProductPrice = Product::max('price') ?? 1000;
         
         // Build query
-        $query = Product::with(['category', 'reviews'])
+        $query = Product::with(['category'])
             ->where('status', 'active')
             ->where('type', 'product');
 
@@ -379,10 +416,14 @@ class PageController extends Controller
         }
 
         // Rating filter
-        if ($request->filled('rating')) {
+        if ($request->filled('rating') && is_array($request->rating)) {
             $query->whereHas('reviews', function($q) use ($request) {
-                $q->selectRaw('AVG(rating) as avg_rating')
-                  ->havingRaw('AVG(rating) >= ?', [min($request->rating)]);
+                $q->where('is_approved', true);
+                $q->where(function($subQuery) use ($request) {
+                    foreach ($request->rating as $rating) {
+                        $subQuery->orWhere('rating', '>=', $rating);
+                    }
+                });
             });
         }
 

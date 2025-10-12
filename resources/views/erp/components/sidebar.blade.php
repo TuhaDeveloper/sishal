@@ -164,10 +164,10 @@
                         <a href="{{ route('attribute.list') }}" class="nav-link {{ request()->is('erp/attributes*') ? ' active' : '' }}">Attributes</a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ route('productstock.list') }}" class="nav-link {{ request()->is('erp/product-stock*') ? ' active' : '' }}">Product Stock</a>
+                        <a href="{{ route('reviews.index') }}" class="nav-link {{ request()->is('erp/reviews*') ? ' active' : '' }}">Reviews</a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ route('reviews.index') }}" class="nav-link {{ request()->is('erp/reviews*') ? ' active' : '' }}">Reviews</a>
+                        <a href="{{ route('productstock.list') }}" class="nav-link {{ request()->is('erp/product-stock*') ? ' active' : '' }}">Product Stock</a>
                     </li>
                     <li class="nav-item">
                         <a href="{{ route('erp.variation-attributes.index') }}" class="nav-link {{ request()->is('erp/variation-attributes*') ? ' active' : '' }}">Variation Attributes</a>

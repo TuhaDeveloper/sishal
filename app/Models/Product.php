@@ -51,15 +51,30 @@ class Product extends Model
         return $this->hasMany(Review::class)->approved();
     }
 
+    public function featuredReviews()
+    {
+        return $this->hasMany(Review::class)->featured();
+    }
+
     public function averageRating()
     {
-        return $this->reviews()->approved()->avg('rating') ?? 0;
+        return $this->approvedReviews()->avg('rating') ?? 0;
     }
 
     public function totalReviews()
     {
-        return $this->reviews()->approved()->count();
+        return $this->approvedReviews()->count();
     }
+
+    public function getRatingDistribution()
+    {
+        $distribution = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $distribution[$i] = $this->approvedReviews()->byRating($i)->count();
+        }
+        return $distribution;
+    }
+
 
     /**
      * Get the product variations.

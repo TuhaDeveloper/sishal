@@ -26,9 +26,6 @@ class ApiController extends Controller
                     ->exists();
             }
             
-            // Add rating data
-            $product->avg_rating = $product->averageRating();
-            $product->total_reviews = $product->totalReviews();
             
             return $product;
         });

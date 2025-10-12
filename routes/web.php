@@ -19,93 +19,22 @@ Route::get('/products', [PageController::class, 'products'])->name('product.arch
 Route::post('/products/filter', [PageController::class, 'filterProducts'])->name('products.filter');
 Route::get('/product/{slug}', [PageController::class, 'productDetails'])->name('product.details');
 
-// Review routes - NEW CLEAN SYSTEM
-Route::get('/api/products/{id}/reviews', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'getProductReviews'])->name('reviews.product');
-Route::post('/api/products/{productId}/reviews', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'store'])->name('reviews.store');
+// Review API Routes
+Route::get('/api/products/{productId}/reviews', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'getProductReviews'])->name('api.reviews.product');
+Route::post('/api/products/{productId}/reviews', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'store'])->name('api.reviews.store');
+Route::put('/api/products/{productId}/reviews/{reviewId}', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'update'])->name('api.reviews.update');
+Route::delete('/api/products/{productId}/reviews/{reviewId}', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'destroy'])->name('api.reviews.destroy');
 
-// Debug route to check product-review mapping
-Route::get('/debug-product-reviews', function() {
-    $allReviews = \App\Models\Review::with(['product', 'user'])->get();
-    
+// Test route for review system
+Route::get('/test-review', function() {
     return response()->json([
-        'total_reviews' => $allReviews->count(),
-        'reviews_by_product' => $allReviews->groupBy('product_id')->map(function($reviews, $productId) {
-            $product = $reviews->first()->product;
-            return [
-                'product_id' => $productId,
-                'product_name' => $product->name,
-                'reviews_count' => $reviews->count(),
-                'approved_reviews_count' => $reviews->where('is_approved', true)->count(),
-                'reviews' => $reviews->map(function($review) {
-                    return [
-                        'id' => $review->id,
-                        'rating' => $review->rating,
-                        'comment' => $review->comment,
-                        'is_approved' => $review->is_approved,
-                        'user' => $review->user->first_name . ' ' . $review->user->last_name
-                    ];
-                })
-            ];
-        })
+        'message' => 'Review system is working',
+        'csrf_token' => csrf_token(),
+        'user_authenticated' => Auth::check(),
+        'user_id' => Auth::id()
     ]);
 });
 
-// Debug specific products
-Route::get('/debug-products', function() {
-    $products = \App\Models\Product::with('reviews')->get();
-    
-    return response()->json([
-        'products' => $products->map(function($product) {
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'slug' => $product->slug,
-                'total_reviews' => $product->reviews->count(),
-                'approved_reviews' => $product->reviews->where('is_approved', true)->count(),
-                'reviews' => $product->reviews->map(function($review) {
-                    return [
-                        'id' => $review->id,
-                        'product_id' => $review->product_id,
-                        'rating' => $review->rating,
-                        'comment' => $review->comment,
-                        'is_approved' => $review->is_approved
-                    ];
-                })
-            ];
-        })
-    ]);
-});
-
-// Test specific product API
-Route::get('/test-api/{id}', function($id) {
-    $product = \App\Models\Product::find($id);
-    if (!$product) {
-        return response()->json(['error' => 'Product not found']);
-    }
-    
-    $reviews = $product->approvedReviews()->with('user')->get();
-    
-    return response()->json([
-        'product_id' => $id,
-        'product_name' => $product->name,
-        'reviews_count' => $reviews->count(),
-        'reviews' => $reviews->map(function($review) {
-            return [
-                'id' => $review->id,
-                'product_id' => $review->product_id,
-                'rating' => $review->rating,
-                'comment' => $review->comment,
-                'is_approved' => $review->is_approved,
-                'user' => $review->user->first_name . ' ' . $review->user->last_name
-            ];
-        })
-    ]);
-});
-
-
-Route::middleware('auth')->group(function () {
-    // OLD REVIEW ROUTES REMOVED - Using new clean system above
-});
 Route::get('/categories', [PageController::class, 'categories'])->name('categories');
 Route::get('/best-deal', [PageController::class, 'bestDeals'])->name('best.deal');
 // Removed service archive and details routes
@@ -187,11 +116,13 @@ Route::prefix('erp')->middleware(['auth', 'admin'])->group(function () {
     // Review Management
     Route::get('/reviews', [\App\Http\Controllers\Erp\ReviewController::class, 'index'])->name('reviews.index');
     Route::get('/reviews/{id}', [\App\Http\Controllers\Erp\ReviewController::class, 'show'])->name('reviews.show');
-    Route::patch('/reviews/{id}/approve', [\App\Http\Controllers\Erp\ReviewController::class, 'approve'])->name('reviews.approve');
-    Route::patch('/reviews/{id}/reject', [\App\Http\Controllers\Erp\ReviewController::class, 'reject'])->name('reviews.reject');
-    Route::patch('/reviews/{id}/feature', [\App\Http\Controllers\Erp\ReviewController::class, 'feature'])->name('reviews.feature');
+    Route::post('/reviews/{id}/approve', [\App\Http\Controllers\Erp\ReviewController::class, 'approve'])->name('reviews.approve');
+    Route::post('/reviews/{id}/reject', [\App\Http\Controllers\Erp\ReviewController::class, 'reject'])->name('reviews.reject');
+    Route::post('/reviews/{id}/toggle-featured', [\App\Http\Controllers\Erp\ReviewController::class, 'toggleFeatured'])->name('reviews.toggle-featured');
     Route::delete('/reviews/{id}', [\App\Http\Controllers\Erp\ReviewController::class, 'destroy'])->name('reviews.destroy');
     Route::post('/reviews/bulk-action', [\App\Http\Controllers\Erp\ReviewController::class, 'bulkAction'])->name('reviews.bulk-action');
+    Route::get('/reviews/statistics', [\App\Http\Controllers\Erp\ReviewController::class, 'statistics'])->name('reviews.statistics');
+    
     Route::patch('/banners/{banner}/toggle-status', [\App\Http\Controllers\Erp\BannerController::class, 'toggleStatus'])->name('banners.toggle-status');
     Route::resource('warehouse-product-stocks', \App\Http\Controllers\Erp\WarehouseProductStockController::class);
     Route::resource('branch-product-stocks', \App\Http\Controllers\Erp\BranchProductStockController::class);
@@ -230,7 +161,6 @@ Route::prefix('erp')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/products', [\App\Http\Controllers\Erp\ProductController::class, 'store'])->name('product.store');
     Route::get('/products/{product}', [\App\Http\Controllers\Erp\ProductController::class, 'show'])->name('product.show');
     Route::get('/products/{product}/edit', [\App\Http\Controllers\Erp\ProductController::class, 'edit'])->name('product.edit');
-    Route::get('/products/{id}/reviews', [\App\Http\Controllers\Erp\ProductController::class, 'reviews'])->name('product.reviews');
     Route::patch('/products/{product}', [\App\Http\Controllers\Erp\ProductController::class, 'update'])->name('product.update');
     Route::delete('/products/{product}', [\App\Http\Controllers\Erp\ProductController::class, 'destroy'])->name('product.delete');
     Route::get('/products/{id}/price', [\App\Http\Controllers\Erp\ProductController::class, 'getPrice']);

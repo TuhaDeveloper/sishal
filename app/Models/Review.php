@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Review extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'product_id',
         'user_id',
@@ -22,6 +25,12 @@ class Review extends Model
         'rating' => 'integer'
     ];
 
+    protected $appends = [
+        'formatted_date',
+        'user_name'
+    ];
+
+    // Relationships
     public function product()
     {
         return $this->belongsTo(Product::class);
@@ -32,6 +41,7 @@ class Review extends Model
         return $this->belongsTo(User::class);
     }
 
+    // Scopes
     public function scopeApproved($query)
     {
         return $query->where('is_approved', true);
@@ -40,5 +50,37 @@ class Review extends Model
     public function scopeFeatured($query)
     {
         return $query->where('is_featured', true);
+    }
+
+    public function scopeRecent($query)
+    {
+        return $query->orderBy('created_at', 'desc');
+    }
+
+    public function scopeByRating($query, $rating)
+    {
+        return $query->where('rating', $rating);
+    }
+
+    // Accessors
+    public function getFormattedDateAttribute()
+    {
+        return $this->created_at->format('M d, Y');
+    }
+
+    public function getUserNameAttribute()
+    {
+        return $this->user ? $this->user->first_name . ' ' . $this->user->last_name : 'Anonymous';
+    }
+
+    // Helper methods
+
+    public function getStarRating()
+    {
+        $stars = '';
+        for ($i = 1; $i <= 5; $i++) {
+            $stars .= $i <= $this->rating ? '★' : '☆';
+        }
+        return $stars;
     }
 }
