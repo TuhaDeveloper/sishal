@@ -715,6 +715,185 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         }
     };
+
+    // Add toast CSS if not already present
+    if (!document.getElementById('toast-css')) {
+        const style = document.createElement('style');
+        style.id = 'toast-css';
+        style.textContent = `
+            .custom-toast {
+                min-width: 220px;
+                max-width: 340px;
+                background: #fff;
+                border-radius: 12px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+                border-left: 4px solid #10B981;
+                overflow: hidden;
+                transform: translateX(0);
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+            }
+            .custom-toast.error {
+                border-left-color: #e53935;
+            }
+            .custom-toast .toast-content {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 16px 18px 14px 16px;
+            }
+            .custom-toast .toast-icon {
+                font-size: 22px;
+                flex-shrink: 0;
+            }
+            .custom-toast .toast-message {
+                flex: 1;
+                font-weight: 500;
+            }
+            .custom-toast .toast-close {
+                background: none;
+                border: none;
+                color: #888;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: color 0.2s;
+            }
+            .custom-toast .toast-close:hover {
+                color: #e53935;
+            }
+            .custom-toast .toast-progress {
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                height: 3px;
+                width: 100%;
+                background: linear-gradient(90deg, #2196F3, #21cbf3);
+                transition: width 2.3s linear;
+            }
+            .custom-toast.error .toast-progress {
+                background: linear-gradient(90deg, #e53935, #ffb199);
+            }
+            .custom-toast.hide {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.98);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Global toast notification function
+    window.showToast = function(message, type = 'success') {
+        console.log('[TOAST] Showing toast:', message, type);
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast ' + type;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span class="toast-icon">${type === 'error' ? '❌' : ''}</span>
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="this.parentElement.parentElement.classList.add('hide'); setTimeout(()=>this.parentElement.parentElement.remove(), 400);">&times;</button>
+            </div>
+            <div class="toast-progress"></div>
+        `;
+        
+        // Ensure toast container exists
+        var container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;';
+            document.body.appendChild(container);
+        }
+        
+        container.appendChild(toast);
+        
+        // Animate progress bar
+        setTimeout(() => {
+            toast.querySelector('.toast-progress').style.width = '0%';
+        }, 10);
+        
+        // Auto remove after 2.5 seconds
+        setTimeout(() => {
+            toast.classList.add('hide');
+            setTimeout(() => toast.remove(), 400);
+        }, 2500);
+    };
+
+    // Global wishlist toggle function
+    window.toggleWishlist = function(productId) {
+        console.log('[WISHLIST] Toggling wishlist for product:', productId);
+        
+        const button = document.querySelector(`[data-product-id="${productId}"].product-wishlist-top`);
+        if (!button) {
+            console.error('[WISHLIST] Button not found for product:', productId);
+            return;
+        }
+
+        const isActive = button.classList.contains('active');
+        const icon = button.querySelector('i');
+        
+        // Show loading state
+        button.disabled = true;
+        icon.className = 'fas fa-spinner fa-spin';
+
+        fetch(`/add-remove-wishlist/${productId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Toggle button state
+                button.classList.toggle('active');
+                icon.className = isActive ? 'far fa-heart' : 'fas fa-heart';
+                
+                // Show success message
+                if (typeof showToast === 'function') {
+                    showToast(isActive ? 'Removed from wishlist!' : 'Added to wishlist!', 'success');
+                } else {
+                    alert(isActive ? 'Removed from wishlist!' : 'Added to wishlist!');
+                }
+                
+                // Update wishlist count
+                if (typeof updateWishlistCount === 'function') {
+                    updateWishlistCount();
+                }
+            } else {
+                // Show error message
+                if (typeof showToast === 'function') {
+                    showToast(data.message || 'Failed to update wishlist', 'error');
+                } else {
+                    alert(data.message || 'Failed to update wishlist');
+                }
+                
+                // Reset button state
+                icon.className = isActive ? 'fas fa-heart' : 'far fa-heart';
+            }
+        })
+        .catch(error => {
+            console.error('Wishlist error:', error);
+            if (typeof showToast === 'function') {
+                showToast('Error updating wishlist', 'error');
+            } else {
+                alert('Error updating wishlist');
+            }
+            
+            // Reset button state
+            icon.className = isActive ? 'fas fa-heart' : 'far fa-heart';
+        })
+        .finally(() => {
+            button.disabled = false;
+        });
+    };
     
     // Prevent any layout shifts that could cause vibration
     const preventVibration = () => {

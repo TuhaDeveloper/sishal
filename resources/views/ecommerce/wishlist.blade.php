@@ -1,5 +1,9 @@
 @extends('ecommerce.master')
 
+@php
+    use Illuminate\Support\Str;
+@endphp
+
 @section('main-section')
     <div class="container-fluid py-5" style="background-color: #f8f9fa;">
         <div class="container">
@@ -14,7 +18,7 @@
                         <div class="d-flex align-items-center">
                             <span class="badge me-3"
                                 style="font-size: 14px; padding: 8px 16px; background: #0da2e71a; color: var(--primary-blue);">
-                                <i class="fas fa-heart me-1"></i> 5 Items
+                                <i class="fas fa-heart me-1"></i> {{ $wishlists->count() }} {{ $wishlists->count() == 1 ? 'Item' : 'Items' }}
                             </span>
                             <form action="{{ route('wishlist.removeAll') }}" method="post">
                                 @csrf
@@ -35,17 +39,31 @@
                 @foreach ($wishlists as $wishlist)
 
                     <div class="col-lg-3 col-md-6 mt-0 mb-4">
-                        <div class="product-card position-relative mb-0 h-100">
+                        <div class="product-card position-relative mb-0 h-100" data-href="{{ route('product.details', $wishlist->product->slug) }}">
+                            <!-- Top Wishlist Button -->
+                            <button class="product-wishlist-top active"
+                                data-product-id="{{ $wishlist->product->id }}"
+                                onclick="event.stopPropagation(); toggleWishlist({{ $wishlist->product->id }});"
+                                title="Remove from Wishlist">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                            
+                            <!-- Original Wishlist Button (keeping for compatibility) -->
+                            <button class="wishlist-btn active"
+                                data-product-id="{{ $wishlist->product->id }}"
+                                onclick="event.stopPropagation();">
+                                <i class="fas text-danger fa-heart"></i>
+                            </button>
                             <div class="product-image-container">
                                 <img src="{{$wishlist->product->image ? $wishlist->product->image : '/default-product.png'}}"
-                                    class="product-image" style="width:100%;height:200px;object-fit:cover;"
-                                    alt="${product.name}">
+                                    class="product-image"
+                                    alt="{{ $wishlist->product->name }}">
                             </div>
                             <div class="product-info">
                                 <a href="{{ route('product.details', $wishlist->product->slug) }}" class="product-title"
                                     style="text-decoration: none;">{{ $wishlist->product->name }}</a>
                                 <p class="product-description">
-                                    {{$wishlist->product->description ? $wishlist->product->description : ''}}</p>
+                                    {{$wishlist->product->short_desc ? $wishlist->product->short_desc : ($wishlist->product->description ? Str::limit($wishlist->product->description, 80) : '')}}</p>
                                 @php
                                     $avgRating = round($wishlist->product->averageRating());
                                     $totalReviews = $wishlist->product->totalReviews();
@@ -58,6 +76,7 @@
                                     </div>
                                     <div class="sold">({{ $totalReviews }} reviews)</div>
                                 </div>
+
                                 <div class="price">
                                     @if(isset($wishlist->product->discount) && $wishlist->product->discount > 0)
                                         <span class="fw-bold text-primary">
@@ -72,15 +91,17 @@
                                         </span>
                                     @endif
                                 </div>
-                                <button class="btn-add-cart" data-product-id="{{ $wishlist->product->id }}" data-product-name="{{ $wishlist->product->name }}"><svg
-                                        xmlns="http://www.w3.org/2000/svg" id="Outline" viewBox="0 0 24 24" fill="#fff"
-                                        width="14" height="14">
-                                        <path
-                                            d="M22.713,4.077A2.993,2.993,0,0,0,20.41,3H4.242L4.2,2.649A3,3,0,0,0,1.222,0H1A1,1,0,0,0,1,2h.222a1,1,0,0,1,.993.883l1.376,11.7A5,5,0,0,0,8.557,19H19a1,1,0,0,0,0-2H8.557a3,3,0,0,1-2.82-2h11.92a5,5,0,0,0,4.921-4.113l.785-4.354A2.994,2.994,0,0,0,22.713,4.077ZM21.4,6.178l-.786,4.354A3,3,0,0,1,17.657,13H5.419L4.478,5H20.41A1,1,0,0,1,21.4,6.178Z">
-                                        </path>
-                                        <circle cx="7" cy="22" r="2"></circle>
-                                        <circle cx="17" cy="22" r="2"></circle>
-                                    </svg> Add to Cart</button>
+                                <div class="d-flex justify-content-between align-items-center gap-2">
+                                    <button class="btn-add-cart" data-product-id="{{ $wishlist->product->id }}" data-product-name="{{ $wishlist->product->name }}"><svg
+                                            xmlns="http://www.w3.org/2000/svg" id="Outline" viewBox="0 0 24 24" fill="#fff"
+                                            width="14" height="14">
+                                            <path
+                                                d="M22.713,4.077A2.993,2.993,0,0,0,20.41,3H4.242L4.2,2.649A3,3,0,0,0,1.222,0H1A1,1,0,0,0,1,2h.222a1,1,0,0,1,.993.883l1.376,11.7A5,5,0,0,0,8.557,19H19a1,1,0,0,0,0-2H8.557a3,3,0,0,1-2.82-2h11.92a5,5,0,0,0,4.921-4.113l.785-4.354A2.994,2.994,0,0,0,22.713,4.077ZM21.4,6.178l-.786,4.354A3,3,0,0,1,17.657,13H5.419L4.478,5H20.41A1,1,0,0,1,21.4,6.178Z">
+                                            </path>
+                                            <circle cx="7" cy="22" r="2"></circle>
+                                            <circle cx="17" cy="22" r="2"></circle>
+                                        </svg> Add to Cart</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -193,14 +214,20 @@
             // No need for duplicate event listeners here
 
             // Remove from wishlist functionality
-            document.querySelectorAll('.fa-heart').forEach(heart => {
-                heart.closest('button').addEventListener('click', function () {
+            document.querySelectorAll('.wishlist-btn, .product-wishlist-top').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     if (confirm('Remove this item from your wishlist?')) {
-                        this.closest('.col-lg-4').remove();
+                        this.closest('.col-lg-3').remove();
 
                         // Update item count
-                        const itemCount = document.querySelectorAll('.col-lg-4').length;
-                        document.querySelector('.badge').textContent = `♥ ${itemCount} Items`;
+                        const itemCount = document.querySelectorAll('.col-lg-3').length;
+                        const badge = document.querySelector('.badge');
+                        if (badge) {
+                            badge.innerHTML = `<i class="fas fa-heart me-1"></i> ${itemCount} ${itemCount === 1 ? 'Item' : 'Items'}`;
+                        }
 
                         // Show empty state if no items left
                         if (itemCount === 0) {
@@ -210,12 +237,29 @@
                 });
             });
 
+            // Product card click functionality
+            document.querySelectorAll('.product-card[data-href]').forEach(card => {
+                card.addEventListener('click', function(e) {
+                    // Don't navigate if clicking on buttons or links
+                    if (e.target.closest('button') || e.target.closest('a')) {
+                        return;
+                    }
+                    window.location.href = this.getAttribute('data-href');
+                });
+            });
+
             // Clear all functionality
             document.querySelector('.btn-outline-danger').addEventListener('click', function () {
                 if (confirm('Are you sure you want to clear your entire wishlist?')) {
-                    document.querySelectorAll('.col-lg-4').forEach(item => item.remove());
+                    document.querySelectorAll('.col-lg-3').forEach(item => item.remove());
                     document.getElementById('emptyWishlist').classList.remove('d-none');
                     this.closest('.d-flex').style.display = 'none';
+                    
+                    // Update badge count to 0
+                    const badge = document.querySelector('.badge');
+                    if (badge) {
+                        badge.innerHTML = '<i class="fas fa-heart me-1"></i> 0 Items';
+                    }
                 }
             });
         </script>

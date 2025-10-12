@@ -19,8 +19,9 @@ Route::get('/products', [PageController::class, 'products'])->name('product.arch
 Route::post('/products/filter', [PageController::class, 'filterProducts'])->name('products.filter');
 Route::get('/product/{slug}', [PageController::class, 'productDetails'])->name('product.details');
 
-// Review routes
+// Review routes - NEW CLEAN SYSTEM
 Route::get('/api/products/{id}/reviews', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'getProductReviews'])->name('reviews.product');
+Route::post('/api/products/{productId}/reviews', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'store'])->name('reviews.store');
 
 // Debug route to check product-review mapping
 Route::get('/debug-product-reviews', function() {
@@ -103,9 +104,7 @@ Route::get('/test-api/{id}', function($id) {
 
 
 Route::middleware('auth')->group(function () {
-    Route::post('/reviews', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'store'])->name('reviews.store');
-    Route::put('/reviews/{id}', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'update'])->name('reviews.update');
-    Route::delete('/reviews/{id}', [\App\Http\Controllers\Ecommerce\ReviewController::class, 'destroy'])->name('reviews.destroy');
+    // OLD REVIEW ROUTES REMOVED - Using new clean system above
 });
 Route::get('/categories', [PageController::class, 'categories'])->name('categories');
 Route::get('/best-deal', [PageController::class, 'bestDeals'])->name('best.deal');

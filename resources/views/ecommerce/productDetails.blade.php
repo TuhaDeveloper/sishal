@@ -393,6 +393,27 @@
             box-shadow: none !important;
         }
 
+        /* Wishlist button states */
+        .btn-outline-custom.added-to-wishlist {
+            background: #10B981 !important;
+            color: white !important;
+            border-color: #10B981 !important;
+        }
+
+        .btn-outline-custom:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-outline-custom i.fa-spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .btn-outline-custom {
             background: white;
             color: #00512C;
@@ -949,7 +970,7 @@
         }
 
         .related-swiper {
-            padding: 20px 0 5px 0;
+            padding: 20px 10px 5px 10px;
             overflow: visible;
             height: auto !important;
         }
@@ -957,6 +978,7 @@
         .related-swiper .swiper-slide {
             width: auto;
             height: auto;
+            margin-right: 0;
         }
 
         .related-swiper .swiper-wrapper {
@@ -978,6 +1000,7 @@
             flex-direction: column;
             border: 1px solid rgba(255, 255, 255, 0.2);
             flex-shrink: 0;
+            margin: 0 5px;
         }
 
         .related-product-card::before {
@@ -1179,6 +1202,50 @@
             border-color: #ef4444;
             color: #ef4444;
             background: #fef2f2;
+        }
+
+        /* Top Wishlist Button for All Product Cards */
+        .product-wishlist-top {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.9);
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-wishlist-top:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+            background: rgba(254, 242, 242, 0.95);
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .product-wishlist-top.active {
+            border-color: #ef4444;
+            color: #ef4444;
+            background: rgba(254, 242, 242, 0.95);
+        }
+
+        .product-wishlist-top i {
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .product-wishlist-top:hover i {
+            transform: scale(1.1);
         }
 
         /* Swiper Navigation for Related Products */
@@ -2011,8 +2078,23 @@
                     </div>
 
                     <div class="product-rating" id="product-rating">
-                        <div class="stars" id="rating-stars">★★★★☆</div>
-                        <span class="rating-text" id="rating-text">(0 reviews)</span>
+                        <div class="stars" id="rating-stars">
+                            @php
+                                $avgRating = $product->averageRating() ?? 0;
+                                $fullStars = floor($avgRating);
+                                $hasHalfStar = $avgRating - $fullStars >= 0.5;
+                            @endphp
+                            @for($i = 1; $i <= 5; $i++)
+                                @if($i <= $fullStars)
+                                    ★
+                                @elseif($i == $fullStars + 1 && $hasHalfStar)
+                                    ☆
+                                @else
+                                    ☆
+                                @endif
+                            @endfor
+                        </div>
+                        <span class="rating-text" id="rating-text">({{ $product->totalReviews() }} review{{ $product->totalReviews() !== 1 ? 's' : '' }})</span>
                     </div>
 
                     @if ($product->short_desc)
@@ -2641,11 +2723,11 @@
                     <div class="quantity-selector align-items-center mt-4">
                         <label for="quantity">Quantity:</label>
                         <div class="input-group" style="width: 135px; flex-wrap: nowrap;">
-                            <button class="btn nav-button border py-1 px-3" type="button"
+                            <button class="btn nav-button border py-1 px-3 quantity-btn" type="button"
                                 onclick="changeQuantity(-1)">-</button>
                             <input type="number" class="form-control text-center ps-3 pe-0 py-0 w-100" id="quantityInput"
                                 name="quantity" value="1" min="1" max="10">
-                            <button class="btn nav-button border py-1 px-3" type="button"
+                            <button class="btn nav-button border py-1 px-3 quantity-btn" type="button"
                                 onclick="changeQuantity(1)">+</button>
                         </div>
                     </div>
@@ -2775,11 +2857,8 @@
                                 </h4>
                                 <p class="review-form-subtitle">Help others by sharing your experience</p>
                             </div>
-                            <form id="review-form" class="review-form" enctype="multipart/form-data" data-product-id="{{ $product->id }}" data-page-slug="{{ $product->slug }}">
+                            <form id="review-form" class="review-form">
                                 @csrf
-                                <input type="hidden" name="product_id" value="{{ $product->id }}" id="product_id_input">
-                                <input type="hidden" name="page_slug" value="{{ $product->slug }}" id="page_slug_input">
-                                <input type="hidden" name="page_timestamp" value="{{ time() }}" id="page_timestamp_input">
                                 
                                 <div class="form-group">
                                     <label class="form-label required">Rating *</label>
@@ -2925,6 +3004,14 @@
                             @foreach($relatedProducts as $product)
                                 <div class="swiper-slide">
                                     <div class="related-product-card">
+                                        <!-- Wishlist Button -->
+                                        <button class="product-wishlist-top {{$product->is_wishlisted ? ' active' : ''}}" 
+                                                onclick="event.stopPropagation(); toggleWishlist({{ $product->id }});"
+                                                data-product-id="{{ $product->id }}"
+                                                title="{{$product->is_wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}}">
+                                            <i class="{{ $product->is_wishlisted ? 'fas' : 'far' }} fa-heart"></i>
+                                        </button>
+                                        
                                         @if($product->discount > 0)
                                             <div class="related-product-badge">On Sale</div>
                                         @endif
@@ -2992,12 +3079,6 @@
                                                     <i class="fas fa-eye me-1"></i>
                                                     View Details
                                                 </a>
-                                                
-                                                <button class="related-product-wishlist" 
-                                                        onclick="toggleWishlist({{ $product->id }})"
-                                                        data-product-id="{{ $product->id }}">
-                                                    <i class="fas fa-heart"></i>
-                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -3024,7 +3105,357 @@
     </div>
 
     <script>
-        console.log('[PD] section-level script running');
+        console.log('[PD] Product Details page script running');
+        
+        // Global quantity control function
+        window.changeQuantity = function(delta) {
+            console.log('[QTY] changeQuantity called with delta:', delta);
+            var input = document.getElementById('quantityInput');
+            if (!input) {
+                console.error('[QTY] Quantity input not found');
+                return;
+            }
+            var value = parseInt(input.value) || 1;
+            value += delta;
+            if (value < 1) value = 1;
+            if (value > 10) value = 10;
+            input.value = value;
+            console.log('[QTY] Quantity updated to:', value);
+        }
+
+        // Fallback quantity control with event delegation
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.matches('.quantity-btn')) {
+                e.preventDefault();
+                var delta = e.target.textContent === '+' ? 1 : -1;
+                console.log('[QTY] Quantity button clicked via delegation:', delta);
+                window.changeQuantity(delta);
+            }
+        });
+
+        // Wishlist functionality
+        function addToWishlist() {
+            console.log('[WISHLIST] Adding to wishlist...');
+            
+            // Get product ID from the button or page
+            var productId = {{ $product->id }};
+            var button = event.target.closest('button');
+            
+            // Disable button to prevent multiple clicks
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+            }
+            
+            // Make AJAX request to add to wishlist
+            fetch('/add-remove-wishlist/' + productId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    if (typeof showToast === 'function') {
+                        showToast('Added to wishlist!', 'success');
+                    } else {
+                        alert('Added to wishlist!');
+                    }
+                    
+                    // Update wishlist count
+                    if (typeof updateWishlistCount === 'function') {
+                        updateWishlistCount();
+                    }
+                    
+                    // Update button state
+                    if (button) {
+                        button.innerHTML = '<i class="fas fa-heart"></i> Added!';
+                        button.classList.add('added-to-wishlist');
+                        setTimeout(function() {
+                            button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="var(--primary-blue)" id="Outline" viewBox="0 0 24 24" width="20" height="20"><path d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z" /></svg>';
+                            button.disabled = false;
+                        }, 2000);
+                    }
+                } else {
+                    // Show error message
+                    if (typeof showToast === 'function') {
+                        showToast(data.message || 'Failed to add to wishlist', 'error');
+                    } else {
+                        alert(data.message || 'Failed to add to wishlist');
+                    }
+                    
+                    // Reset button state
+                    if (button) {
+                        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="var(--primary-blue)" id="Outline" viewBox="0 0 24 24" width="20" height="20"><path d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z" /></svg>';
+                        button.disabled = false;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Wishlist error:', error);
+                if (typeof showToast === 'function') {
+                    showToast('Error adding to wishlist', 'error');
+                } else {
+                    alert('Error adding to wishlist');
+                }
+                
+                // Reset button state
+                if (button) {
+                    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="var(--primary-blue)" id="Outline" viewBox="0 0 24 24" width="20" height="20"><path d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z" /></svg>';
+                    button.disabled = false;
+                }
+            });
+        }
+
+        // Simple and robust image gallery initialization
+        function initImageGallery() {
+            console.log('[GALLERY] Starting initialization...');
+            
+            var gallery = document.querySelector('.product-gallery');
+            if (!gallery) {
+                console.log('[GALLERY] Gallery not found');
+                return;
+            }
+
+            if (typeof Swiper === 'undefined') {
+                console.error('[GALLERY] Swiper not loaded');
+                return;
+            }
+
+            var thumbContainer = gallery.querySelector('.thumb-swiper');
+            var mainContainer = gallery.querySelector('.main-swiper');
+            
+            if (!thumbContainer || !mainContainer) {
+                console.error('[GALLERY] Containers not found');
+                return;
+            }
+
+            // Destroy existing swipers
+            if (window.thumbSwiper) {
+                try { window.thumbSwiper.destroy(true, true); } catch(e) {}
+            }
+            if (window.mainSwiper) {
+                try { window.mainSwiper.destroy(true, true); } catch(e) {}
+            }
+
+            // Create thumb swiper
+            window.thumbSwiper = new Swiper(thumbContainer, {
+                spaceBetween: 10,
+                slidesPerView: 'auto',
+                freeMode: true,
+                watchSlidesProgress: true
+            });
+
+            // Create main swiper
+            window.mainSwiper = new Swiper(mainContainer, {
+                spaceBetween: 10,
+                navigation: {
+                    nextEl: '.main-swiper .swiper-button-next',
+                    prevEl: '.main-swiper .swiper-button-prev',
+                },
+                thumbs: { 
+                    swiper: window.thumbSwiper 
+                }
+            });
+
+            // Add click handlers for thumbnails
+            var thumbSlides = document.querySelectorAll('.thumb-swiper .swiper-slide');
+            console.log('[GALLERY] Adding click handlers to', thumbSlides.length, 'thumbnails');
+            
+            thumbSlides.forEach(function(slide, index) {
+                slide.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('[GALLERY] Thumbnail clicked, index:', index);
+                    if (window.mainSwiper) {
+                        window.mainSwiper.slideTo(index);
+                    }
+                });
+            });
+
+            console.log('[GALLERY] Initialization complete');
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[PD] DOM ready - initializing...');
+            initImageGallery();
+        });
+
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            console.log('[TOAST] Showing toast:', message, type);
+            const toast = document.createElement('div');
+            toast.className = 'custom-toast ' + type;
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <span class="toast-icon">${type === 'error' ? '❌' : ''}</span>
+                    <span class="toast-message">${message}</span>
+                    <button class="toast-close" onclick="this.parentElement.parentElement.classList.add('hide'); setTimeout(()=>this.parentElement.parentElement.remove(), 400);">&times;</button>
+                </div>
+                <div class="toast-progress"></div>
+            `;
+            
+            // Ensure toast container exists
+            var container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;';
+                document.body.appendChild(container);
+            }
+            
+            container.appendChild(toast);
+            
+            // Animate progress bar - start at 100% and animate to 0%
+            var progressBar = toast.querySelector('.toast-progress');
+            progressBar.style.width = '100%';
+            setTimeout(() => {
+                progressBar.style.width = '0%';
+            }, 10);
+            
+            // Auto remove after 2.5 seconds
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 400);
+            }, 2500);
+        }
+
+        // Make showToast globally available
+        window.showToast = showToast;
+
+        // Toggle wishlist function
+        function toggleWishlist(productId) {
+            console.log('[WISHLIST] Toggling wishlist for product:', productId);
+            
+            const button = document.querySelector(`[data-product-id="${productId}"].product-wishlist-top`);
+            if (!button) {
+                console.error('[WISHLIST] Button not found for product:', productId);
+                return;
+            }
+
+            const isActive = button.classList.contains('active');
+            const icon = button.querySelector('i');
+            
+            // Show loading state
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+
+            fetch(`/add-remove-wishlist/${productId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Toggle button state
+                    button.classList.toggle('active');
+                    icon.className = isActive ? 'far fa-heart' : 'fas fa-heart';
+                    
+                    // Show success message
+                    if (typeof showToast === 'function') {
+                        showToast(isActive ? 'Removed from wishlist!' : 'Added to wishlist!', 'success');
+                    } else {
+                        alert(isActive ? 'Removed from wishlist!' : 'Added to wishlist!');
+                    }
+                    
+                    // Update wishlist count
+                    if (typeof updateWishlistCount === 'function') {
+                        updateWishlistCount();
+                    }
+                } else {
+                    // Show error message
+                    if (typeof showToast === 'function') {
+                        showToast(data.message || 'Failed to update wishlist', 'error');
+                    } else {
+                        alert(data.message || 'Failed to update wishlist');
+                    }
+                    
+                    // Reset button state
+                    icon.className = isActive ? 'fas fa-heart' : 'far fa-heart';
+                }
+            })
+            .catch(error => {
+                console.error('Wishlist error:', error);
+                if (typeof showToast === 'function') {
+                    showToast('Error updating wishlist', 'error');
+                } else {
+                    alert('Error updating wishlist');
+                }
+                
+                // Reset button state
+                icon.className = isActive ? 'fas fa-heart' : 'far fa-heart';
+            })
+            .finally(() => {
+                button.disabled = false;
+            });
+        }
+
+        // Make toggleWishlist globally available
+        window.toggleWishlist = toggleWishlist;
+
+        // Test elements on page load
+        setTimeout(function() {
+            var qtyInput = document.getElementById('quantityInput');
+            var qtyButtons = document.querySelectorAll('.quantity-btn');
+            var gallery = document.querySelector('.product-gallery');
+            var thumbSlides = document.querySelectorAll('.thumb-swiper .swiper-slide');
+            
+            console.log('[PD] Elements found:');
+            console.log('[PD] - Quantity input:', !!qtyInput);
+            console.log('[PD] - Quantity buttons:', qtyButtons.length);
+            console.log('[PD] - Gallery:', !!gallery);
+            console.log('[PD] - Thumb slides:', thumbSlides.length);
+            console.log('[PD] - Swiper loaded:', typeof Swiper !== 'undefined');
+            console.log('[PD] - showToast function:', typeof showToast === 'function');
+            
+            // Test quantity functionality
+            if (qtyInput && qtyButtons.length > 0) {
+                console.log('[PD] Testing quantity controls...');
+                var originalValue = qtyInput.value;
+                window.changeQuantity(1);
+                if (qtyInput.value != originalValue) {
+                    console.log('[PD] ✓ Quantity controls working');
+                    qtyInput.value = originalValue; // Reset
+                } else {
+                    console.log('[PD] ✗ Quantity controls not working');
+                }
+            }
+            
+            // Test image gallery
+            if (gallery && thumbSlides.length > 0) {
+                console.log('[PD] Testing image gallery...');
+                if (window.mainSwiper) {
+                    console.log('[PD] ✓ Image gallery initialized');
+                } else {
+                    console.log('[PD] ✗ Image gallery not initialized');
+                }
+            }
+            
+            // Test wishlist functionality
+            var wishlistBtn = document.querySelector('button[onclick="addToWishlist()"]');
+            if (wishlistBtn) {
+                console.log('[PD] ✓ Wishlist button found');
+                console.log('[PD] ✓ addToWishlist function available:', typeof addToWishlist === 'function');
+            } else {
+                console.log('[PD] ✗ Wishlist button not found');
+            }
+            
+            // Test toast functionality
+            console.log('[PD] Testing toast notifications...');
+            if (typeof showToast === 'function') {
+                console.log('[PD] ✓ Toast system ready');
+            } else {
+                console.log('[PD] ✗ Toast system not available');
+            }
+        }, 1000);
+        
         (function retryInit(attempts){
             if (typeof window.initializePageSpecificScripts === 'function') {
                 try {
@@ -3060,184 +3491,12 @@
                 document.body.style.removeProperty('padding-right');
             } catch(_) {}
         }
-        // Swiper init that can be safely called multiple times
-        (function(){
-            var thumbSwiperInstance = null;
-            var mainSwiperInstance = null;
-
-            function imagesLoaded(container, callback){
-                var imgs = Array.from(container.querySelectorAll('img'));
-                var remaining = imgs.length;
-                if(remaining === 0){ callback(); return; }
-                imgs.forEach(function(img){
-                    if (img.complete) { if(--remaining === 0) callback(); }
-                    else { img.addEventListener('load', function(){ if(--remaining === 0) callback(); });
-                           img.addEventListener('error', function(){ if(--remaining === 0) callback(); }); }
-                });
-            }
-
-            function initProductGallery(){
-                var gallery = document.querySelector('.product-gallery');
-                if(!gallery) return;
-                if (gallery.dataset.initialized === '1') {
-                    // Still ensure updates if already initialized
-                    try { window.__productThumbSwiper && window.__productThumbSwiper.update(); } catch(_){}
-                    try { window.__productMainSwiper && window.__productMainSwiper.update(); } catch(_){}
-                    return;
-                }
-
-                // Destroy if already exists
-                try { if(thumbSwiperInstance){ thumbSwiperInstance.destroy(true, true); thumbSwiperInstance = null; } } catch(_){}
-                try { if(mainSwiperInstance){ mainSwiperInstance.destroy(true, true); mainSwiperInstance = null; } } catch(_){ }
-
-                var thumbContainer = gallery.querySelector('.thumb-swiper');
-                var mainContainer = gallery.querySelector('.main-swiper');
-                var nextEl = gallery.querySelector('.main-swiper .swiper-button-next');
-                var prevEl = gallery.querySelector('.main-swiper .swiper-button-prev');
-
-                thumbSwiperInstance = new Swiper(thumbContainer, {
-                    spaceBetween: 10,
-                    slidesPerView: 4,
-                    freeMode: true,
-                    watchSlidesProgress: true,
-                    observer: true,
-                    observeParents: true
-                });
-                mainSwiperInstance = new Swiper(mainContainer, {
-                    spaceBetween: 10,
-                    navigation: {
-                        nextEl: nextEl,
-                        prevEl: prevEl,
-                    },
-                    thumbs: { swiper: thumbSwiperInstance },
-                    zoom: true,
-                    observer: true,
-                    observeParents: true,
-                    // Improve interaction reliability
-                    preloadImages: false,
-                    lazy: true
-                });
-
-                // Expose globally for navigation/rehydration scenarios
-                window.__productThumbSwiper = thumbSwiperInstance;
-                window.__productMainSwiper = mainSwiperInstance;
-
-                // Native swiper tap sync for extra reliability
-                try {
-                    thumbSwiperInstance.on('tap', function(){
-                        var idx = thumbSwiperInstance.clickedIndex;
-                        if (typeof idx === 'number' && idx >= 0) {
-                            mainSwiperInstance.slideTo(idx);
-                        }
-                    });
-                } catch(_){}
-
-                // Click thumb to slide explicitly (extra reliability)
-                var thumbSlides = document.querySelectorAll('.thumb-swiper .swiper-slide');
-                thumbSlides.forEach(function(slide, index){
-                    slide.addEventListener('click', function(){ if(mainSwiperInstance){ mainSwiperInstance.slideTo(index); } });
-                });
-
-                // Ensure update after images load and after a short tick (ajax)
-                imagesLoaded(gallery, function(){
-                    try { thumbSwiperInstance && thumbSwiperInstance.update(); } catch(_){ }
-                    try { mainSwiperInstance && mainSwiperInstance.update(); } catch(_){ }
-                });
-                setTimeout(function(){
-                    try { thumbSwiperInstance && thumbSwiperInstance.update(); } catch(_){ }
-                    try { mainSwiperInstance && mainSwiperInstance.update(); } catch(_){ }
-                }, 50);
-
-                // Mark as initialized to avoid duplicate setups
-                gallery.dataset.initialized = '1';
-            }
-
-            // Initialize on DOM ready and on window load
-            document.addEventListener('DOMContentLoaded', initProductGallery);
-            window.addEventListener('load', initProductGallery);
-            // Handle bfcache (back/forward) restore where DOM is persisted but scripts may not run
-            window.addEventListener('pageshow', function(e){
-                if (e.persisted) { initProductGallery(); }
-                else { // even without persisted, ensure update when returning via history
-                    if (typeof mainSwiperInstance !== 'undefined' && mainSwiperInstance) {
-                        try { mainSwiperInstance.update(); } catch(_) {}
-                    } else { initProductGallery(); }
-                }
-            });
-            document.addEventListener('visibilitychange', function(){
-                if (document.visibilityState === 'visible') {
-                    if (typeof mainSwiperInstance !== 'undefined' && mainSwiperInstance) {
-                        try { mainSwiperInstance.update(); } catch(_) {}
-                    }
-                }
-            });
-
-            // Observe DOM for product gallery being (re)inserted via AJAX/PJAX
-            try {
-                var ob = new MutationObserver(function(muts){
-                    muts.forEach(function(m){
-                        if ([].some.call(m.addedNodes || [], function(n){ return n.nodeType===1 && (n.matches && n.matches('.product-gallery') || (n.querySelector && n.querySelector('.product-gallery'))); })) {
-                            // Reset flag to allow fresh init
-                            var g = document.querySelector('.product-gallery');
-                            if (g) { delete g.dataset.initialized; }
-                            initProductGallery();
-                        }
-                    });
-                });
-                ob.observe(document.body, { childList: true, subtree: true });
-            } catch(_) {}
-
-            // Delegated click fallback: if swiper not active, still swap the main image
-            document.addEventListener('click', function(e){
-                var slide = e.target && e.target.closest('.thumb-swiper .swiper-slide');
-                if(!slide) return;
-                try {
-                    var index = Array.prototype.indexOf.call(slide.parentNode.children, slide);
-                    if (window.__productMainSwiper && typeof window.__productMainSwiper.slideTo === 'function') {
-                        window.__productMainSwiper.slideTo(index);
-                    } else {
-                        // Hard fallback: replace the first main image src
-                        var main = document.querySelector('.main-swiper .swiper-slide img');
-                        var img = slide.querySelector('img');
-                        if (main && img) { main.src = img.src; }
-                    }
-                } catch(_) {}
-            });
-
-            // Expose for manual re-init if content is injected via AJAX
-            window.initProductGallery = initProductGallery;
-        })();
-
-        // Ensure initialization after AJAX injection
-        if (typeof window.initProductGallery === 'function') {
-            try { window.initProductGallery(); } catch(_) {}
-        }
-
-        // Tab functionality is now handled by the master layout
-        // This ensures it works properly after AJAX navigation
-
-        // Safety cleanup: if a backdrop ever sticks around, remove it on modal hide
-        // No modal now; keep failsafe for any stray backdrops
-        // Failsafe: any click on the page will clear a stray backdrop if no modals are visible
-        document.addEventListener('click', function(){
-            var anyOpen = document.querySelector('.modal.show');
-            if(!anyOpen){ removeStuckBackdrops(); }
-        });
-
-        function changeQuantity(delta) {
-            var input = document.getElementById('quantityInput');
-            var value = parseInt(input.value) || 1;
-            value += delta;
-            if (value < 1) value = 1;
-            if (value > 10) value = 10;
-            input.value = value;
-        }
 
         // Enhanced Related products slider
         if (document.querySelector('.related-swiper') && typeof Swiper !== 'undefined') {
             new Swiper('.related-swiper', {
                 slidesPerView: 4,
-                spaceBetween: 20,
+                spaceBetween: 30,
                 centeredSlides: false,
                 loop: false,
                 freeMode: false,
@@ -3260,27 +3519,27 @@
                 breakpoints: {
                     0: {
                         slidesPerView: 1.2,
-                        spaceBetween: 15
+                        spaceBetween: 20
                     },
                     480: {
                         slidesPerView: 1.5,
-                        spaceBetween: 15
+                        spaceBetween: 20
                     },
                     640: { 
                         slidesPerView: 2.2,
-                        spaceBetween: 20
+                        spaceBetween: 25
                     },
                     768: { 
                         slidesPerView: 2.5,
-                        spaceBetween: 20
+                        spaceBetween: 25
                     },
                     1024: { 
                         slidesPerView: 3.2,
-                        spaceBetween: 25
+                        spaceBetween: 30
                     },
                     1200: { 
                         slidesPerView: 4,
-                        spaceBetween: 30
+                        spaceBetween: 35
                     }
                 },
                 on: {
@@ -3300,458 +3559,149 @@
             });
         }
 
-        // Review functionality - wrapped in IIFE to prevent conflicts
-        (function() {
-            var currentPage = 1;
-            var isLoading = false;
-
-            // Initialize page
-            $(document).ready(function() {
-                // NUCLEAR CACHE PREVENTION - Force correct values
-                var correctProductId = {{ $product->id }};
-                var pageSlug = '{{ $product->slug }}';
-                var timestamp = new Date().getTime();
-                
-                // Clear any existing form data completely
-                $('#review-form')[0].reset();
-                
-                // Remove all existing hidden fields
-                $('#review-form input[type="hidden"]').remove();
-                
-                // Force correct values in ALL possible ways
-                $('input[name="product_id"]').val(correctProductId);
-                $('#product_id_input').val(correctProductId);
-                $('input[name="page_slug"]').val(pageSlug);
-                $('#page_slug_input').val(pageSlug);
-                $('input[name="page_timestamp"]').val(timestamp);
-                $('#page_timestamp_input').val(timestamp);
-                
-                // Update form attributes
-                $('#review-form').attr('data-product-id', correctProductId);
-                $('#review-form').attr('data-page-slug', pageSlug);
-                $('#review-form').attr('data-timestamp', timestamp);
-                
-                // Add fresh hidden fields dynamically
-                $('#review-form').append('<input type="hidden" name="product_id" value="' + correctProductId + '">');
-                $('#review-form').append('<input type="hidden" name="page_slug" value="' + pageSlug + '">');
-                $('#review-form').append('<input type="hidden" name="page_timestamp" value="' + timestamp + '">');
-                $('#review-form').append('<input type="hidden" name="page_verification" value="' + pageSlug + '">');
-                
-                console.log('=== AGGRESSIVE CACHE PREVENTION ===');
-                console.log('Page Product ID:', correctProductId);
-                console.log('Page Slug:', pageSlug);
-                console.log('Timestamp:', timestamp);
-                console.log('Form Product ID:', $('input[name="product_id"]').val());
-                console.log('Form Page Slug:', $('input[name="page_slug"]').val());
-                console.log('Form Timestamp:', $('input[name="page_timestamp"]').val());
-                console.log('=====================================');
-                
-                // Clear any existing reviews first
-                $('#reviews-list').empty();
-                $('#overall-rating').text('0.0');
-                $('#rating-count').text('0 reviews');
-                $('#overall-stars').text('☆☆☆☆☆');
-                $('#rating-stars').text('☆☆☆☆☆');
-                $('#rating-text').text('(0 reviews)');
-                
-                // Load reviews immediately when page loads
-                loadReviews();
-            });
-
-            // Review form submission
+        // NEW CLEAN REVIEW SYSTEM - No caching issues
+        $(document).ready(function() {
+            var productId = {{ $product->id }};
+            var productName = '{{ $product->name }}';
+            
+            console.log('=== NEW CLEAN REVIEW SYSTEM ===');
+            console.log('Product ID:', productId);
+            console.log('Product Name:', productName);
+            console.log('===============================');
+            
+            // Load reviews on page load
+            loadReviews();
+            
+            // Handle form submission
             $('#review-form').on('submit', function(e) {
                 e.preventDefault();
                 
-                var formData = new FormData(this);
                 var rating = $('input[name="rating"]:checked').val();
-                var productId = $('input[name="product_id"]').val();
-                
-                console.log('=== REVIEW SUBMISSION DEBUG ===');
-                console.log('Current Product ID (from page):', {{ $product->id }});
-                console.log('Product ID from form:', productId);
-                console.log('Rating:', rating);
-                console.log('==============================');
+                var comment = $('textarea[name="comment"]').val();
                 
                 if (!rating) {
                     alert('Please select a rating');
                     return;
                 }
                 
-                // AGGRESSIVE VALIDATION - Check ALL values
-                var expectedProductId = {{ $product->id }};
-                var expectedSlug = '{{ $product->slug }}';
-                var currentTimestamp = new Date().getTime();
+                console.log('=== SUBMITTING REVIEW ===');
+                console.log('Product ID:', productId);
+                console.log('Product Name:', productName);
+                console.log('Rating:', rating);
+                console.log('Comment:', comment);
+                console.log('========================');
                 
-                console.log('=== FORM SUBMISSION VALIDATION ===');
-                console.log('Expected Product ID:', expectedProductId);
-                console.log('Expected Slug:', expectedSlug);
-                console.log('Current Timestamp:', currentTimestamp);
-                
-                // Force fresh values before validation
-                $('input[name="product_id"]').val(expectedProductId);
-                $('#product_id_input').val(expectedProductId);
-                $('input[name="page_slug"]').val(expectedSlug);
-                $('#page_slug_input').val(expectedSlug);
-                $('input[name="page_timestamp"]').val(currentTimestamp);
-                $('#page_timestamp_input').val(currentTimestamp);
-                
-                // Get fresh values after forcing
-                var actualProductId = $('input[name="product_id"]').val();
-                var actualSlug = $('input[name="page_slug"]').val();
-                var actualTimestamp = $('input[name="page_timestamp"]').val();
-                
-                console.log('Actual Product ID:', actualProductId);
-                console.log('Actual Slug:', actualSlug);
-                console.log('Actual Timestamp:', actualTimestamp);
-                
-                // Validate product ID
-                if (actualProductId != expectedProductId) {
-                    console.error('CRITICAL ERROR: Product ID mismatch!');
-                    console.error('Expected:', expectedProductId, 'Actual:', actualProductId);
-                    alert('Error: Product ID mismatch. Please refresh the page and try again.');
-                    return;
-                }
-                
-                // Validate page slug
-                if (actualSlug != expectedSlug) {
-                    console.error('CRITICAL ERROR: Page slug mismatch!');
-                    console.error('Expected:', expectedSlug, 'Actual:', actualSlug);
-                    alert('Error: Page verification failed. Please refresh the page and try again.');
-                    return;
-                }
-                
-                console.log('All validations passed!');
-                console.log('===============================');
-                
-                // Update productId for form submission
-                productId = actualProductId;
-
-                // BYPASS CACHED FORM DATA - Create fresh data object
-                var freshFormData = new FormData();
-                freshFormData.append('_token', $('meta[name="csrf-token"]').attr('content'));
-                freshFormData.append('product_id', {{ $product->id }}); // Force correct product ID
-                freshFormData.append('page_slug', '{{ $product->slug }}'); // Force correct slug
-                freshFormData.append('page_timestamp', new Date().getTime()); // Fresh timestamp
-                freshFormData.append('page_verification', '{{ $product->slug }}'); // Force correct verification
-                freshFormData.append('rating', rating);
-                freshFormData.append('comment', comment);
-                
-                console.log('=== BYPASSING CACHED FORM DATA ===');
-                console.log('Fresh Product ID:', {{ $product->id }});
-                console.log('Fresh Page Slug:', '{{ $product->slug }}');
-                console.log('Fresh Rating:', rating);
-                console.log('Fresh Comment:', comment);
-                console.log('===================================');
-
+                // Submit review using URL parameter (no form data for product ID)
                 $.ajax({
-                    url: '{{ route("reviews.store") }}?t=' + new Date().getTime(),
+                    url: '/api/products/' + productId + '/reviews',
                     type: 'POST',
-                    data: freshFormData,
-                    processData: false,
-                    contentType: false,
-                    headers: {
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        rating: rating,
+                        comment: comment
                     },
                     success: function(response) {
                         console.log('Review submission response:', response);
                         if (response.success) {
-                            alert(response.message);
+                            alert('Review submitted successfully!');
                             $('#review-form')[0].reset();
-                            // Always reload reviews after submission
-                            loadReviews();
+                            loadReviews(); // Reload reviews
                         } else {
-                            alert(response.message);
+                            alert(response.message || 'Error submitting review');
                         }
                     },
                     error: function(xhr) {
+                        console.error('Review submission error:', xhr);
                         var response = xhr.responseJSON;
                         alert(response.message || 'Error submitting review');
                     }
                 });
             });
-
-                // Load reviews function
-            function loadReviews(page) {
-                page = page || 1;
-                if (isLoading) return;
-                isLoading = true;
-
-                var productId = {{ $product->id }};
-                var productName = '{{ $product->name }}';
-                var apiUrl = '{{ route("reviews.product", $product->id) }}?t=' + new Date().getTime();
+            
+            // Load reviews function
+            function loadReviews() {
+                console.log('Loading reviews for product ID:', productId);
                 
-                console.log('=== REVIEW DEBUG ===');
-                console.log('Product ID:', productId);
-                console.log('Product Name:', productName);
-                console.log('API URL:', apiUrl);
-                console.log('==================');
-
                 $.ajax({
-                    url: apiUrl,
+                    url: '/api/products/' + productId + '/reviews',
                     type: 'GET',
-                    cache: false, // Disable caching
-                    data: { 
-                        page: page,
-                        _t: new Date().getTime() // Cache busting
-                    },
                     success: function(response) {
-                        console.log('=== API RESPONSE DEBUG ===');
-                        console.log('Product Name:', productName);
-                        console.log('Product ID:', productId);
-                        console.log('Full API Response:', response);
-                        console.log('========================');
-                        
-                        // Verify the response is for the correct product
-                        if (response.product_id && response.product_id != productId) {
-                            console.error('CRITICAL ERROR: API returned data for different product!');
-                            console.error('Expected product ID:', productId, 'Got:', response.product_id);
-                            return;
-                        }
-                        
+                        console.log('Reviews loaded:', response);
                         if (response.success) {
-                            console.log('Reviews found:', response.reviews.data.length);
-                            console.log('Average rating:', response.average_rating);
-                            console.log('Total reviews:', response.total_reviews);
-                            
-                            // Only update if we have reviews for this specific product
-                            if (response.reviews.data.length > 0) {
-                                // Double-check all reviews belong to this product
-                                var validReviews = response.reviews.data.filter(function(review) {
-                                    return review.product_id == productId;
-                                });
-                                
-                                if (validReviews.length != response.reviews.data.length) {
-                                    console.error('ERROR: Some reviews belong to different products!');
-                                    console.error('Valid reviews:', validReviews.length, 'Total reviews:', response.reviews.data.length);
-                                }
-                                
-                                updateRatingDisplay(response.average_rating, response.total_reviews);
-                                updateReviewsList(validReviews, page === 1);
-                                updateRatingBreakdown(validReviews);
-                            } else {
-                                // No reviews - show default state
-                                updateRatingDisplay(0, 0);
-                                updateReviewsList([], page === 1);
-                                updateRatingBreakdown([]);
-                            }
-                            
-                            // Show/hide load more button
-                            if (response.reviews.next_page_url) {
-                                $('#load-more-container').show();
-                                currentPage = page + 1;
-                            } else {
-                                $('#load-more-container').hide();
-                            }
+                            displayReviews(response.reviews);
+                            updateOverallRating(response.averageRating, response.totalReviews);
                         }
                     },
-                    error: function(xhr, status, error) {
-                        console.error('Error loading reviews for', productName, ':', xhr.responseText);
-                    },
-                    complete: function() {
-                        isLoading = false;
+                    error: function(xhr) {
+                        console.error('Error loading reviews:', xhr);
                     }
                 });
             }
-
-            // Update rating display
-            function updateRatingDisplay(averageRating, totalReviews) {
-                // Handle null/undefined values and ensure they are numbers
-                var rating = parseFloat(averageRating) || 0;
-                var reviews = parseInt(totalReviews) || 0;
-                
-                $('#overall-rating').text(rating.toFixed(1));
-                $('#rating-count').text(reviews + ' reviews');
-                
-                // Update stars in product info
-                var stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
-                $('#overall-stars').text(stars);
-                $('#rating-stars').text(stars);
-                $('#rating-text').text('(' + reviews + ' reviews)');
-            }
-
-            // Update reviews list
-            function updateReviewsList(reviews, isFirstLoad) {
-                if (isFirstLoad) {
-                    $('#reviews-list').empty();
-                }
-
-                if (reviews && reviews.length > 0) {
-                    console.log('=== DISPLAYING REVIEWS ===');
-                    console.log('Product ID:', {{ $product->id }});
-                    console.log('Reviews to display:', reviews.length);
-                    console.log('=======================');
+            
+            // Display reviews
+            function displayReviews(reviews) {
+                var reviewsHtml = '';
+                if (reviews.length === 0) {
+                    reviewsHtml = '<div class="no-reviews">No reviews yet. Be the first to review this product!</div>';
+                } else {
                     reviews.forEach(function(review) {
-                        console.log('Review belongs to product ID:', review.product_id, 'Current product ID:', {{ $product->id }});
-                        
-                        // Verify this review belongs to the current product
-                        if (review.product_id != {{ $product->id }}) {
-                            console.error('ERROR: Review belongs to different product! Review product_id:', review.product_id, 'Current product_id:', {{ $product->id }});
-                            return; // Skip this review
-                        }
-                        
-                        var reviewHtml = '<div class="review-item">' +
+                        reviewsHtml += '<div class="review-item">' +
                             '<div class="review-header">' +
                                 '<div class="reviewer-info">' +
-                                    '<div class="reviewer-name">' + review.user.first_name + ' ' + review.user.last_name + '</div>' +
-                                    '<div class="review-stars">' + 
-                                        '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating) +
+                                    '<span class="reviewer-name">' + review.user.first_name + ' ' + review.user.last_name + '</span>' +
+                                    '<div class="review-rating">' +
+                                        generateStars(review.rating) +
                                     '</div>' +
                                 '</div>' +
-                                '<div class="review-date">' + new Date(review.created_at).toLocaleDateString() + '</div>' +
+                                '<span class="review-date">' + formatDate(review.created_at) + '</span>' +
                             '</div>' +
-                            '<div class="review-text">' + (review.comment || 'No comment provided') + '</div>' +
-                            (review.image ? '<div class="review-image-container"><img src="/storage/' + review.image + '" alt="Review image" class="review-image" onclick="openImageModal(this.src)"></div>' : '') +
+                            '<div class="review-comment">' + (review.comment || 'No comment provided') + '</div>' +
                         '</div>';
-                        $('#reviews-list').append(reviewHtml);
-                    });
-                } else {
-                    $('#reviews-list').html('<div class="text-center text-muted p-4"><i class="fas fa-comment-slash fa-2x mb-2"></i><br>No reviews yet. Be the first to review this product!</div>');
-                }
-            }
-
-            // Update rating breakdown
-            function updateRatingBreakdown(reviews) {
-                var ratingCounts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
-                
-                // Handle null/undefined reviews array
-                if (reviews && Array.isArray(reviews)) {
-                    reviews.forEach(function(review) {
-                        if (review && review.rating) {
-                            ratingCounts[review.rating]++;
-                        }
                     });
                 }
-
-                var totalReviews = reviews ? reviews.length : 0;
-                var breakdownHtml = '';
-
-                for (var i = 5; i >= 1; i--) {
-                    var percentage = totalReviews > 0 ? Math.round((ratingCounts[i] / totalReviews) * 100) : 0;
-                    breakdownHtml += '<div class="rating-bar">' +
-                        '<span>' + i + '★</span>' +
-                        '<div class="bar-fill">' +
-                            '<div class="bar-fill-inner" style="width: ' + percentage + '%"></div>' +
-                        '</div>' +
-                        '<span>' + percentage + '%</span>' +
-                    '</div>';
-                }
-
-                $('#rating-bars').html(breakdownHtml);
+                $('#reviews-list').html(reviewsHtml);
             }
-
-            // Load more reviews
-            $('#load-more-reviews').on('click', function() {
-                loadReviews(currentPage);
-            });
-
-            // Enhanced Rating System
-            $('.star-label').on('mouseenter', function() {
-                var rating = $(this).data('rating');
-                var feedback = getRatingFeedback(rating);
-                $('#rating-feedback').text(feedback).addClass('show');
+            
+            // Update overall rating
+            function updateOverallRating(averageRating, totalReviews) {
+                $('#overall-rating').text(averageRating.toFixed(1));
+                $('#rating-count').text(totalReviews + ' review' + (totalReviews !== 1 ? 's' : ''));
                 
-                // Highlight stars up to hovered rating
-                $('.star-label').each(function() {
-                    if ($(this).data('rating') <= rating) {
-                        $(this).addClass('hovered');
+                // Update main product rating display
+                $('#rating-text').text('(' + totalReviews + ' review' + (totalReviews !== 1 ? 's' : '') + ')');
+                
+                // Update main product stars
+                var stars = '';
+                var fullStars = Math.floor(averageRating);
+                var hasHalfStar = averageRating - fullStars >= 0.5;
+                
+                for (var i = 1; i <= 5; i++) {
+                    if (i <= fullStars) {
+                        stars += '★';
+                    } else if (i === fullStars + 1 && hasHalfStar) {
+                        stars += '☆';
                     } else {
-                        $(this).removeClass('hovered');
+                        stars += '☆';
                     }
-                });
-            });
-
-            $('.rating-input').on('mouseleave', function() {
-                $('#rating-feedback').removeClass('show');
-                $('.star-label').removeClass('hovered');
-                
-                // Show feedback for selected rating if any
-                var selectedRating = $('input[name="rating"]:checked').val();
-                if (selectedRating) {
-                    var feedback = getRatingFeedback(selectedRating);
-                    $('#rating-feedback').text(feedback).addClass('show');
                 }
-            });
-
-            $('.star-label').on('click', function() {
-                var rating = $(this).data('rating');
-                var feedback = getRatingFeedback(rating);
-                $('#rating-feedback').text(feedback).addClass('show');
-                
-                // Update all stars based on selected rating
-                $('.star-label').each(function() {
-                    if ($(this).data('rating') <= rating) {
-                        $(this).addClass('selected');
-                    } else {
-                        $(this).removeClass('selected');
-                    }
-                });
-            });
-
-            function getRatingFeedback(rating) {
-                var feedbacks = {
-                    5: "Excellent! This product exceeded my expectations! ⭐⭐⭐⭐⭐",
-                    4: "Good product, I'm satisfied with my purchase ⭐⭐⭐⭐",
-                    3: "Average product, it's okay but nothing special ⭐⭐⭐",
-                    2: "Poor quality, I wouldn't recommend this ⭐⭐",
-                    1: "Terrible experience, very disappointed ⭐"
-                };
-                return feedbacks[rating] || '';
+                $('#rating-stars').text(stars);
             }
-
-            // Form validation enhancement
-            $('#comment').on('input', function() {
-                var length = $(this).val().length;
-                var minLength = 10;
-                
-                if (length < minLength) {
-                    $(this).addClass('is-invalid');
-                    $('.form-text').text(`Minimum ${minLength} characters required (${length}/${minLength})`).addClass('text-danger');
-                } else {
-                    $(this).removeClass('is-invalid').addClass('is-valid');
-                    $('.form-text').text(`${length} characters`).removeClass('text-danger').addClass('text-success');
+            
+            // Generate star HTML
+            function generateStars(rating) {
+                var stars = '';
+                for (var i = 1; i <= 5; i++) {
+                    stars += '<i class="fa' + (i <= rating ? 's' : 'r') + ' fa-star"></i>';
                 }
-            });
-
-            // Tab functionality
-            $('.tab-btn').on('click', function() {
-                var targetTab = $(this).data('tab');
-                
-                // Remove active class from all tabs and contents
-                $('.tab-btn').removeClass('active');
-                $('.tab-content').removeClass('active').hide();
-                
-                // Add active class to clicked tab
-                $(this).addClass('active');
-                
-                // Show target content
-                $('#' + targetTab).addClass('active').show();
-                
-                // Reviews are already loaded on page load, no need to reload
-            });
-        })();
-    </script>
-    <script>
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = 'custom-toast ' + type;
-            toast.innerHTML = `
-                <div class="toast-content">
-                    <span class="toast-icon">${type === 'error' ? '❌' : ''}</span>
-                    <span class="toast-message">${message}</span>
-                    <button class="toast-close" onclick="this.parentElement.parentElement.classList.add('hide'); setTimeout(()=>this.parentElement.parentElement.remove(), 400);">&times;</button>
-                </div>
-                <div class="toast-progress"></div>
-            `;
-            document.getElementById('toast-container').appendChild(toast);
-            // Animate progress bar
-            setTimeout(() => {
-                toast.querySelector('.toast-progress').style.width = '0%';
-            }, 10);
-            setTimeout(() => {
-                toast.classList.add('hide');
-                setTimeout(() => toast.remove(), 400);
-            }, 2500);
-        }
+                return stars;
+            }
+            
+            // Format date
+            function formatDate(dateString) {
+                var date = new Date(dateString);
+                return date.toLocaleDateString();
+            }
+        });
 
         // Image preview functionality
         function previewImage(input) {
@@ -3939,6 +3889,208 @@
         if (typeof window.initializePageSpecificScripts === 'function') {
             try { window.initializePageSpecificScripts(); } catch (e) { console.error('Init error', e); }
         }
+    </script>
+
+    <!-- NEW CLEAN REVIEW SYSTEM -->
+    <script>
+        $(document).ready(function() {
+            // Function to get current product info dynamically
+            function getCurrentProductInfo() {
+                var productId = {{ $product->id }};
+                var productName = '{{ $product->name }}';
+                var productSlug = '{{ $product->slug }}';
+
+                return {
+                    id: productId,
+                    name: productName,
+                    slug: productSlug
+                };
+            }
+
+            // Initialize review system
+
+            // Load reviews on page load
+            loadReviews();
+
+            // Initialize star rating interaction
+            initializeStarRating();
+
+            // Handle page navigation (for AJAX-based navigation)
+            $(window).on('popstate', function() {
+                loadReviews();
+            });
+
+            // Handle form submission
+            $('#review-form').on('submit', function(e) {
+                e.preventDefault();
+
+                // Get current product info dynamically
+                var productInfo = getCurrentProductInfo();
+                var productId = productInfo.id;
+                var productName = productInfo.name;
+
+                var rating = $('input[name="rating"]:checked').val();
+                var comment = $('textarea[name="comment"]').val();
+
+                if (!rating) {
+                    alert('Please select a rating');
+                    return;
+                }
+
+                // Submit review directly without confirmation dialog
+
+                // Submit review using URL parameter (no form data for product ID)
+                $.ajax({
+                    url: '/api/products/' + productId + '/reviews',
+                    type: 'POST',
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        rating: rating,
+                        comment: comment
+                    },
+                    success: function(response) {
+                        console.log('Review submission response:', response);
+                        if (response.success) {
+                            alert('Review submitted successfully!');
+                            $('#review-form')[0].reset();
+                            loadReviews(); // Reload reviews
+                        } else {
+                            alert(response.message || 'Error submitting review');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Review submission error:', xhr);
+                        var response = xhr.responseJSON;
+                        alert(response.message || 'Error submitting review');
+                    }
+                });
+            });
+
+            // Load reviews function
+            function loadReviews() {
+                var productInfo = getCurrentProductInfo();
+                var productId = productInfo.id;
+
+                $.ajax({
+                    url: '/api/products/' + productId + '/reviews',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            displayReviews(response.reviews);
+                            updateOverallRating(response.averageRating, response.totalReviews);
+                        }
+                    },
+                    error: function(xhr) {
+                        // Handle error silently
+                    }
+                });
+            }
+
+            // Display reviews
+            function displayReviews(reviews) {
+                var reviewsHtml = '';
+                if (reviews.length === 0) {
+                    reviewsHtml = '<div class="no-reviews">No reviews yet. Be the first to review this product!</div>';
+                } else {
+                    reviews.forEach(function(review) {
+                        reviewsHtml += '<div class="review-item">' +
+                            '<div class="review-header">' +
+                                '<div class="reviewer-info">' +
+                                    '<span class="reviewer-name">' + review.user.first_name + ' ' + review.user.last_name + '</span>' +
+                                    '<div class="review-rating">' +
+                                        generateStars(review.rating) +
+                                    '</div>' +
+                                '</div>' +
+                                '<span class="review-date">' + formatDate(review.created_at) + '</span>' +
+                            '</div>' +
+                            '<div class="review-comment">' + (review.comment || 'No comment provided') + '</div>' +
+                        '</div>';
+                    });
+                }
+                $('#reviews-list').html(reviewsHtml);
+            }
+
+            // Update overall rating
+            function updateOverallRating(averageRating, totalReviews) {
+                $('#overall-rating').text(averageRating.toFixed(1));
+                $('#rating-count').text(totalReviews + ' review' + (totalReviews !== 1 ? 's' : ''));
+                
+                // Update main product rating display
+                $('#rating-text').text('(' + totalReviews + ' review' + (totalReviews !== 1 ? 's' : '') + ')');
+                
+                // Update main product stars
+                var stars = '';
+                var fullStars = Math.floor(averageRating);
+                var hasHalfStar = averageRating - fullStars >= 0.5;
+                
+                for (var i = 1; i <= 5; i++) {
+                    if (i <= fullStars) {
+                        stars += '★';
+                    } else if (i === fullStars + 1 && hasHalfStar) {
+                        stars += '☆';
+                    } else {
+                        stars += '☆';
+                    }
+                }
+                $('#rating-stars').text(stars);
+            }
+
+            // Generate star HTML
+            function generateStars(rating) {
+                var stars = '';
+                for (var i = 1; i <= 5; i++) {
+                    stars += '<i class="fa' + (i <= rating ? 's' : 'r') + ' fa-star"></i>';
+                }
+                return stars;
+            }
+
+            // Format date
+            function formatDate(dateString) {
+                var date = new Date(dateString);
+                return date.toLocaleDateString();
+            }
+
+            // Initialize star rating interaction
+            function initializeStarRating() {
+                // Handle star click
+                $('.star-label').on('click', function() {
+                    var rating = $(this).data('rating');
+                    updateStarDisplay(rating);
+                });
+
+                // Handle star hover
+                $('.star-label').on('mouseenter', function() {
+                    var rating = $(this).data('rating');
+                    updateStarDisplay(rating, true);
+                });
+
+                // Handle mouse leave
+                $('.rating-input').on('mouseleave', function() {
+                    var selectedRating = $('input[name="rating"]:checked').val();
+                    if (selectedRating) {
+                        updateStarDisplay(selectedRating);
+                    } else {
+                        updateStarDisplay(0);
+                    }
+                });
+            }
+
+            // Update star display
+            function updateStarDisplay(rating, isHover) {
+                $('.star-label').each(function() {
+                    var starRating = $(this).data('rating');
+                    var starIcon = $(this).find('i');
+                    
+                    if (starRating <= rating) {
+                        starIcon.removeClass('far').addClass('fas');
+                        $(this).addClass('selected');
+                    } else {
+                        starIcon.removeClass('fas').addClass('far');
+                        $(this).removeClass('selected');
+                    }
+                });
+            }
+        });
     </script>
 @endpush
 

@@ -212,6 +212,19 @@ class PageController extends Controller
                 ->take(8)
                 ->get();
 
+            // Add wishlist status to related products
+            $userId = Auth::id();
+            $wishlistedIds = [];
+            if ($userId) {
+                $wishlistedIds = \App\Models\Wishlist::where('user_id', $userId)
+                    ->whereIn('product_id', $relatedProducts->pluck('id'))
+                    ->pluck('product_id')
+                    ->toArray();
+            }
+            foreach ($relatedProducts as $relatedProduct) {
+                $relatedProduct->is_wishlisted = in_array($relatedProduct->id, $wishlistedIds);
+            }
+
             return view('ecommerce.productDetails', compact('product','relatedProducts','pageTitle'));
         } catch (\Exception $e) {
             Log::error('Product details error: ' . $e->getMessage());

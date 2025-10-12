@@ -491,14 +491,61 @@ body {
     background: var(--red-primary);
     color: var(--white);
     border-radius: 50%;
-    width: 20px;
+    min-width: 20px;
     height: 20px;
     font-size: 11px;
     font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 20px;
+    text-align: center;
+    line-height: 1;
+    padding: 0 4px;
+    box-sizing: border-box;
+}
+
+/* Top Wishlist Button for All Product Cards */
+.product-wishlist-top {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.9);
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.product-wishlist-top:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: rgba(254, 242, 242, 0.95);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.product-wishlist-top.active {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: rgba(254, 242, 242, 0.95);
+}
+
+.product-wishlist-top i {
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.product-wishlist-top:hover i {
+    transform: scale(1.1);
 }
 
 /* Dynamic Banner Slider */
@@ -1974,7 +2021,22 @@ turbo-progress-bar {
 .drawer-quick { margin-top: 12px; display: grid; gap: 10px; }
 .quick-item { display: flex; align-items: center; justify-content: space-between; text-decoration: none; color: #111827; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 12px; }
 .qi-left { display: inline-flex; align-items: center; gap: 10px; }
-.qi-badge { min-width: 22px; height: 22px; border-radius: 999px; background: var(--red-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.qi-badge { 
+    min-width: 22px; 
+    height: 22px; 
+    border-radius: 999px; 
+    background: var(--red-primary); 
+    color: #fff; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 12px; 
+    font-weight: 700; 
+    text-align: center;
+    line-height: 1;
+    padding: 0 6px;
+    box-sizing: border-box;
+}
 
 .drawer-links { margin-top: 12px; display: block; }
 .drawer-link { display: block; padding: 12px 2px; text-decoration: none; color: var(--text-dark); border-bottom: 1px solid #E5E7EB; }

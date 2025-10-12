@@ -2,8 +2,18 @@
     @foreach($products as $product)
         <div class="col-lg-3 col-md-6 mt-0 mb-4">
             <div class="product-card position-relative mb-0 h-100" data-href="{{ route('product.details', $product->slug) }}">
+                <!-- Top Wishlist Button -->
+                <button class="product-wishlist-top {{$product->is_wishlisted ? ' active' : ''}}"
+                    data-product-id="{{ $product->id }}"
+                    onclick="event.stopPropagation(); toggleWishlist({{ $product->id }});"
+                    title="Add to Wishlist">
+                    <i class="{{ $product->is_wishlisted ? 'fas' : 'far' }} fa-heart"></i>
+                </button>
+                
+                <!-- Original Wishlist Button (keeping for compatibility) -->
                 <button class="wishlist-btn {{$product->is_wishlisted ? ' active' : ''}}"
-                    data-product-id="{{ $product->id }}">
+                    data-product-id="{{ $product->id }}"
+                    onclick="event.stopPropagation();">
                     <i class="{{ $product->is_wishlisted ? 'fas text-danger' : 'far' }} fa-heart"></i>
                 </button>
                 <div class="product-image-container">
