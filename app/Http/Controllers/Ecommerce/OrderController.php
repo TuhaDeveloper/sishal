@@ -290,46 +290,6 @@ class OrderController extends Controller
         }
     }
 
-    public function reorder($id)
-    {
-        try {
-            $order = Order::with('items.product')->findOrFail($id);
-
-            // Check if the order belongs to the authenticated user
-            if ($order->user_id !== auth()->id()) {
-                return redirect()->back()->with('error', 'Unauthorized access to order.');
-            }
-
-            $addedItems = 0;
-            $unavailableItems = 0;
-
-            // Add items to cart
-            foreach ($order->items as $item) {
-                if ($item->product && $item->product->status == 'active') {
-                    // Add product to cart (you may need to implement this based on your cart system)
-                    // For now, we'll simulate adding to cart
-                    $addedItems++;
-                } else {
-                    $unavailableItems++;
-                }
-            }
-
-            if ($addedItems > 0) {
-                $message = "Successfully added {$addedItems} item(s) to cart for reorder.";
-                if ($unavailableItems > 0) {
-                    $message .= " {$unavailableItems} item(s) were unavailable.";
-                }
-                return redirect()->route('cart.index')->with('success', $message);
-            } else {
-                return redirect()->back()->with('error', 'No products available for reorder. All items may be out of stock or discontinued.');
-            }
-
-        } catch (\Exception $e) {
-            \Log::error('Reorder failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to reorder. Please try again.');
-        }
-    }
-
     public function show($orderNumber)
     {
         $order = Order::where('order_number', $orderNumber)->first();

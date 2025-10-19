@@ -5,34 +5,60 @@
 
 /* Force fixed header layers with CSS variable offsets */
 .top-bar{
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 2000;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 15000; /* Above category submenu (10000) */
+    height: 32px;
+    line-height: 32px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Prevent header shake - force consistency */
+    transform: none;
+    will-change: auto;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* Prevent any movement */
+    margin: 0 !important;
+    padding: 0 !important;
 }
 header.modern-header{
-    position: fixed;
-    top: var(--tb, 32px);
-    left: 0;
-    right: 0;
-    z-index: 1900;
+    position: fixed !important;
+    top: 32px !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 16000 !important; /* Above all content */
     background: #fff;
+    height: 90px;
+    /* Prevent header shake - force consistency */
+    transform: none;
+    will-change: auto;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    /* Prevent any movement */
+    margin: 0 !important;
 }
 nav.main-nav{
-    position: fixed;
-    top: calc(var(--tb, 32px) + var(--hd, 90px));
-    left: 0;
-    right: 0;
-    z-index: 1800;
-    /* background: #fff; */
-    /* width: 80%; */
+    position: fixed !important;
+    top: 122px !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 14800; /* Above category submenu (10000) */
     margin: 0 auto;
     border-bottom: 1px solid #e9e9e9;
-  border-radius: 0 0 10px 10px;
+    border-radius: 0 0 10px 10px;
+    height: 56px;
+    /* Prevent header shake - force consistency */
+    transform: none;
+    will-change: auto;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 #main-content-container{
-    margin-top: calc(var(--tb, 32px) + var(--hd, 90px) + var(--nv, 56px));
+    margin-top: 178px;
 }
 
 /* Header stack wrapper */
@@ -60,12 +86,124 @@ nav.main-nav{
     --red-dark: #B91C1C;     /* deeper red */
     --purple-gradient: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
     --red-gradient: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+
+    /* Header stack heights used by fixed positioning (stable defaults) */
+    --tb: 32px;  /* top-bar */
+    --hd: 90px;  /* header.modern-header */
+    --nv: 56px;  /* nav.main-nav */
+}
+
+/* Mobile/tablet: smaller header stack */
+@media (max-width: 992px) {
+    .top-bar {
+        height: 0px;
+        line-height: 0px;
+        display: none;
+    }
+    header.modern-header {
+        top: 0px !important;
+        height: 80px;
+        background: #fff !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    nav.main-nav {
+        top: 64px !important;
+        height: 0px;
+        display: none;
+    }
+    #main-content-container {
+        margin-top: 80px;
+    }
+    .mobile-searchbar {
+        top: 80px;
+        z-index: 15900;
+    }
 }
 
 /* Reserve vertical scrollbar space on all pages to prevent layout shift between routes */
 html {
     overflow-y: scroll;
     scrollbar-gutter: stable;
+    /* Prevent layout shifts during page load */
+    height: 100%;
+}
+
+/* Ensure consistent page structure */
+body {
+    min-height: 100vh;
+    /* Prevent content jumping */
+    position: relative;
+    /* Prevent layout shifts during page load */
+    overflow-x: hidden;
+}
+
+/* Header stability - prevent shake */
+.top-bar, 
+header.modern-header, 
+nav.main-nav {
+    /* Force hardware acceleration for smooth rendering */
+    transform: none;
+    will-change: auto;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* Prevent layout shifts */
+    contain: layout style;
+    /* Ensure consistent positioning */
+    position: fixed !important;
+    /* Prevent any movement or shaking */
+    top: 0;
+    left: 0;
+    right: 0;
+    /* Force consistent rendering */
+    -webkit-transform: translateZ(0);
+    -moz-transform: translateZ(0);
+    -ms-transform: translateZ(0);
+    -o-transform: translateZ(0);
+}
+
+/* Prevent layout shifts on all major elements */
+* {
+    box-sizing: border-box;
+}
+
+/* Ensure consistent rendering */
+img, video, canvas, svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Prevent header shake from external factors */
+.top-bar *,
+header.modern-header *,
+nav.main-nav * {
+    /* Prevent any transforms that might cause shake */
+    transform: none;
+    /* Ensure consistent rendering */
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+}
+
+/* Force header elements to maintain position */
+.top-bar,
+header.modern-header,
+nav.main-nav {
+    /* Prevent any external CSS from affecting position */
+    position: fixed !important;
+    /* Lock transforms to prevent shake */
+    transform: none;
+    /* Prevent any margin/padding changes */
+    margin: 0 !important;
+    /* Ensure consistent z-index - above all overlays */
+    z-index: 15000 !important;
+}
+
+header.modern-header {
+    z-index: 16000 !important;
+}
+
+nav.main-nav {
+    z-index: 14800 !important;
 }
 
 /* Slightly widen the global container on large screens */
@@ -103,37 +241,41 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
     color: var(--text-dark);
-    /* Smooth page transitions */
-    transition: none;
     /* Prevent layout shifts */
     overflow-x: hidden;
     /* Stabilize content during navigation */
-    will-change: auto;
-    /* Prevent page shake during navigation */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Remove problematic transforms that can cause shaking */
+    transform: none;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
 }
 
 /* Smooth navigation transitions */
 .nav-link {
-    transition: all 0.2s ease-in-out;
+    transition: color 0.3s ease-in-out;
     /* Prevent click vibration */
     -webkit-tap-highlight-color: transparent;
-    /* Smooth hover effects */
-    transform: translateZ(0);
+    /* Prevent any transforms that could cause shake */
+    transform: none;
 }
 
 /* Prevent layout shift during page load */
 .container, .row, .col-lg-3, .col-lg-6, .col-lg-8, .col-md-4, .col-md-5, .col-md-7, .col-md-8, .col-md-12 {
-    /* Stabilize grid layout */
-    backface-visibility: hidden;
-    transform: translateZ(0);
+    /* Stabilize grid layout without transforms */
+    position: relative;
 }
 
-/* Smooth header transitions */
+/* Smooth header transitions - optimized for stability */
 .modern-header, .main-nav, .top-bar {
+    /* Ensure header stability */
+    transform: none;
+    will-change: auto;
     backface-visibility: hidden;
-    transition: all 0.1s ease-out;
+    -webkit-backface-visibility: hidden;
+    /* Prevent layout shifts */
+    contain: layout style;
 }
 
 /* Explicitly order header layers to ensure dropdown overlays navbar border */
@@ -151,17 +293,16 @@ body {
 .action-btn, .search-btn, .btn {
     /* Prevent button shake on click */
     -webkit-tap-highlight-color: transparent;
-    /* Smooth transitions */
-    transition: all 0.15s ease-in-out;
-    /* Prevent layout shift */
-    transform: translateZ(0);
+    /* Smooth transitions - single property to prevent conflicts */
+    transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+    /* Prevent any transforms that could cause shake */
+    transform: none;
 }
 
 /* Prevent content jumping during navigation */
 .banner-slide, .hero-section, .featured-categories, .top-products {
-    /* Stabilize major sections */
-    transform: translateZ(0);
-    backface-visibility: hidden;
+    /* Stabilize major sections without transforms */
+    position: relative;
 }
 
 
@@ -224,7 +365,7 @@ body {
     border-radius: 25px;
     font-size: 16px;
     outline: none;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     background: var(--white);
 }
 
@@ -237,7 +378,7 @@ body {
     position: absolute;
     right: 8px;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translateY(-50%) !important;
     background: var(--teal-primary);
     border: none;
     border-radius: 50%;
@@ -248,12 +389,18 @@ body {
     justify-content: center;
     color: var(--white);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+.search-btn svg {
+    width: 20px;
+    height: 20px;
+    margin: auto;
 }
 
 .search-btn:hover {
     background: var(--teal-dark);
-    transform: translateY(-50%) scale(1.05);
+    transform: translateY(-50%);
 }
 
 /* Header Actions */
@@ -262,6 +409,9 @@ body {
     align-items: center;
     gap: 16px;
     justify-content: flex-end;
+    /* Prevent header shake */
+    transform: none;
+    will-change: auto;
 }
 
 .login-btn {
@@ -276,7 +426,7 @@ body {
     text-decoration: none;
     font-weight: 500;
     font-size: 14px;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 /* Ensure the login pill is not forced into a circle by .action-btn */
@@ -289,19 +439,19 @@ body {
 .login-btn:hover {
     background: var(--teal-primary);
     color: var(--white);
-    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Tweak icon size/color inside login button */
 .login-btn svg { color: currentColor; }
 
-/* Make modals always appear above header/nav */
-.modal { z-index: 3000; }
-.modal-backdrop { z-index: 2990; }
+/* Make modals always appear above everything */
+.modal { z-index: 17000; /* Above offcanvas and header */ }
+.modal-backdrop { z-index: 16990; /* Above offcanvas and header */ }
 
 /* Ensure account dropdown shows above nav borders */
 .dropdown-menu {
-    z-index: 2050; /* above header/nav and near modal range */
+    z-index: 14750; /* above category submenu but below header */
     margin-top: 8px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
@@ -337,22 +487,39 @@ body {
 }
 .mobile-searchbar {
     position: fixed;
-    top: calc(var(--tb, 32px) + var(--hd, 90px) + var(--nv, 56px));
+    top: 80px;
     left: 0;
     right: 0;
     background: #fff;
     border-bottom: 1px solid #E5E7EB;
     box-shadow: 0 4px 14px rgba(0,0,0,.06);
-    transform-origin: top center;
-    transform: translateY(-6px);
     opacity: 0;
-    transition: opacity .15s ease, transform .15s ease;
-    z-index: 2055; /* above header/nav and dropdowns */
+    transition: opacity .15s ease;
+    z-index: 15900; /* below header but above other content */
 }
-.mobile-searchbar.open { opacity: 1; transform: translateY(0); }
+.mobile-searchbar.open { opacity: 1; }
 .mobile-search-form { position: relative; padding: 10px 0 12px; }
 .mobile-search-input { width: 100%; padding: 10px 42px 10px 14px; border: 1px solid var(--gray-medium); border-radius: 10px; font-size: 14px; }
-.mobile-search-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; background: transparent; color: var(--text-dark); }
+.mobile-search-btn { 
+    position: absolute; 
+    right: 8px; 
+    top: 50%; 
+    transform: translateY(-50%); 
+    width: 32px; 
+    height: 32px; 
+    border: 0; 
+    background: transparent; 
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-search-btn svg {
+    width: 18px;
+    height: 18px;
+    margin: auto;
+}
 
 /* Move border to the inner container so it spans only 80% */
 /* .main-nav > .container {
@@ -371,6 +538,17 @@ body {
     padding: 0;
     gap: 40px;
     position: relative;
+    /* Prevent header shake */
+    transform: none;
+    will-change: auto;
+    justify-content: center;
+}
+
+/* Responsive gap adjustment for smaller screens */
+@media (max-width: 1200px) {
+    .nav-links {
+        gap: 30px;
+    }
 }
 
 
@@ -392,7 +570,7 @@ body {
     font-weight: 500;
     font-size: 16px;
     padding: 12px 0 14px; /* extra bottom space for active underline */
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     display: block;
     position: relative;
 }
@@ -475,7 +653,7 @@ body {
     justify-content: center;
     color: var(--text-dark);
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     cursor: pointer;
 }
 
@@ -483,7 +661,7 @@ body {
     background: var(--teal-primary);
     color: var(--white);
     border-color: var(--teal-primary);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     box-shadow: 0 4px 12px rgba(32, 178, 170, 0.35);
 }
 
@@ -522,7 +700,7 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     z-index: 10;
     backdrop-filter: blur(10px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -532,7 +710,6 @@ body {
     border-color: #ef4444;
     color: #ef4444;
     background: rgba(254, 242, 242, 0.95);
-    transform: scale(1.1);
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
@@ -544,11 +721,11 @@ body {
 
 .product-wishlist-top i {
     font-size: 16px;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .product-wishlist-top:hover i {
-    transform: scale(1.1);
+    opacity: 0.8;
 }
 
 /* Dynamic Banner Slider */
@@ -622,7 +799,7 @@ body {
     border-radius: 50px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     border: 2px solid transparent;
 }
 
@@ -635,7 +812,7 @@ body {
 .banner-actions .btn-primary:hover {
     background: var(--green-dark);
     border-color: var(--green-dark);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     box-shadow: 0 6px 20px rgba(5, 150, 105, 0.45);
 }
 
@@ -650,7 +827,7 @@ body {
     background: white;
     color: var(--green-dark);
     border-color: white;
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .banner-image {
@@ -663,11 +840,11 @@ body {
     height: auto;
     border-radius: 20px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    transition: transform 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
 .banner-image img:hover {
-    transform: scale(1.05);
+    opacity: 0.9;
 }
 
 /* Carousel Controls - Hidden (except hero-carousel) */
@@ -730,6 +907,29 @@ body {
         padding: 12px 25px;
         font-size: 14px;
     }
+}
+
+/* Responsive adjustments for 1024px laptop screens */
+@media (max-width: 1024px) and (min-width: 993px) {
+    .nav-links {
+        gap: 20px;
+    }
+    
+    .nav-category-label {
+        font-size: 14px;
+        margin-right: 15px;
+    }
+    
+    .main-nav .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .main-nav .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
 }
 
 @media (max-width: 768px) {
@@ -978,12 +1178,12 @@ body {
     justify-content: center;
     color: var(--white);
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .social-link:hover {
     background: var(--green-primary);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
@@ -1006,12 +1206,12 @@ body {
     border-radius: 50%;
     background: var(--gray-medium);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .indicator.active {
     background: var(--green-primary);
-    transform: scale(1.2);
+    opacity: 1;
 }
 
 /* Popular Categories */
@@ -1095,14 +1295,14 @@ body {
     border-radius: 25px;
     text-decoration: none;
     font-weight: 600;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     border: 2px solid var(--green-light);
 }
 
 .view-more-btn:hover {
     background: var(--green-primary);
     color: var(--blue-accent);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
@@ -1134,14 +1334,14 @@ body {
     text-decoration: none;
     color: var(--text-dark);
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+    transition: box-shadow .2s ease, border-color .2s ease;
     scroll-snap-align: start;
 }
 
 .category-chip:hover {
     border-color: var(--teal-primary);
     box-shadow: 0 6px 18px rgba(32,178,170,0.15);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .chip-thumb {
@@ -1179,7 +1379,7 @@ body {
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     text-decoration: none;
     height: 200px;
     cursor: pointer;
@@ -1188,7 +1388,6 @@ body {
 }
 
 .category-card:hover {
-    transform: translateY(-8px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
     text-decoration: none;
     color: inherit;
@@ -1205,7 +1404,7 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
 .placeholder-image {
@@ -1219,7 +1418,7 @@ body {
 }
 
 .category-card:hover .category-image img {
-    transform: scale(1.1);
+    opacity: 0.9;
 }
 
 .category-overlay {
@@ -1281,6 +1480,15 @@ body {
     .modern-header .py-4,
     .main-nav .py-4 { padding-top: 0 !important; padding-bottom: 0 !important; }
 }
+
+/* Fix mobile header padding - override py-3 class */
+@media (max-width: 992px) {
+    .modern-header .py-3 {
+        padding-top: 8px !important;
+        padding-bottom: 12px !important;
+    }
+}
+
 
 .new-arrival-badge {
     background: #00512c1a;
@@ -1392,6 +1600,8 @@ body {
     font-size: 24px;
     font-weight: 700;
     color: var(--primary-blue);
+    /* Prevent layout shifts */
+    contain: layout style;
 }
 
 .stat-label {
@@ -1430,11 +1640,11 @@ body {
     border-radius: 10px;
     margin-bottom: 30px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-    transition: transform 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
 .category-item:hover {
-    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
 .category-icon {
@@ -1492,8 +1702,8 @@ body {
 
 .product-image-container { position: relative; overflow: hidden; background: #F8FAFC; border-radius: 0; }
 .product-image-container::before { content: ""; display: block; padding-top: 100%; }
-.product-image-container > img.product-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 0; transform: scale(1); transition: transform .25s ease; }
-.product-card:hover .product-image-container > img.product-image { transform: scale(1.04); }
+.product-image-container > img.product-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 0; transition: opacity .25s ease; }
+.product-card:hover .product-image-container > img.product-image { opacity: 0.9; }
 
 .product-info { padding: 14px 16px 16px; }
 
@@ -1582,10 +1792,13 @@ body {
 /* Transparent header/section wrapper */
 .featured-plain { background: transparent !important; }
 
-/* Container 80% on desktop, full width on smaller, no horizontal padding */
-.container-80 { width: 100% !important; max-width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; }
+/* Container 80% on desktop, full width on smaller, responsive padding */
+.container-80 { width: 100% !important; max-width: 100% !important; padding-left: 15px !important; padding-right: 15px !important; }
 @media (min-width: 1200px) {
-  .container-80 { width: 80% !important; max-width: 80% !important; }
+  .container-80 { width: 80% !important; max-width: 80% !important; padding-left: 20px !important; padding-right: 20px !important; }
+}
+@media (max-width: 1024px) and (min-width: 993px) {
+  .container-80 { padding-left: 20px !important; padding-right: 20px !important; }
 }
 
 /* Left-aligned 80% container variant (Best Deal page) */
@@ -1666,6 +1879,9 @@ body {
     margin-bottom: 20px;
     width: 80px;
     height: 80px;
+    /* Prevent layout shifts from icon loading */
+    contain: layout style;
+    will-change: auto;
     border-radius: 50%;
     background-color: rgba(13, 162, 231, 0.12);
     display: flex;
@@ -1875,6 +2091,11 @@ turbo-progress-bar {
     .search-btn {
         width: 32px;
         height: 32px;
+    }
+    
+    .search-btn svg {
+        width: 18px;
+        height: 18px;
     }
     
     .nav-links {
@@ -2402,7 +2623,7 @@ turbo-progress-bar {
     background: rgba(17,24,39,.45);
     opacity: 0;
     transition: opacity .4s ease;
-    z-index: 2500;
+    z-index: 16000; /* Above header */
     backdrop-filter: blur(2px);
 }
 .mobile-overlay.open { opacity: 1; }
@@ -2421,7 +2642,7 @@ turbo-progress-bar {
     box-shadow: -8px 0 24px rgba(0,0,0,.15);
     transform: translateX(100%);
     transition: transform .4s ease;
-    z-index: 2600;
+    z-index: 16100; /* Above header and overlay */
     display: flex;
     flex-direction: column;
 }
@@ -2535,7 +2756,7 @@ turbo-progress-bar {
     border-radius: 12px;
     text-decoration: none;
     color: var(--text-dark);
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     position: relative;
 }
 
@@ -2567,7 +2788,7 @@ turbo-progress-bar {
 
 .arrow-icon {
     color: var(--text-light);
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .category-item:hover .arrow-icon {
@@ -2691,13 +2912,13 @@ turbo-progress-bar {
     text-transform: uppercase;
     letter-spacing: 1px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .btn-shop-now:hover {
     background: white;
     color: var(--red-primary);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
@@ -2735,14 +2956,14 @@ turbo-progress-bar {
     justify-content: center;
     color: white;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     backdrop-filter: blur(10px);
 }
 
 .social-link:hover {
     background: white;
     color: var(--red-primary);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     text-decoration: none;
 }
 
@@ -2804,12 +3025,12 @@ turbo-progress-bar {
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.5);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .dot.active {
     background: white;
-    transform: scale(1.2);
+    opacity: 0.8;
 }
 
 .nav-arrows {
@@ -2825,7 +3046,7 @@ turbo-progress-bar {
     border-radius: 50%;
     color: white;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
@@ -2835,7 +3056,7 @@ turbo-progress-bar {
 .nav-arrow:hover {
     background: white;
     color: var(--red-primary);
-    transform: scale(1.1);
+    opacity: 0.9;
 }
 
 /* Categories Page Styles */
@@ -3010,7 +3231,7 @@ turbo-progress-bar {
     border-radius: 50%;
     z-index: 1001;
     opacity: 0.7;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
@@ -3018,7 +3239,7 @@ turbo-progress-bar {
 .hero-carousel .carousel-control-next:hover {
     opacity: 1;
     background: rgba(255, 255, 255, 1);
-    transform: translateY(-50%) scale(1.1);
+    transform: translateY(-50%);
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
@@ -3077,7 +3298,7 @@ turbo-progress-bar {
     background: transparent;
     margin: 0 8px; /* widen spacing between dots */
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .hero-carousel .carousel-indicators button.active {
@@ -3118,11 +3339,11 @@ turbo-progress-bar {
     padding: 10px 20px;
     border-radius: 25px;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .hero-carousel .carousel-caption .btn:hover {
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -3273,11 +3494,11 @@ turbo-progress-bar {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: transform .2s, box-shadow .2s;
+    transition: box-shadow .2s;
 }
 
 .category-tile .tile-card:hover {
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     box-shadow: 0 8px 24px rgba(31, 41, 55, .08);
 }
 
@@ -3333,7 +3554,7 @@ turbo-progress-bar {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     border: 1px solid #f0f0f0;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .filter-card:hover {
@@ -3371,7 +3592,7 @@ turbo-progress-bar {
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -3380,7 +3601,7 @@ turbo-progress-bar {
 .btn-clear-filters:hover {
     background: #dc3545;
     color: white;
-    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .filter-section {
@@ -3397,7 +3618,7 @@ turbo-progress-bar {
     align-items: center;
     padding: 16px 24px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     background: #fafafa;
 }
 
@@ -3422,7 +3643,7 @@ turbo-progress-bar {
 .filter-chevron {
     color: #6c757d;
     font-size: 12px;
-    transition: transform 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
 .filter-section-header[aria-expanded="true"] .filter-chevron {
@@ -3467,7 +3688,7 @@ turbo-progress-bar {
     border-radius: 4px;
     margin-right: 12px;
     position: relative;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     flex-shrink: 0;
 }
 
@@ -3547,7 +3768,7 @@ turbo-progress-bar {
     border: 1px solid #dee2e6;
     border-radius: 6px;
     font-size: 14px;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .price-input:focus {
@@ -3594,7 +3815,7 @@ turbo-progress-bar {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.3s ease, background-color 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3603,7 +3824,7 @@ turbo-progress-bar {
 
 .btn-apply-filters:hover {
     background: var(--teal-dark);
-    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     box-shadow: 0 4px 12px rgba(0, 81, 44, 0.3);
 }
 
@@ -3689,13 +3910,12 @@ turbo-progress-bar {
     justify-content: center;
     font-size: 18px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
     z-index: 1000;
 }
 
 .scroll-to-top-btn:hover {
     background: var(--green-dark);
-    transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -3762,7 +3982,6 @@ turbo-progress-bar {
 }
 
 .category-card:hover {
-    transform: translateY(-12px) scale(1.02);
     box-shadow: 0 20px 60px rgba(32, 178, 170, 0.2);
     text-decoration: none;
     color: inherit;
@@ -3797,11 +4016,11 @@ turbo-progress-bar {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .category-card:hover .category-image img {
-    transform: scale(1.08);
+    opacity: 0.9;
 }
 
 .placeholder-image {
@@ -4409,7 +4628,7 @@ turbo-progress-bar {
 
 .review-item:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .review-header {

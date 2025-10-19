@@ -296,7 +296,7 @@
         // Function to show alerts
         function showAlert(type, message) {
             var alertClass = type === 'success' ? 'success' : 'danger';
-            var alertHtml = '<div class="alert alert-' + alertClass + ' alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">' +
+            var alertHtml = '<div class="alert alert-' + alertClass + ' alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 16000; min-width: 300px;">' +
                 message +
                 '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
                 '</div>';

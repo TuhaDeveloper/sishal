@@ -144,7 +144,7 @@
     </div>
 
     <div id="toast-container"
-        style="position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+        style="position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;">
     </div>
 
     <!-- Custom CSS -->
@@ -153,7 +153,6 @@
         .wishlist-page { padding-bottom: 12px; }
         .product-card { background:#fff; border:1px solid #eef0f2; border-radius:14px; overflow:hidden; box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
         .card:hover {
-            transform: translateY(-5px);
             transition: all 0.3s ease;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
         }
@@ -178,7 +177,7 @@
         }
 
         .card:hover .card-img-top {
-            transform: scale(1.05);
+            opacity: 0.9;
         }
 
         /* Product card image fixes to avoid odd padding/whitespace */
@@ -305,7 +304,7 @@
                 margin-left: auto;
                 margin-right: 0;
                 pointer-events: auto;
-                z-index: 9999;
+                z-index: 16000;
                 overflow: hidden;
                 border-left: 5px solid #2196F3;
                 position: relative;

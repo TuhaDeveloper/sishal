@@ -1734,6 +1734,14 @@
             color: #222 !important;
         }
 
+        /* Variation active class for JavaScript overrides */
+        .variation-active {
+            border-color: #ff6a00 !important;
+            box-shadow: 0 0 0 2px rgba(255,106,0,0.15) !important;
+            background-color: #fff7f0 !important;
+            color: #222 !important;
+        }
+
         .size-option {
             min-width: 56px;
             height: 42px;
@@ -1764,7 +1772,7 @@
             margin-left: auto;
             margin-right: 0;
             pointer-events: auto;
-            z-index: 9999;
+            z-index: 16000;
             overflow: hidden;
             border-left: 5px solid #2196F3;
             position: relative;
@@ -1899,7 +1907,7 @@
         .image-modal {
             display: none;
             position: fixed;
-            z-index: 9999;
+            z-index: 16000;
             left: 0;
             top: 0;
             width: 100%;
@@ -2491,12 +2499,9 @@
                                     container.querySelectorAll('.size-option, .color-option, .color-image-btn').forEach(function(b){ b.classList.remove('active'); });
                                 }
                                 btn.classList.add('active');
-                                // Force visible active style in case of CSS overrides
+                                // Use CSS classes instead of direct style overrides
                                 try {
-                                    btn.style.borderColor = '#ff6a00';
-                                    btn.style.boxShadow = '0 0 0 2px rgba(255,106,0,0.15)';
-                                    btn.style.backgroundColor = '#fff7f0';
-                                    btn.style.color = '#222';
+                                    btn.classList.add('variation-active');
                                 } catch(_) {}
                                 selectedMap[String(attrId)] = String(valId);
                                 console.log('[VARIATION] Updated selectedMap:', selectedMap);
@@ -2592,11 +2597,8 @@
                                 }
                                 btn.classList.add('active');
                                 
-                                // Force visible active style
-                                btn.style.borderColor = '#ff6a00';
-                                btn.style.boxShadow = '0 0 0 2px rgba(255,106,0,0.15)';
-                                btn.style.backgroundColor = '#fff7f0';
-                                btn.style.color = '#222';
+                                // Use CSS classes instead of direct style overrides
+                                btn.classList.add('variation-active');
                                 
                                 selectedMap[String(attrId)] = String(valId);
                                 console.log('[VARIATION] Updated selectedMap:', selectedMap);
@@ -3187,7 +3189,7 @@
             if (!container) {
                 container = document.createElement('div');
                 container.id = 'toast-container';
-                container.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;';
+                container.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;';
                 document.body.appendChild(container);
             }
             
@@ -3358,7 +3360,7 @@
 
     <!-- Toast Container -->
     <div id="toast-container"
-        style="position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+        style="position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;">
     </div>
 
 @endsection
@@ -3431,11 +3433,10 @@
                         // Add fade-in animation to slides
                         this.slides.forEach((slide, index) => {
                             slide.style.opacity = '0';
-                            slide.style.transform = 'translateY(20px)';
+                            slide.style.opacity = '0';
                             setTimeout(() => {
-                                slide.style.transition = 'all 0.6s ease';
+                                slide.style.transition = 'opacity 0.6s ease';
                                 slide.style.opacity = '1';
-                                slide.style.transform = 'translateY(0)';
                             }, index * 100);
                         });
                     }

@@ -120,7 +120,7 @@ function initCategorySplide() {
                 flickPower: 300,
                 releaseWheel: true,
                 keyboard: 'focused',
-                autoplay: true,
+                autoplay: false,
                 interval: 2000,
                 pauseOnHover: true,
                 rewind: true,
@@ -138,10 +138,8 @@ function initCategorySplide() {
     }
 }
 
-// Try at different lifecycle moments to avoid timing issues
+// Initialize only once to prevent layout shifts
 document.addEventListener('DOMContentLoaded', initCategorySplide);
-window.addEventListener('load', initCategorySplide);
-setTimeout(initCategorySplide, 0);
 
 document.addEventListener('DOMContentLoaded', function() {
     // Vlog Splide
@@ -271,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }).filter(html => html).join('');
             
-            // Initialize Splide carousel
+            // Initialize Splide carousel - optimized to prevent shake
             wrapper.style.visibility = 'visible';
             const topSplide = new Splide(wrapper, {
                 type: 'loop',
@@ -280,10 +278,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 pagination: false,
                 arrows: true,
                 lazyLoad: 'nearby',
-                autoplay: true,
+                autoplay: false,
                 interval: 3000,
                 pauseOnHover: true,
                 rewind: true,
+                // Optimize for stability
+                speed: 400,
+                easing: 'ease',
                 breakpoints: { 
                     1199: { perPage: 3 }, 
                     991: { perPage: 2 }, 
@@ -424,7 +425,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 pagination: false,
                 arrows: true,
                 lazyLoad: 'nearby',
-                autoplay: true,
+                autoplay: false,
                 interval: 2500,
                 pauseOnHover: true,
                 rewind: true,
@@ -456,56 +457,174 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     })();
 
-    // Initialize Best Deals Splide (server-rendered list)
+    // Build Best Deals Splide from API (like Top Selling)
     (function initBestDealsSplide(){
         const wrapper = document.getElementById('bestDealsSplide');
         const listEl = document.getElementById('bestDealsSplideList');
         const fallback = document.getElementById('bestDealsFallback');
-
+        
         if (!wrapper || !listEl) return;
-
-        try {
-            // Hide fallback once DOM is ready; list is server-rendered
+        
+        // Add loading state
+        if (fallback) {
+            fallback.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2 text-muted">Loading best deals...</p></div>';
+            fallback.style.display = 'block';
+        }
+        
+        const startTime = performance.now();
+        
+        fetch('/api/products/best-deals', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            const endTime = performance.now();
+            const loadTime = Math.round(endTime - startTime);
+            
+            // Handle API response format
+            const products = data.success ? data.data : data;
+            
+            if (!Array.isArray(products) || products.length === 0) {
+                if (fallback) {
+                    fallback.innerHTML = '<div class="col-12 text-center text-muted"><i class="fas fa-box-open fa-2x mb-3"></i><p>No best deals found.</p></div>';
+                    fallback.style.display = 'block';
+                }
+                if (wrapper) wrapper.style.display = 'none';
+                return;
+            }
+            
             if (fallback) fallback.style.display = 'none';
+            
+            // Render products
+            listEl.innerHTML = products.map(product => {
+                try {
+                    const rating = product.avg_rating ?? 0;
+                    const reviews = product.total_reviews ?? 0;
+                    const price = Number(product.price || 0);
+                    const discount = Number(product.discount || 0);
+                    const finalPrice = discount > 0 ? discount : price;
+                    const image = product.image || '/static/default-product.png';
+                    const hasStock = product.has_stock !== false;
+                    const isWishlisted = product.is_wishlisted === true;
+                    
+                    return `
+                        <li class="splide__slide">
+                            <div class="product-card position-relative no-hover-border" data-href="/product/${product.slug}">
+                                <button class="wishlist-btn${isWishlisted ? ' active' : ''}" data-product-id="${product.id}" title="${isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}" type="button" onclick="event.stopPropagation();">
+                                    <i class="${isWishlisted ? 'fas text-danger' : 'far'} fa-heart"></i>
+                                </button>
+                                <div class="product-image-container">
+                                    <img src="${image}" class="product-image" alt="${product.name}" loading="lazy" onerror="this.src='/static/default-product.png'">
+                                    ${rating > 0 ? `<div class="rating-badge">
+                                        <span>${rating.toFixed(1)}</span>
+                                        <i class="fas fa-star star"></i>
+                                        <span>| ${reviews}</span>
+                                    </div>` : ''}
+                                </div>
+                                <div class="product-info">
+                                    <a href="/product/${product.slug}" style="text-decoration: none" class="product-title" title="${product.name}">${product.name}</a>
+                                    <div class="price">
+                                        ${discount > 0 && discount < price ? 
+                                            `<span class="fw-bold text-primary">${finalPrice.toFixed(2)}৳</span><span class="old">${price.toFixed(2)}৳</span>` : 
+                                            `<span class="fw-bold text-primary">${finalPrice.toFixed(2)}৳</span>`
+                                        }
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center gap-2 product-actions">
+                                        <button class="btn-add-cart ${!hasStock ? 'disabled' : ''}" 
+                                                data-product-id="${product.id}" 
+                                                data-product-name="${product.name}" 
+                                                data-has-stock="${hasStock}" 
+                                                ${!hasStock ? 'disabled title="Out of stock"' : 'title="Add to cart"'}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" id="Outline" viewBox="0 0 24 24" fill="#fff" width="14" height="14">
+                                                <path d="M22.713,4.077A2.993,2.993,0,0,0,20.41,3H4.242L4.2,2.649A3,3,0,0,0,1.222,0H1A1,1,0,0,0,1,2h.222a1,1,0,0,1,.993.883l1.376,11.7A5,5,0,0,0,8.557,19H19a1,1,0,0,0,0-2H8.557a3,3,0,0,1-2.82-2h11.92a5,5,0,0,0,4.921-4.113l.785-4.354A2.994,2.994,0,0,0,22.713,4.077ZM21.4,6.178l-.786,4.354A3,3,0,0,1,17.657,13H5.419L4.478,5H20.41A1,1,0,0,1,21.4,6.178Z"></path>
+                                                <circle cx="7" cy="22" r="2"></circle>
+                                                <circle cx="17" cy="22" r="2"></circle>
+                                            </svg> 
+                                            ${hasStock ? 'Add to Cart' : 'Out of Stock'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>`;
+                } catch (error) {
+                    console.error('Error rendering best deal product:', product, error);
+                    return '';
+                }
+            }).filter(html => html).join('');
+            
+            // Initialize Splide carousel
             wrapper.style.visibility = 'visible';
-
             const dealsSplide = new Splide(wrapper, {
                 type: 'loop',
                 perPage: 4,
                 gap: '16px',
                 pagination: false,
                 arrows: true,
-                lazyLoad: 'nearby',
-                autoplay: true,
+                drag: true,
+                flickPower: 300,
+                releaseWheel: true,
+                keyboard: 'focused',
+                autoplay: false,
                 interval: 4500,
                 pauseOnHover: true,
                 rewind: true,
-                breakpoints: {
-                    1199: { perPage: 3 },
-                    991: { perPage: 2 },
-                    575: { perPage: 1 }
+                breakpoints: { 
+                    1199: { perPage: 3 }, 
+                    991: { perPage: 2 }, 
+                    575: { perPage: 2 } 
                 }
             });
             dealsSplide.mount();
-        } catch (e) {
-            console.error('Failed to mount best deals Splide:', e);
-            if (fallback) fallback.style.display = 'block';
+            
+            console.log(`Best deals loaded in ${loadTime}ms`, { count: products.length });
+            
+        })
+        .catch(error => {
+            console.error('Failed to load best deals:', error);
+            if (fallback) {
+                fallback.innerHTML = `
+                    <div class="col-12 text-center text-danger">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                        <p>Failed to load best deals.</p>
+                        <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                            <i class="fas fa-refresh me-1"></i>Retry
+                        </button>
+                    </div>
+                `;
+                fallback.style.display = 'block';
+            }
             if (wrapper) wrapper.style.display = 'none';
-        }
+        });
     })();
-    // Init Hero Splide
+
+    // Init Hero Splide - optimized to prevent shake
     try {
         const heroEl = document.getElementById('heroSplide');
         if (heroEl && !heroEl.__splideMounted) {
+            // Pre-calculate arrows to prevent layout shift
+            const shouldShowArrows = window.innerWidth > 768;
+            
             const hero = new Splide(heroEl, {
                 type: 'loop',
                 autoplay: true,
                 interval: 5000,
                 pauseOnHover: true,
-                arrows: window.innerWidth > 768,
+                arrows: shouldShowArrows,
                 pagination: true,
                 drag: true,
                 rewind: true,
+                // Disable transitions that could cause shake
+                speed: 400,
+                easing: 'ease',
                 breakpoints: {
                     768: {
                         arrows: false

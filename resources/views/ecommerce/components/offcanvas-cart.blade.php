@@ -44,7 +44,7 @@
         height: 100vh;
         background: rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(4px);
-        z-index: 2100;
+        z-index: 16000; /* Above header */
         display: none;
         justify-content: flex-end;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

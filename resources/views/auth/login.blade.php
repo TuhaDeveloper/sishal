@@ -411,12 +411,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorMessages = document.querySelectorAll('.error-message');
     errorMessages.forEach(msg => {
         msg.style.opacity = '0';
-        msg.style.transform = 'translateY(-10px)';
         
         setTimeout(() => {
-            msg.style.transition = 'all 0.3s ease';
+            msg.style.transition = 'opacity 0.3s ease';
             msg.style.opacity = '1';
-            msg.style.transform = 'translateY(0)';
         }, 100);
     });
 });

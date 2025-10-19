@@ -87,6 +87,6 @@
         </div>
     </div>
     <div id="toast-container"
-        style="position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+        style="position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;">
     </div>
 @endsection

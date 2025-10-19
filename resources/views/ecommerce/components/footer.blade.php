@@ -74,11 +74,11 @@
             if (icon.classList.contains('far')) {
                 icon.classList.remove('far');
                 icon.classList.add('fas');
-                icon.style.color = '#e74c3c';
+                icon.classList.add('wishlist-active');
             } else {
                 icon.classList.remove('fas');
                 icon.classList.add('far');
-                icon.style.color = '';
+                icon.classList.remove('wishlist-active');
             }
         });
     });
@@ -106,7 +106,7 @@
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
+                // Smooth fade-in without transform
             }
         });
     }, observerOptions);
@@ -114,8 +114,8 @@
     // Observe all product cards and category items
     document.querySelectorAll('.product-card, .category-item').forEach(item => {
         item.style.opacity = '0';
-        item.style.transform = 'translateY(20px)';
-        item.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        // Smooth fade-in without transform
+        item.style.transition = 'opacity 0.6s ease';
         observer.observe(item);
     });
 
@@ -183,4 +183,10 @@
         });
     });
 </script>
+
+<style>
+    .wishlist-btn i.wishlist-active {
+        color: #e74c3c !important;
+    }
+</style>
 </body>

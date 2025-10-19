@@ -523,15 +523,7 @@
                                     View Details
                                 </a>
                                 <div class="d-flex gap-2">
-                                    @if($order->status != 'pending' && $order->status != 'cancelled')
-                                    <form action="{{ route('order.reorder', $order->id) }}?tab=orders" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn-simple btn-sm" title="Add all items from this order to cart">
-                                            <i class="fas fa-shopping-cart"></i>
-                                            Reorder
-                                        </button>
-                                    </form>
-                                    @elseif($order->status != 'cancelled')
+                                    @if($order->status == 'pending')
                                     <form action="{{ route('order.cancel', $order->id) }}?tab=orders" method="POST" class="d-inline cancel-order-form">
                                         @csrf
                                         <button type="button" class="btn-cancel btn-sm btn-cancel-order" data-bs-toggle="modal" data-bs-target="#cancelOrderModal" data-order-id="{{$order->id}}">

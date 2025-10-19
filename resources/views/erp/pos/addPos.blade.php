@@ -739,7 +739,7 @@
         function showToast(message, type = 'info') {
             // Create toast notification
             const $toast = $(`
-                            <div class="alert alert-${type} position-fixed" style="top: 20px; right: 20px; z-index: 9999; min-width: 250px;">
+                            <div class="alert alert-${type} position-fixed" style="top: 20px; right: 20px; z-index: 16000; min-width: 250px;">
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-${getToastIcon(type)} me-2"></i>
                                     ${message}

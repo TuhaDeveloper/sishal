@@ -16,7 +16,7 @@
             <!-- Logo -->
             <div class="col-lg-3 col-md-4">
                 <a class="navbar-brand d-flex align-items-center" href="/">
-                    <img src="{{ $general_settings && $general_settings->site_logo ? asset($general_settings->site_logo) : asset('static/default-logo.webp') }}" alt="{{ $general_settings->site_title ?? 'alicom' }}" class="logo-img">
+                    <img src="{{ $general_settings && $general_settings->site_logo ? asset($general_settings->site_logo) : asset('static/default-logo.webp') }}" alt="{{ $general_settings->site_title ?? 'alicom' }}" class="logo-img" width="180" height="48" decoding="async" loading="eager">
                 </a>
             </div>
 
@@ -26,7 +26,7 @@
                     <div class="search-container">
                         <input type="text" class="search-input" placeholder="Search product" name="search">
                         <button class="search-btn" type="submit">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <path d="M23.707,22.293l-5.969-5.969a10.016,10.016,0,1,0-1.414,1.414l5.969,5.969a1,1,0,0,0,1.414-1.414ZM10,18a8,8,0,1,1,8-8A8.009,8.009,0,0,1,10,18Z" fill="currentColor"/>
                             </svg>
                         </button>
@@ -106,7 +106,7 @@
         <div class="row align-items-center">
             <!-- Category label aligned with left sidebar (desktop only) -->
             <div class="col-lg-3 d-none d-lg-block">
-                <div class="nav-category-label">Category Menu</div>
+                <div class="nav-category-label"></div>
             </div>
             <!-- Navigation Links -->
             <div class="col-lg-6 col-md-7">
@@ -193,7 +193,7 @@
         <form class="mobile-search-form" action="{{ route('search') }}" method="get">
             <input type="text" class="mobile-search-input" placeholder="Search product" name="search">
             <button class="mobile-search-btn" type="submit" aria-label="Search">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18"><path d="M23.707,22.293l-5.969-5.969a10.016,10.016,0,1,0-1.414,1.414l5.969,5.969a1,1,0,0,0,1.414-1.414ZM10,18a8,8,0,1,1,8-8A8.009,8.009,0,0,1,10,18Z" fill="currentColor"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M23.707,22.293l-5.969-5.969a10.016,10.016,0,1,0-1.414,1.414l5.969,5.969a1,1,0,0,0,1.414-1.414ZM10,18a8,8,0,1,1,8-8A8.009,8.009,0,0,1,10,18Z" fill="currentColor"/></svg>
             </button>
         </form>
     </div>
@@ -275,7 +275,8 @@
             if(!searchBar) return;
             searchBar.classList.remove('open');
             if(searchToggle){ searchToggle.setAttribute('aria-expanded','false'); }
-            setTimeout(function(){ searchBar.setAttribute('hidden',''); }, 150);
+            // Remove setTimeout to prevent layout shifts
+            searchBar.setAttribute('hidden','');
         }
         if(searchToggle && searchBar){
             searchToggle.addEventListener('click', function(){

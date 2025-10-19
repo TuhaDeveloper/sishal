@@ -143,7 +143,7 @@
         </div>
     </div>
     <div id="toast-container"
-        style="position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+        style="position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;">
     </div>
 @endsection
 
@@ -403,8 +403,12 @@
                     header.addEventListener('click', function() {
                         var chevron = this.querySelector('.filter-chevron');
                         if (chevron) {
-                            chevron.style.transform = this.getAttribute('aria-expanded') === 'true' 
-                                ? 'rotate(0deg)' : 'rotate(180deg)';
+                            // Use CSS classes instead of direct transform override
+                            if (this.getAttribute('aria-expanded') === 'true') {
+                                chevron.classList.remove('rotated');
+                            } else {
+                                chevron.classList.add('rotated');
+                            }
                         }
                     });
                 });
@@ -459,7 +463,7 @@
             margin-left: auto;
             margin-right: 0;
             pointer-events: auto;
-            z-index: 9999;
+            z-index: 16000;
             overflow: hidden;
             border-left: 5px solid #2196F3;
             position: relative;
@@ -517,6 +521,14 @@
         .custom-toast.hide {
             opacity: 0;
             transform: translateY(-20px) scale(0.98);
+        }
+
+        /* Filter chevron rotation */
+        .filter-chevron {
+            transition: transform 0.3s ease;
+        }
+        .filter-chevron.rotated {
+            transform: rotate(180deg);
         }
 
         /* No Products Found Styles */

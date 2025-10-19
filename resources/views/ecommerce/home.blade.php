@@ -196,7 +196,6 @@
 	<!-- Vlogs -->
 
     <!-- Best Deals (carousel, under vlogs) -->
-    @if(!empty($bestDealProducts) && count($bestDealProducts))
     <section class="top-products">
         <div class="container">
             <div class="section-header section-header--fancy">
@@ -207,53 +206,7 @@
             <div id="bestDealsSplide" class="splide" aria-label="Best Deals" style="visibility:hidden;">
                 <div class="splide__track">
                     <ul class="splide__list" id="bestDealsSplideList">
-                        @foreach($bestDealProducts as $product)
-                        <li class="splide__slide">
-                            <div class="product-card position-relative no-hover-border" data-href="{{ route('product.details', $product->slug) }}">
-                                <button class="wishlist-btn {{ $product->is_wishlisted ? ' active' : '' }}" data-product-id="{{ $product->id }}" title="{{ $product->is_wishlisted ? 'Remove from wishlist' : 'Add to wishlist' }}" type="button">
-                                    <i class="{{ $product->is_wishlisted ? 'fas text-danger' : 'far' }} fa-heart"></i>
-                                </button>
-                                <div class="product-image-container">
-                                    <img src="{{ $product->image ?: '/static/default-product.png' }}" class="product-image" alt="{{ $product->name }}">
-                                    @php $avg = $product->averageRating(); $reviews = $product->totalReviews(); @endphp
-                                    @if($avg > 0)
-                                    <div class="rating-badge">
-                                        <span>{{ number_format($avg,1) }}</span>
-                                        <i class="fas fa-star star"></i>
-                                        <span>| {{ $reviews }}</span>
-                                    </div>
-                                    @endif
-                                </div>
-                                <div class="product-info">
-                                    <a href="{{ route('product.details', $product->slug) }}" style="text-decoration: none" class="product-title" title="{{ $product->name }}">{{ $product->name }}</a>
-                                    <div class="price">
-                                        @php $price = (float)($product->price ?? 0); $discount = (float)($product->discount ?? 0); $final = $discount > 0 ? $discount : $price; @endphp
-                                        @if($discount > 0 && $discount < $price)
-                                            <span class="fw-bold text-primary">{{ number_format($final,2) }}৳</span>
-                                            <span class="old">{{ number_format($price,2) }}৳</span>
-                                        @else
-                                            <span class="fw-bold text-primary">{{ number_format($final,2) }}৳</span>
-                                        @endif
-                                    </div>
-                                    @php $hasStock = $product->hasStock(); @endphp
-                                    <div class="d-flex justify-content-between align-items-center gap-2 product-actions">
-                                        <button class="btn-add-cart {{ !$hasStock ? 'disabled' : '' }}" 
-                                                data-product-id="{{ $product->id }}" 
-                                                data-product-name="{{ $product->name }}" 
-                                                data-has-stock="{{ $hasStock ? 'true' : 'false' }}" 
-                                                {{ !$hasStock ? 'disabled title="Out of stock"' : 'title="Add to cart"' }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" id="Outline" viewBox="0 0 24 24" fill="#fff" width="14" height="14">
-                                                <path d="M22.713,4.077A2.993,2.993,0,0,0,20.41,3H4.242L4.2,2.649A3,3,0,0,0,1.222,0H1A1,1,0,0,0,1,2h.222a1,1,0,0,1,.993.883l1.376,11.7A5,5,0,0,0,8.557,19H19a1,1,0,0,0,0-2H8.557a3,3,0,0,1-2.82-2h11.92a5,5,0,0,0,4.921-4.113l.785-4.354A2.994,2.994,0,0,0,22.713,4.077ZM21.4,6.178l-.786,4.354A3,3,0,0,1,17.657,13H5.419L4.478,5H20.41A1,1,0,0,1,21.4,6.178Z"></path>
-                                                <circle cx="7" cy="22" r="2"></circle>
-                                                <circle cx="17" cy="22" r="2"></circle>
-                                            </svg> 
-                                            {{ $hasStock ? 'Add to Cart' : 'Out of Stock' }}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                        @endforeach
+                        <!-- Slides will be injected here -->
                     </ul>
                 </div>
             </div>
@@ -262,7 +215,6 @@
             </div>
         </div>
     </section>
-    @endif
 
     
     @if(!empty($vlogBottomBanners) && count($vlogBottomBanners))
@@ -319,8 +271,14 @@
 
 
     <style>
-        /* Best Deals carousel: mirror Top Selling/New Arrivals styles */
-        #bestDealsSplide { background:rgb(253, 253, 255);  padding: 14px 0; }
+        /* Best Deals carousel: mirror Top Selling/New Arrivals styles - prevent layout shifts */
+        #bestDealsSplide { 
+            background:rgb(253, 253, 255);  
+            padding: 14px 0;
+            /* Prevent layout shifts from carousel initialization */
+            contain: layout style;
+            will-change: auto;
+        }
         #bestDealsSplide .splide__slide { padding: 0px; position: relative; }
         #bestDealsSplide .product-card { padding: 0 !important; border-radius: 10px; background: #fff; box-shadow: 0 3px 14px rgba(0,0,0,0.06); border: none !important; }
         #bestDealsSplide .product-image-container { position: relative; height: 300px; border-radius: 12px 12px 0 0; overflow: hidden; }
@@ -341,7 +299,7 @@
 
 
     <div id="toast-container"
-        style="position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+        style="position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;">
     </div>
 
     <!-- Video Modal -->
@@ -384,8 +342,14 @@
         }
         .splide-hero .splide__pagination__page.is-active { background: #111827; }
         .hero-caption { position: absolute; left: 24px; bottom: 24px; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-        /* Top selling carousel spacing */
-        #mostSoldSplide { background:rgb(253, 253, 253); padding: 20px 0px ; }
+        /* Top selling carousel spacing - prevent layout shifts */
+        #mostSoldSplide { 
+            background:rgb(253, 253, 253); 
+            padding: 20px 0px;
+            /* Prevent layout shifts from carousel initialization */
+            contain: layout style;
+            will-change: auto;
+        }
         #mostSoldSplide .splide__slide { padding: 0 0px; box-shadow: 2px 2px 10px rgba(0,0,0,0.06); position: relative; }
         /* Make top selling cards a bit smaller and ensure icons/ratings show */
         #mostSoldSplide .product-card { padding: 0 !important; border-radius: 10px; background: #fff; box-shadow: 0 3px 14px rgba(0,0,0,0.06); border: none !important; }
@@ -409,8 +373,14 @@
         /* remove hover border if any framework styles apply */
         #mostSoldSplide .product-card.no-hover-border:hover { border-color: transparent !important; border: none !important; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
 
-        /* New Arrivals carousel: mirror Top Selling styles */
-        #newArrivalsSplide { background:rgb(253, 253, 253);  padding: 14px 0px; }
+        /* New Arrivals carousel: mirror Top Selling styles - prevent layout shifts */
+        #newArrivalsSplide { 
+            background:rgb(253, 253, 253);  
+            padding: 14px 0px;
+            /* Prevent layout shifts from carousel initialization */
+            contain: layout style;
+            will-change: auto;
+        }
         #newArrivalsSplide .splide__slide { padding: 0px; position: relative; }
         #newArrivalsSplide .product-card { padding: 0 !important; border-radius: 10px; background: #fff; box-shadow: 0 3px 14px rgba(0,0,0,0.06); border: none !important; }
         #newArrivalsSplide .product-image-container { position: relative; height: 300px; border-radius: 12px 12px 0 0; overflow: hidden; }
@@ -429,8 +399,13 @@
         
         
         @media (max-width: 991.98px) { #newArrivalsSplide .product-image-container { height: 180px; } }
-        /* Categories carousel container */
-        #categorySplide { background:rgb(253, 253, 253);   }
+        /* Categories carousel container - prevent layout shifts */
+        #categorySplide { 
+            background:rgb(253, 253, 253);
+            /* Prevent layout shifts from carousel initialization */
+            contain: layout style;
+            will-change: auto;
+        }
         /* Category card styles - full poster with floating badge title */
         .popular-categories #categorySplide .splide__slide > a.category-chip { position: relative; display: block; width: 100%; height: 250px; border-radius: 14px; overflow: hidden; text-decoration: none; border: none; }
         .popular-categories .chip-thumb.full-bg { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border-radius: inherit !important; overflow: hidden; display: block; }
@@ -508,7 +483,7 @@
             margin-left: auto;
             margin-right: 0;
             pointer-events: auto;
-            z-index: 9999;
+            z-index: 16000;
             overflow: hidden;
             border-left: 5px solid #2196F3;
             position: relative;
@@ -692,7 +667,7 @@
             margin-left: auto;
             margin-right: 0;
             pointer-events: auto;
-            z-index: 9999;
+            z-index: 16000;
             overflow: hidden;
             border-left: 5px solid #2196F3;
             position: relative;

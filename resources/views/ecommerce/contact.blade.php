@@ -112,15 +112,7 @@
         </div>
         </div>
 
-    <!-- Add Font Awesome for icons if not already included -->
-    <script>
-        if (!document.querySelector('link[href*="font-awesome"]')) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
-            document.head.appendChild(link);
-        }
-    </script>
+    <!-- Font Awesome is already loaded in master.blade.php - no need for dynamic loading -->
 
     </section>
 @endsection

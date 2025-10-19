@@ -78,7 +78,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/make-order', [OrderController::class, 'makeOrder'])->name('order.make');
     Route::post('/cancel-order/{orderId}', [OrderController::class, 'cancelOrder'])->name('order.cancel');
     Route::delete('/delete-order/{orderId}', [OrderController::class, 'deleteOrder'])->name('order.delete');
-    Route::post('/reorder/{orderId}', [OrderController::class, 'reorder'])->name('order.reorder');
     Route::get('/order-success/{orderId}', [OrderController::class, 'orderSuccess'])->name('order.success');
     Route::get('/order-details/{orderNum}', [OrderController::class, 'show'])->name('order.details');
 
@@ -449,6 +448,7 @@ Route::prefix('erp')->middleware(['auth', 'admin'])->group(function () {
 
 Route::get('/api/products/most-sold', [\App\Http\Controllers\Ecommerce\ApiController::class, 'mostSoldProducts']);
 Route::get('/api/products/new-arrivals', [\App\Http\Controllers\Ecommerce\ApiController::class, 'newArrivalsProducts']);
+Route::get('/api/products/best-deals', [\App\Http\Controllers\Ecommerce\ApiController::class, 'bestDealsProducts']);
 Route::post('/cart/add/{productId}', [App\Http\Controllers\Ecommerce\CartController::class, 'addToCartByCard'])->name('cart.addByCard');
 Route::post('/cart/add-page/{productId}', [App\Http\Controllers\Ecommerce\CartController::class, 'addToCartByPage'])->name('cart.addByPage');
 Route::get('/cart/qty-sum', [App\Http\Controllers\Ecommerce\CartController::class, 'getCartQtySum'])->name('cart.qtySum');

@@ -15,7 +15,7 @@
 </button>
 
 <!-- Page loading optimization -->
-<div id="page-loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s ease-out;">
+<div id="page-loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 20000; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease-out; pointer-events: none;">
     <div style="text-align: center;">
         <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #2196F3; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
         <p style="color: #666; font-size: 14px;">Loading...</p>
@@ -62,21 +62,21 @@ a, button {
 
 /* Global button and navigation stability - minimal interactions */
 .nav-link, .tab-btn, .action-btn, .header-link {
-    transition: all 0.02s ease;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    transform: none;
+    -webkit-transform: none;
+    will-change: auto;
 }
 
 .nav-link:hover, .tab-btn:hover, .action-btn:hover, .header-link:hover {
-    transform: translateY(-0.1px) translateZ(0);
-    -webkit-transform: translateY(-0.1px) translateZ(0);
+    transform: none;
+    -webkit-transform: none;
 }
 
 .nav-link:active, .tab-btn:active, .action-btn:active, .header-link:active {
-    transform: translateY(0) translateZ(0);
-    -webkit-transform: translateY(0) translateZ(0);
-    transition: all 0.005s ease;
+    transform: none;
+    -webkit-transform: none;
+    transition: all 0.1s ease;
 }
 
 /* Navigation layout stability */
@@ -98,20 +98,20 @@ a, button {
     display: inline-block;
     padding: 12px 16px;
     text-decoration: none;
-    transition: color 0.03s ease, background-color 0.03s ease;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
+    transition: color 0.2s ease, background-color 0.2s ease;
+    transform: none;
+    -webkit-transform: none;
 }
 
 .nav-links .nav-link:hover {
-    transform: translateY(-0.05px) translateZ(0);
-    -webkit-transform: translateY(-0.05px) translateZ(0);
+    transform: none;
+    -webkit-transform: none;
 }
 
 .nav-links .nav-link:active {
-    transform: translateY(0) translateZ(0);
-    -webkit-transform: translateY(0) translateZ(0);
-    transition: all 0.005s ease;
+    transform: none;
+    -webkit-transform: none;
+    transition: all 0.1s ease;
 }
 
 /* Action buttons layout */
@@ -130,20 +130,20 @@ a, button {
     height: 40px;
     border-radius: 50%;
     text-decoration: none;
-    transition: all 0.02s ease;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
+    transition: color 0.2s ease, background-color 0.2s ease;
+    transform: none;
+    -webkit-transform: none;
 }
 
 .action-btn:hover {
-    transform: translateY(-0.1px) translateZ(0);
-    -webkit-transform: translateY(-0.1px) translateZ(0);
+    transform: none;
+    -webkit-transform: none;
 }
 
 .action-btn:active {
-    transform: translateY(0) translateZ(0);
-    -webkit-transform: translateY(0) translateZ(0);
-    transition: all 0.005s ease;
+    transform: none;
+    -webkit-transform: none;
+    transition: all 0.1s ease;
 }
 
 /* Categories Page Styles */
@@ -162,7 +162,7 @@ a, button {
 }
 
 .category-tile:hover {
-    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     text-decoration: none;
 }
 
@@ -199,7 +199,7 @@ a, button {
 }
 
 .category-tile:hover .tile-img img {
-    transform: scale(1.05);
+    opacity: 0.9;
 }
 
 .placeholder-image {
@@ -337,28 +337,43 @@ a, button {
 <script>
 // Enhanced smooth navigation without Turbo CDN
 document.addEventListener('DOMContentLoaded', function() {
-    // compute header heights and expose as CSS variables for layout
-    function setHeaderVars(){
-        var topBar = document.querySelector('.top-bar');
-        var header = document.querySelector('header.modern-header');
-        var nav = document.querySelector('nav.main-nav');
-        var r = document.documentElement;
-        if(topBar){ r.style.setProperty('--tb', topBar.offsetHeight + 'px'); }
-        if(header){ r.style.setProperty('--hd', header.offsetHeight + 'px'); }
-        if(nav){ r.style.setProperty('--nv', nav.offsetHeight + 'px'); }
+    // Optimized header management - prevent inconsistent behavior
+    let headerElements = null;
+    let headerVarsSet = false;
+    
+    function initializeHeaderElements() {
+        if (!headerElements) {
+            headerElements = {
+                topBar: document.querySelector('.top-bar'),
+                header: document.querySelector('header.modern-header'),
+                nav: document.querySelector('nav.main-nav'),
+                root: document.documentElement
+            };
+        }
+        return headerElements;
     }
+    
+    function setHeaderVars(force = false) {
+        // Completely disable dynamic header variable calculation
+        // Use only CSS-defined values to prevent any shake
+        return;
+    }
+    
+    // Set initial values immediately
     setHeaderVars();
-    window.addEventListener('load', setHeaderVars);
-    window.addEventListener('resize', setHeaderVars);
+    
+    // Completely disable resize-based header recalculation to prevent shake
+    // let resizeTimeout;
+    // window.addEventListener('resize', function() {
+    //     // Disabled to prevent any dynamic calculations
+    // });
     // CSS handles fixed layout using variables; just ensure vars stay updated
     // Hide page loader with subtle transition
     const pageLoader = document.getElementById('page-loader');
     if (pageLoader) {
-        pageLoader.style.transition = 'opacity 0.2s ease-out';
+        // Ensure loader is hidden immediately on page load
         pageLoader.style.opacity = '0';
-        setTimeout(() => {
-            pageLoader.style.display = 'none';
-        }, 200);
+        pageLoader.style.display = 'none';
     }
     
     // AJAX Navigation System Removed - Using standard page navigation for better SEO
@@ -457,46 +472,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // reinitializePageScripts function removed - no longer needed
     
     function ensureStylesLoaded() {
-        // Force a reflow to ensure all styles are applied
+        // Gentle style recalculation without forcing reflow
         const container = document.getElementById('main-content-container');
         if (container) {
-            // Trigger a reflow by reading a layout property
+            // Only trigger reflow if necessary
             container.offsetHeight;
-            
-            // Force style recalculation for all elements in the container
-            const allElements = container.querySelectorAll('*');
-            allElements.forEach(element => {
-                element.style.display = element.style.display;
-            });
         }
     }
     
     function scrollToTop() {
-        // Smooth scroll to top of the page
-        window.scrollTo({
-            top: 0,
-            left: 0,
-            behavior: 'smooth'
-        });
-        
-        // Also scroll the document element for better compatibility
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-        
-        // Ensure we're at the very top
-        setTimeout(() => {
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-        }, 100);
+        // Simple, consistent scroll to top without multiple methods
+        window.scrollTo(0, 0);
     }
     
     // AJAX navigation removed - using standard page navigation
     
-    // Handle initial page load
-    if (window.history.state === null) {
-        // This is the initial page load, ensure we start at the top
-        console.log('Initial page load - master layout loaded');
+    // Handle initial page load - only scroll if not already at top
+    if (window.history.state === null && window.pageYOffset > 0) {
         scrollToTop();
     }
     
@@ -570,17 +562,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check if home page script has already loaded products with ratings
         if (container.find('.product-meta .stars').length > 0) return;
         
-        // Check if we're on home page and home script might be loading
-        if (window.location.pathname === '/' && container.length > 0) {
-            // Wait a bit for home page script to load first
-            setTimeout(function() {
-                if (container.find('.product-meta .stars').length === 0) {
-                    // Home script didn't load, so we load
-                    loadProductsFromMaster();
-                }
-            }, 100);
-            return;
-        }
+        // Disable delayed product loading to prevent layout shifts
+        // if (window.location.pathname === '/' && container.length > 0) {
+        //     // Disabled to prevent shake
+        //     return;
+        // }
 
         // Load products from master layout
         loadProductsFromMaster();
@@ -635,23 +621,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Contact and About periodic handling removed
     
-    // Re-apply tab functionality periodically
-    setInterval(initializeTabFunctionality, 2000);
+    // Initialize tab functionality once on page load
+    initializeTabFunctionality();
     
     // Minimal image loading
     const images = document.querySelectorAll('img');
     if (images.length > 0) {
         images.forEach(img => {
             if (img) {
-                if (img.complete) {
-                    img.style.opacity = '1';
-                } else {
-                    img.style.opacity = '0.995';
-                    img.style.transition = 'opacity 0.03s ease-in-out';
-                    img.addEventListener('load', function() {
-                        this.style.opacity = '1';
-                    });
-                }
+                // Disable image loading animations to prevent layout shifts
+                img.style.opacity = '1';
+                // if (img.complete) {
+                //     img.style.opacity = '1';
+                // } else {
+                //     img.style.opacity = '0.995';
+                //     img.style.transition = 'opacity 0.03s ease-in-out';
+                //     img.addEventListener('load', function() {
+                //         this.style.opacity = '1';
+                //     });
+                // }
             }
         });
     }
@@ -813,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!container) {
             container = document.createElement('div');
             container.id = 'toast-container';
-            container.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;';
+            container.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;';
             document.body.appendChild(container);
         }
         
@@ -902,29 +890,47 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
     
-    // Prevent any layout shifts that could cause vibration
-    const preventVibration = () => {
-        // Do not apply transforms to body; this breaks position: fixed
-        document.body.style.transform = '';
-        document.body.style.willChange = '';
+    // Prevent layout shifts without excessive transforms
+    const preventLayoutShifts = () => {
+        // Ensure body doesn't have problematic transforms
+        document.body.style.transform = 'none';
+        document.body.style.willChange = 'auto';
+        // Remove any existing transform classes that might conflict
+        document.body.classList.remove('transform-gpu', 'will-change-transform');
     };
     
-    // Apply vibration prevention on page load and navigation
-    preventVibration();
+    // Apply layout shift prevention on page load
+    preventLayoutShifts();
     
     // Re-apply on window resize to prevent layout shifts
-    window.addEventListener('resize', preventVibration);
+    window.addEventListener('resize', preventLayoutShifts);
     
-    // Prevent vibration on scroll
-    let ticking = false;
-    window.addEventListener('scroll', function() {
-        if (!ticking) {
-            requestAnimationFrame(function() {
-                preventVibration();
-                ticking = false;
-            });
-            ticking = true;
-        }
+    // Ensure header stability without scroll interference
+    function stabilizeHeader() {
+        // Directly target elements without dynamic calculation
+        const topBar = document.querySelector('.top-bar');
+        const header = document.querySelector('header.modern-header');
+        const nav = document.querySelector('nav.main-nav');
+        
+        // Remove conflicting transforms that cause shake
+        if (topBar) topBar.style.transform = 'none';
+        if (header) header.style.transform = 'none';
+        if (nav) nav.style.transform = 'none';
+    }
+    
+    // Stabilize header once on load
+    stabilizeHeader();
+    
+    // Disable visibility change header recalculation to prevent shake
+    // document.addEventListener('visibilitychange', function() {
+    //     if (!document.hidden) {
+    //         stabilizeHeader();
+    //     }
+    // });
+    
+    // Force header stability on window focus
+    window.addEventListener('focus', function() {
+        stabilizeHeader();
     });
     
     // Scroll to Top Button functionality
@@ -1071,41 +1077,23 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.removeAttribute('data-processing');
     });
     
-    // Apply variation logic after cleanup - check actual page state
-    setTimeout(function() {
-        if (window.location.pathname.includes('/product/')) {
-            // Check if this product actually has variations by looking at the DOM
-            var hasVariations = document.querySelector('[data-has-variations="true"]') !== null;
-            var btn = document.querySelector('.btn-add-cart');
-            if (btn && hasVariations) {
-                btn.disabled = true;
-            } else if (btn && !hasVariations) {
-                btn.disabled = false;
-            }
-        }
-    }, 100);
+    // Disable delayed variation logic to prevent layout shifts
+    // setTimeout(function() {
+    //     // Disabled to prevent shake
+    // }, 100);
     
-    // Backup mechanism: Check for stuck buttons every 3 seconds
-    setInterval(function() {
-        var stuckButtons = document.querySelectorAll('.btn-add-cart[data-processing="true"]');
-        if (stuckButtons.length > 0) {
-            stuckButtons.forEach(function(btn) {
-                btn.disabled = false;
-                btn.removeAttribute('data-processing');
-            });
-            
-            // Re-apply variation logic after cleanup - check actual page state
-            if (window.location.pathname.includes('/product/')) {
-                var hasVariations = document.querySelector('[data-has-variations="true"]') !== null;
-                var btn = document.querySelector('.btn-add-cart');
-                if (btn && hasVariations) {
-                    btn.disabled = true;
-                } else if (btn && !hasVariations) {
+    // Clean up stuck buttons on page visibility change instead of interval
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            var stuckButtons = document.querySelectorAll('.btn-add-cart[data-processing="true"]');
+            if (stuckButtons.length > 0) {
+                stuckButtons.forEach(function(btn) {
                     btn.disabled = false;
-                }
+                    btn.removeAttribute('data-processing');
+                });
             }
         }
-    }, 3000);
+    });
     
     // Reset button states when page becomes visible (navigation between pages)
     document.addEventListener('visibilitychange', function() {
@@ -1115,18 +1103,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.removeAttribute('data-processing');
             });
             
-            // Re-apply variation logic after reset - check actual page state
-            setTimeout(function() {
-                if (window.location.pathname.includes('/product/')) {
-                    var hasVariations = document.querySelector('[data-has-variations="true"]') !== null;
-                    var btn = document.querySelector('.btn-add-cart');
-                    if (btn && hasVariations) {
-                        btn.disabled = true;
-                    } else if (btn && !hasVariations) {
-                        btn.disabled = false;
-                    }
-                }
-            }, 50);
+            // Disable delayed variation logic to prevent layout shifts
+            // setTimeout(function() {
+            //     // Disabled to prevent shake
+            // }, 50);
         }
     });
     

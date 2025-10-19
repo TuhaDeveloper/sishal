@@ -175,4 +175,89 @@ class ApiController extends Controller
             ], 500);
         }
     }
+
+    public function bestDealsProducts(Request $request)
+    {
+        $startTime = microtime(true);
+        
+        try {
+            $userId = Auth::id();
+            $limit = $request->get('limit', 20);
+            $useCache = $request->get('cache', true);
+            
+            $cacheKey = "best_deals_products_{$limit}";
+            
+            // Get best deals products (products with discount > 0)
+            if ($useCache) {
+                $products = Cache::remember($cacheKey, 300, function () use ($limit) {
+                    return \App\Models\Product::with('category')
+                        ->where('type', 'product')
+                        ->where('status', 'active')
+                        ->where('discount', '>', 0)
+                        ->orderByDesc('discount')
+                        ->take($limit)
+                        ->get();
+                });
+            } else {
+                $products = \App\Models\Product::with('category')
+                    ->where('type', 'product')
+                    ->where('status', 'active')
+                    ->where('discount', '>', 0)
+                    ->orderByDesc('discount')
+                    ->take($limit)
+                    ->get();
+            }
+
+            // Optimize wishlist check with single query
+            $wishlistedIds = [];
+            if ($userId) {
+                $wishlistedIds = Wishlist::where('user_id', $userId)
+                    ->whereIn('product_id', $products->pluck('id'))
+                    ->pluck('product_id')
+                    ->toArray();
+            }
+
+            // Transform products with optimized data loading
+            $products->transform(function ($product) use ($wishlistedIds) {
+                $product->is_wishlisted = in_array($product->id, $wishlistedIds);
+                $product->has_stock = $product->hasStock();
+                $product->avg_rating = $product->averageRating();
+                $product->total_reviews = $product->totalReviews();
+                return $product;
+            });
+
+            $executionTime = microtime(true) - $startTime;
+            
+            // Log performance metrics
+            Log::info('Best deals products loaded', [
+                'execution_time' => round($executionTime, 3),
+                'user_id' => $userId,
+                'products_count' => $products->count(),
+                'cache_used' => $useCache
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => ProductResource::collection($products),
+                'meta' => [
+                    'execution_time' => round($executionTime, 3),
+                    'total_products' => $products->count(),
+                    'cached' => $useCache
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error loading best deals products', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => Auth::id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load best deals products',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
 }

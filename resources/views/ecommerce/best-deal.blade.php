@@ -65,7 +65,7 @@
     </div>
 
     <div id="toast-container"
-        style="position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+        style="position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;">
     </div>
 @endsection
 
@@ -130,7 +130,7 @@
             margin-left: auto;
             margin-right: 0;
             pointer-events: auto;
-            z-index: 9999;
+            z-index: 16000;
             overflow: hidden;
             border-left: 5px solid #2196F3;
             position: relative;
