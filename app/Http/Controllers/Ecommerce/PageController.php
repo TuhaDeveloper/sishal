@@ -215,7 +215,10 @@ class PageController extends Controller
                 'name' => $product->name,
                 'slug' => $product->slug,
                 'searched_slug' => $slug,
-                'match_confirmed' => $product->slug === $slug
+                'match_confirmed' => $product->slug === $slug,
+                'meta_title' => $product->meta_title,
+                'meta_description' => $product->meta_description,
+                'meta_keywords' => $product->meta_keywords
             ]);
             
             
@@ -273,10 +276,13 @@ class PageController extends Controller
             ]);
 
             // Add cache-busting headers to prevent caching issues
-            $response = response()->view('ecommerce.productDetails', compact('product','relatedProducts','pageTitle'));
-            $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+            $seoProduct = $product; // ensure header receives the exact product for meta tags
+            $response = response()->view('ecommerce.productDetails', compact('product','relatedProducts','pageTitle','seoProduct'));
+            $response->header('Cache-Control', 'no-cache, no-store, must-revalidate, private');
             $response->header('Pragma', 'no-cache');
             $response->header('Expires', '0');
+            $response->header('Last-Modified', gmdate('D, d M Y H:i:s') . ' GMT');
+            $response->header('ETag', md5($product->id . $product->updated_at));
             return $response;
         } catch (\Exception $e) {
             Log::error('Product details error: ' . $e->getMessage());

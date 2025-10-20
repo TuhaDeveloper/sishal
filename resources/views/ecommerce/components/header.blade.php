@@ -10,22 +10,28 @@
     <title>@if($pageTitle) {{ $pageTitle . ' | '}} @endif {{ $general_settings->site_title ?? '' }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    @if(isset($product) && $product)
+    @php
+        // Prefer explicit SEO product if provided
+        $___seo = isset($seoProduct) && $seoProduct ? $seoProduct : (isset($product) ? $product : null);
+    @endphp
+    @if($___seo)
         {{-- Product-specific meta tags --}}
-        <meta name="title" content="{{ $product->meta_title ?? $product->name }}">
-        <meta name="description" content="{{ $product->meta_description ?? Str::limit(strip_tags($product->description ?? ''), 160) }}">
+        {{-- Debug: Product ID {{ $___seo->id }}, Name: {{ $___seo->name }} --}}
+        <!-- DEBUG: Product ID: {{ $___seo->id }}, Name: {{ $___seo->name }}, Meta Title: {{ $___seo->meta_title ?? 'NULL' }} -->
+        <meta name="title" content="{{ $___seo->meta_title ?? $___seo->name }}">
+        <meta name="description" content="{{ $___seo->meta_description ?? Str::limit(strip_tags($___seo->description ?? ''), 160) }}">
         @php
             $keywords = '';
-            if ($product->meta_keywords) {
-                if (is_array($product->meta_keywords)) {
-                    $keywords = implode(', ', $product->meta_keywords);
+            if ($___seo->meta_keywords) {
+                if (is_array($___seo->meta_keywords)) {
+                    $keywords = implode(', ', $___seo->meta_keywords);
                 } else {
                     // It's a JSON string, decode it
-                    $decoded = json_decode($product->meta_keywords, true);
+                    $decoded = json_decode($___seo->meta_keywords, true);
                     if (is_array($decoded)) {
                         $keywords = implode(', ', $decoded);
                     } else {
-                        $keywords = $product->meta_keywords;
+                        $keywords = $___seo->meta_keywords;
                     }
                 }
             }
@@ -33,9 +39,9 @@
         
         <meta name="keywords" content="{{ $keywords }}">
               
-        <meta property="og:title" content="{{ $product->meta_title ?? $product->name }}">
-        <meta property="og:description" content="{{ $product->meta_description ?? Str::limit(strip_tags($product->description ?? ''), 160) }}">
-        <meta property="og:image" content="{{ $product->image ? asset($product->image) : asset('static/default-product.jpg') }}">
+        <meta property="og:title" content="{{ $___seo->meta_title ?? $___seo->name }}">
+        <meta property="og:description" content="{{ $___seo->meta_description ?? Str::limit(strip_tags($___seo->description ?? ''), 160) }}">
+        <meta property="og:image" content="{{ $___seo->image ? asset($___seo->image) : asset('static/default-product.jpg') }}">
         <meta property="og:type" content="product">
         <meta property="og:url" content="{{ url()->current() }}">
         
