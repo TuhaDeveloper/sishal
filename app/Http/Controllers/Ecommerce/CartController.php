@@ -13,6 +13,15 @@ class CartController extends Controller
 {
     public function addToCartByCard($productId)
     {
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please login to add items to cart',
+                'redirect' => route('login')
+            ], 401);
+        }
+
         try {
             // Validate product exists
             $product = \App\Models\Product::find($productId);
@@ -23,17 +32,13 @@ class CartController extends Controller
                 ], 404);
             }
 
-            $userId = Auth::check() ? Auth::user()->id : null;
+            $userId = Auth::user()->id;
             $sessionId = session()->getId();
 
-            // Use user_id if authenticated, otherwise session_id
-            $cartQuery = Cart::where('product_id', $productId);
-            if ($userId) {
-                $cartQuery->where('user_id', $userId);
-            } else {
-                $cartQuery->where('session_id', $sessionId);
-            }
-            $existingCart = $cartQuery->first();
+            // Find existing cart item for this user and product
+            $existingCart = Cart::where('product_id', $productId)
+                ->where('user_id', $userId)
+                ->first();
 
             if ($existingCart) {
                 $existingCart->qty += 1;
@@ -42,12 +47,8 @@ class CartController extends Controller
                 $cartData = [
                     'product_id' => $productId,
                     'qty' => 1,
+                    'user_id' => $userId
                 ];
-                if ($userId) {
-                    $cartData['user_id'] = $userId;
-                } else {
-                    $cartData['session_id'] = $sessionId;
-                }
                 $existingCart = Cart::create($cartData);
             }
 
@@ -72,6 +73,15 @@ class CartController extends Controller
 
     public function addToCartByPage($productId, Request $request)
     {
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please login to add items to cart',
+                'redirect' => route('login')
+            ], 401);
+        }
+
         // Validate product ID
         if (!$productId || $productId === 'null' || $productId === '') {
             Log::error('Invalid product ID received', ['product_id' => $productId]);
@@ -87,14 +97,11 @@ class CartController extends Controller
             'qty' => $request->input('qty'),
             'variation_id' => $request->input('variation_id'),
             'attribute_value_ids' => $request->input('attribute_value_ids'),
-            'user_id' => Auth::check() ? Auth::user()->id : null,
-            'session_id' => session()->getId(),
-            'auth_check' => Auth::check(),
-            'user_name' => Auth::check() ? Auth::user()->name : null
+            'user_id' => Auth::user()->id,
+            'user_name' => Auth::user()->name
         ]);
 
-        $userId = Auth::check() ? Auth::user()->id : null;
-        $sessionId = session()->getId();
+        $userId = Auth::user()->id;
 
         $qty = (int) $request->input('qty', 1);
         $variationId = $request->input('variation_id');
@@ -141,8 +148,9 @@ class CartController extends Controller
             }
         }
 
-        // Use user_id if authenticated, otherwise session_id
-        $cartQuery = Cart::where('product_id', $productId);
+        // Find existing cart item for this user, product, and variation
+        $cartQuery = Cart::where('product_id', $productId)
+            ->where('user_id', $userId);
         
         // Always check for variation_id (column exists)
         if ($variationId) {
@@ -151,11 +159,6 @@ class CartController extends Controller
             $cartQuery->whereNull('variation_id');
         }
         
-        if ($userId) {
-            $cartQuery->where('user_id', $userId);
-        } else {
-            $cartQuery->where('session_id', $sessionId);
-        }
         $existingCart = $cartQuery->first();
 
         if ($existingCart) {
@@ -165,22 +168,16 @@ class CartController extends Controller
             $cartData = [
                 'product_id' => $productId,
                 'qty' => $qty,
+                'user_id' => $userId
             ];
             
             if ($variationId) {
                 $cartData['variation_id'] = $variationId;
             }
             
-            if ($userId) {
-                $cartData['user_id'] = $userId;
-            } else {
-                $cartData['session_id'] = $sessionId;
-            }
-            
             Log::info('Creating new cart item', [
                 'cart_data' => $cartData,
-                'user_id' => $userId,
-                'session_id' => $sessionId
+                'user_id' => $userId
             ]);
             
             $existingCart = Cart::create($cartData);
@@ -195,29 +192,28 @@ class CartController extends Controller
 
     public function getCartQtySum()
     {
-        $userId = Auth::check() ? Auth::user()->id : null;
-        $sessionId = session()->getId();
-        if ($userId) {
-            $sum = Cart::where('user_id', $userId)->sum('qty');
-        } else {
-            $sum = Cart::where('session_id', $sessionId)->sum('qty');
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json(['qty_sum' => 0]);
         }
+
+        $userId = Auth::user()->id;
+        $sum = Cart::where('user_id', $userId)->sum('qty');
         return response()->json(['qty_sum' => $sum]);
     }
 
     public function getCartList()
     {
-        $userId = Auth::check() ? Auth::user()->id : null;
-        $sessionId = session()->getId();
-        $cartQuery = Cart::with('product');
-        
-        // Show items for current user if logged in, otherwise show session items
-        // This ensures we don't mix user and session cart items
-        if ($userId) {
-            $cartQuery->where('user_id', $userId);
-        } else {
-            $cartQuery->where('session_id', $sessionId);
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json([
+                'cart' => [],
+                'cart_total' => 0
+            ]);
         }
+
+        $userId = Auth::user()->id;
+        $cartQuery = Cart::with('product')->where('user_id', $userId);
         
         $cartItems = $cartQuery->get();
         
@@ -227,15 +223,13 @@ class CartController extends Controller
         // Debug logging
         Log::info('Cart list request', [
             'user_id' => $userId,
-            'session_id' => $sessionId,
             'items_found' => $cartItems->count(),
             'items' => $cartItems->map(function($item) {
                 return [
                     'cart_id' => $item->id,
                     'product_id' => $item->product_id,
                     'product_name' => $item->product ? $item->product->name : 'Unknown',
-                    'user_id' => $item->user_id,
-                    'session_id' => $item->session_id
+                    'user_id' => $item->user_id
                 ];
             })->toArray()
         ]);
@@ -252,7 +246,7 @@ class CartController extends Controller
                 Log::warning('Cart item references non-existent product', [
                     'cart_id' => $item->id,
                     'product_id' => $item->product_id,
-                    'session_id' => $item->session_id
+                    'user_id' => $item->user_id
                 ]);
                 continue;
             }
@@ -309,17 +303,21 @@ class CartController extends Controller
 
     public function increaseQuantity($cartId)
     {
-        $userId = Auth::check() ? Auth::user()->id : null;
-        $sessionId = session()->getId();
-        
-        $cartQuery = Cart::where('id', $cartId);
-        if ($userId) {
-            $cartQuery->where('user_id', $userId);
-        } else {
-            $cartQuery->where('session_id', $sessionId);
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please login to modify cart',
+                'redirect' => route('login')
+            ], 401);
         }
+
+        $userId = Auth::user()->id;
         
-        $cartItem = $cartQuery->first();
+        $cartItem = Cart::where('id', $cartId)
+            ->where('user_id', $userId)
+            ->first();
+        
         if ($cartItem) {
             $cartItem->qty += 1;
             $cartItem->save();
@@ -330,17 +328,21 @@ class CartController extends Controller
 
     public function decreaseQuantity($cartId)
     {
-        $userId = Auth::check() ? Auth::user()->id : null;
-        $sessionId = session()->getId();
-        
-        $cartQuery = Cart::where('id', $cartId);
-        if ($userId) {
-            $cartQuery->where('user_id', $userId);
-        } else {
-            $cartQuery->where('session_id', $sessionId);
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please login to modify cart',
+                'redirect' => route('login')
+            ], 401);
         }
+
+        $userId = Auth::user()->id;
         
-        $cartItem = $cartQuery->first();
+        $cartItem = Cart::where('id', $cartId)
+            ->where('user_id', $userId)
+            ->first();
+        
         if ($cartItem && $cartItem->qty > 1) {
             $cartItem->qty -= 1;
             $cartItem->save();
@@ -351,32 +353,36 @@ class CartController extends Controller
 
     public function deleteCartItem($cartId)
     {
-        $userId = Auth::check() ? Auth::user()->id : null;
-        $sessionId = session()->getId();
-        
-        $cartQuery = Cart::where('id', $cartId);
-        if ($userId) {
-            $cartQuery->where('user_id', $userId);
-        } else {
-            $cartQuery->where('session_id', $sessionId);
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please login to modify cart',
+                'redirect' => route('login')
+            ], 401);
         }
+
+        $userId = Auth::user()->id;
         
-        $deleted = $cartQuery->delete();
+        $deleted = Cart::where('id', $cartId)
+            ->where('user_id', $userId)
+            ->delete();
+        
         return response()->json(['success' => $deleted > 0]);
     }
 
     public function buyNow($productId)
     {
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
         try {
-            $userId = Auth::check() ? Auth::user()->id : null;
-            $sessionId = session()->getId();
-            $cartQuery = Cart::where('product_id', $productId);
-            if ($userId) {
-                $cartQuery->where('user_id', $userId);
-            } else {
-                $cartQuery->where('session_id', $sessionId);
-            }
-            $cartItem = $cartQuery->first();
+            $userId = Auth::user()->id;
+            $cartItem = Cart::where('product_id', $productId)
+                ->where('user_id', $userId)
+                ->first();
 
             if ($cartItem) {
                 // Update existing cart item quantity to 1
@@ -386,14 +392,9 @@ class CartController extends Controller
                 // Create new cart item if it doesn't exist
                 $cartData = [
                     'product_id' => $productId,
-                    'qty' => 1
+                    'qty' => 1,
+                    'user_id' => $userId
                 ];
-
-                if ($userId) {
-                    $cartData['user_id'] = $userId;
-                } else {
-                    $cartData['session_id'] = $sessionId;
-                }
 
                 Cart::create($cartData);
             }

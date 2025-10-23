@@ -1044,22 +1044,30 @@ document.addEventListener('DOMContentLoaded', function() {
             body: data.toString()
         })
         .then(response => {
+            // Handle authentication redirect (401 status)
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
-            if (data.success) {
+            if (data && data.success) {
                 if (typeof showToast === 'function') showToast(data.message || 'Product added to cart successfully!', 'success');
                 if (typeof updateCartCount === 'function') updateCartCount();
                 if (typeof updateCartQtyBadge === 'function') updateCartQtyBadge();
-            } else {
-                if (typeof showToast === 'function') showToast(data.message || 'Failed to add product to cart', 'error');
+            } else if (data && data.redirect) {
+                // Check if response contains redirect URL (for authentication)
+                window.location.href = data.redirect;
             }
+            // No error popup needed - redirect handles authentication
         })
         .catch(error => {
-            if (typeof showToast === 'function') showToast('Failed to add product to cart', 'error');
+            // No error popup needed - redirect handles authentication
         })
         .finally(() => {
             clearTimeout(backupTimeout);

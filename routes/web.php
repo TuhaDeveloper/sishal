@@ -16,6 +16,7 @@ Route::get('/', [PageController::class, 'index'])->name('home');
 Route::get('/', [PageController::class, 'index'])->name('ecommerce.home');
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
+Route::post('/contact', [PageController::class, 'submitContact'])->name('contact.submit');
 Route::get('/products', [PageController::class, 'products'])->name('product.archive');
 Route::post('/products/filter', [PageController::class, 'filterProducts'])->name('products.filter');
 Route::get('/product/{slug}', [PageController::class, 'productDetails'])->name('product.details');
@@ -444,11 +445,13 @@ Route::prefix('erp')->middleware(['auth', 'admin'])->group(function () {
     // Settings
     Route::get('/settings', [\App\Http\Controllers\Erp\GeneralSettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [\App\Http\Controllers\Erp\GeneralSettingsController::class, 'storeUpdate'])->name('settings.update');
+    Route::post('/admin/test-smtp', [\App\Http\Controllers\Erp\GeneralSettingsController::class, 'testSmtp'])->name('admin.test.smtp');
 });
 
 Route::get('/api/products/most-sold', [\App\Http\Controllers\Ecommerce\ApiController::class, 'mostSoldProducts']);
 Route::get('/api/products/new-arrivals', [\App\Http\Controllers\Ecommerce\ApiController::class, 'newArrivalsProducts']);
 Route::get('/api/products/best-deals', [\App\Http\Controllers\Ecommerce\ApiController::class, 'bestDealsProducts']);
+// Cart routes - require authentication (handled in controller)
 Route::post('/cart/add/{productId}', [App\Http\Controllers\Ecommerce\CartController::class, 'addToCartByCard'])->name('cart.addByCard');
 Route::post('/cart/add-page/{productId}', [App\Http\Controllers\Ecommerce\CartController::class, 'addToCartByPage'])->name('cart.addByPage');
 Route::get('/cart/qty-sum', [App\Http\Controllers\Ecommerce\CartController::class, 'getCartQtySum'])->name('cart.qtySum');
@@ -459,33 +462,76 @@ Route::delete('/cart/delete/{cartId}', [App\Http\Controllers\Ecommerce\CartContr
 Route::post('/buy-now/{productId}', [App\Http\Controllers\Ecommerce\CartController::class, 'buyNow'])->name('buyNow');
 
 // Test Email Route (for development only)
-Route::get('/test-email/{orderId}', function ($orderId) {
-    $order = \App\Models\Order::with(['items.product', 'customer'])->find($orderId);
-    if (!$order) {
-        return 'Order not found';
-    }
+// Route::get('/test-email/{orderId}', function ($orderId) {
+//     $order = \App\Models\Order::with(['items.product', 'customer'])->find($orderId);
+//     if (!$order) {
+//         return 'Order not found';
+//     }
 
-    try {
-        \Illuminate\Support\Facades\Mail::to('test@example.com')->send(new \App\Mail\OrderConfirmation($order));
-        return 'Email sent successfully!';
-    } catch (\Exception $e) {
-        return 'Email failed: ' . $e->getMessage();
-    }
-})->name('test.email');
+//     try {
+//         \Illuminate\Support\Facades\Mail::to('test@example.com')->send(new \App\Mail\OrderConfirmation($order));
+//         return 'Email sent successfully!';
+//     } catch (\Exception $e) {
+//         return 'Email failed: ' . $e->getMessage();
+//     }
+// })->name('test.email');
 
 // Test Sale Email Route (for development only)
-Route::get('/test-sale-email/{posId}', function ($posId) {
-    $pos = \App\Models\Pos::with(['items.product', 'customer', 'payments', 'employee.user', 'soldBy'])->find($posId);
-    if (!$pos) {
-        return 'POS Sale not found';
-    }
+// Route::get('/test-sale-email/{posId}', function ($posId) {
+//     $pos = \App\Models\Pos::with(['items.product', 'customer', 'payments', 'employee.user', 'soldBy'])->find($posId);
+//     if (!$pos) {
+//         return 'POS Sale not found';
+//     }
 
-    try {
-        \Illuminate\Support\Facades\Mail::to('test@example.com')->send(new \App\Mail\SaleConfirmation($pos));
-        return 'Sale confirmation email sent successfully!';
-    } catch (\Exception $e) {
-        return 'Email failed: ' . $e->getMessage();
-    }
-})->name('test.sale.email');
+//     try {
+//         \Illuminate\Support\Facades\Mail::to('test@example.com')->send(new \App\Mail\SaleConfirmation($pos));
+//         return 'Sale confirmation email sent successfully!';
+//     } catch (\Exception $e) {
+//         return 'Email failed: ' . $e->getMessage();
+//     }
+// })->name('test.sale.email');
+
+// Test Contact Email Route (for development only - remove in production)
+// Route::get('/test-contact-email', function () {
+//     // Configure SMTP from admin settings
+//     \App\Services\SmtpConfigService::configureFromSettings();
+//     
+//     $contactData = [
+//         'full_name' => 'Test User',
+//         'phone_number' => '+1234567890',
+//         'subject' => 'Test Contact Form',
+//         'message' => 'This is a test message from the contact form.',
+//         'submitted_at' => now(),
+//     ];
+//
+//     // Get contact email from settings
+//     $contactEmail = \App\Services\SmtpConfigService::getContactEmail();
+//     
+//     // Show configuration details
+//     $config = [
+//         'smtp_configured' => \App\Services\SmtpConfigService::isConfigured(),
+//         'smtp_host' => config('mail.mailers.smtp.host'),
+//         'smtp_port' => config('mail.mailers.smtp.port'),
+//         'smtp_username' => config('mail.mailers.smtp.username'),
+//         'from_address' => config('mail.from.address'),
+//         'from_name' => config('mail.from.name'),
+//         'contact_email' => $contactEmail,
+//     ];
+//
+//     try {
+//         \Illuminate\Support\Facades\Mail::to($contactEmail)->send(new \App\Mail\ContactMail($contactData));
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'Contact email sent successfully!',
+//             'config' => $config
+//         ]);
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Email failed: ' . $e->getMessage(),
+//             'config' => $config
+//         ]);
+//     }
+// })->name('test.contact.email');
 
 require __DIR__ . '/auth.php';

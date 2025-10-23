@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\GeneralSetting;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class GeneralSettingsController extends Controller
 {
@@ -34,8 +36,16 @@ class GeneralSettingsController extends Controller
             'x_url' => 'nullable|string|max:255',
             'youtube_url' => 'nullable|string|max:255',
             'instagram_url' => 'nullable|string|max:255',
+            'whatsapp_url' => 'nullable|string|max:255',
             'site_logo' => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:2048',
             'site_favicon' => 'nullable|image|mimes:jpeg,png,ico,webp|max:1024',
+            'smtp_host' => 'nullable|string|max:255',
+            'smtp_port' => 'nullable|integer|min:1|max:65535',
+            'smtp_username' => 'nullable|email|max:255',
+            'smtp_password' => 'nullable|string|max:255',
+            'smtp_encryption' => 'nullable|string|in:tls,ssl,',
+            'smtp_from_address' => 'nullable|email|max:255',
+            'smtp_from_name' => 'nullable|string|max:255',
         ]);
 
         // Get the settings row (create if not exists)
@@ -69,9 +79,71 @@ class GeneralSettingsController extends Controller
             $validated['site_favicon'] = 'uploads/settings/' . $faviconName;
         }
 
+        // Ensure social media URLs have proper protocol
+        $socialMediaFields = ['facebook_url', 'x_url', 'youtube_url', 'instagram_url', 'whatsapp_url'];
+        foreach ($socialMediaFields as $field) {
+            if (!empty($validated[$field]) && !str_starts_with($validated[$field], 'http')) {
+                $validated[$field] = 'https://' . $validated[$field];
+            }
+        }
+
         $settings->fill($validated);
         $settings->save();
 
         return redirect()->back()->with('success', 'Settings updated successfully!');
+    }
+
+    public function testSmtp(Request $request)
+    {
+        try {
+            $request->validate([
+                'test_email' => 'required|email',
+                'smtp_host' => 'required|string',
+                'smtp_port' => 'required|integer|min:1|max:65535',
+                'smtp_username' => 'required|email',
+                'smtp_password' => 'required|string',
+                'smtp_encryption' => 'nullable|string|in:tls,ssl,',
+            ]);
+
+            // Configure SMTP with request data
+            config([
+                'mail.mailers.smtp.host' => $request->smtp_host,
+                'mail.mailers.smtp.port' => $request->smtp_port,
+                'mail.mailers.smtp.username' => $request->smtp_username,
+                'mail.mailers.smtp.password' => $request->smtp_password,
+                'mail.mailers.smtp.encryption' => $request->smtp_encryption ?: null,
+                'mail.from.address' => $request->smtp_from_address ?: $request->smtp_username,
+                'mail.from.name' => $request->smtp_from_name ?: 'Test Email',
+            ]);
+
+            // Send test email
+            Mail::raw('This is a test email to verify your SMTP configuration is working correctly.', function($message) use ($request) {
+                $message->to($request->test_email)
+                       ->subject('SMTP Configuration Test - ' . now()->format('Y-m-d H:i:s'));
+            });
+
+            Log::info('SMTP test email sent successfully', [
+                'test_email' => $request->test_email,
+                'smtp_host' => $request->smtp_host,
+                'smtp_port' => $request->smtp_port
+            ]);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Test email sent successfully! Check your inbox.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('SMTP test failed', [
+                'error' => $e->getMessage(),
+                'test_email' => $request->test_email ?? 'not provided',
+                'smtp_host' => $request->smtp_host ?? 'not provided'
+            ]);
+
+            return response()->json([
+                'success' => false, 
+                'message' => 'SMTP Test failed: ' . $e->getMessage()
+            ]);
+        }
     }
 }

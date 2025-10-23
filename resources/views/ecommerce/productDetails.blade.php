@@ -7,40 +7,111 @@
 @endpush
 
 @section('main-section')
+    <!-- Breadcrumb Navigation -->
+    <div class="container mt-3">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url('/') }}" class="text-decoration-none">Home</a></li>
+                <li class="breadcrumb-item"><a href="#" class="text-decoration-none">{{ $product->category->name ?? 'Category' }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ $product->name }}</li>
+            </ol>
+        </nav>
+    </div>
+
     <!-- Product Details Content Section -->
     <style>
         .product-section {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            padding: 40px 0;
+            background: #ffffff;
+            padding: 20px 0;
             min-height: auto;
         }
 
         .product-main {
-            display: flex;
-            margin-bottom: 40px;
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: visible;
             position: relative;
+            margin-bottom: 40px;
         }
 
-        .product-main::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #00512C, #10B981, #3B82F6);
+        .breadcrumb {
+            background: transparent;
+            padding: 0;
+            margin: 0;
+        }
+
+        .breadcrumb-item a {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .breadcrumb-item.active {
+            color: #374151;
+            font-weight: 500;
         }
 
         /* Product Gallery */
         .product-gallery {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             position: relative;
-            background: #fafbfc;
+            background: #ffffff;
+            gap: 20px;
+        }
+
+        .gallery-main {
+            flex: 1;
+            position: relative;
+        }
+
+        .gallery-thumbs {
+            width: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .thumb-item {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .thumb-item:hover,
+        .thumb-item.active {
+            border-color: #3b82f6;
+            transform: scale(1.05);
+        }
+
+        .thumb-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .main-image-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+
+        .main-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .main-image-container:hover .main-image {
+            transform: scale(1.02);
         }
 
         /* Variation Image Styles */
@@ -170,59 +241,124 @@
 
         /* Product Info */
         .product-info {
-            padding: 40px;
+            padding: 0 20px;
             background: white;
             position: relative;
         }
 
         .product-info h1 {
-            font-size: 32px;
+            font-size: 1.75rem;
             margin-bottom: 16px;
             color: #1a202c;
-            font-weight: 700;
-            line-height: 1.2;
-            letter-spacing: -0.5px;
+            font-weight: 600;
+            line-height: 1.3;
         }
 
         .product-rating {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 24px;
-            padding: 12px 16px;
-            background: #f8fafc;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            gap: 8px;
+            margin-bottom: 20px;
         }
 
         .stars {
             color: #fbbf24;
-            font-size: 20px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            font-size: 1rem;
         }
 
         .rating-text {
             color: #64748b;
-            font-size: 15px;
+            font-size: 0.875rem;
             font-weight: 500;
         }
 
         .product-price {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .product-price .fw-bold {
-            font-size: 36px;
-            font-weight: 800;
-            color: #00512C;
-            text-shadow: 0 2px 4px rgba(0, 81, 44, 0.1);
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1f2937;
         }
 
         .product-price .text-decoration-line-through {
-            font-size: 20px;
-            color: #94a3b8;
+            font-size: 1.125rem;
+            color: #9ca3af;
             margin-left: 12px;
         }
+
+        .product-info-section {
+            margin-bottom: 24px;
+        }
+
+        .section-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .color-option, .size-option {
+            border: 1px solid #d1d5db;
+            background: #ffffff;
+            color: #374151;
+            border-radius: 9999px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        /* Circle size buttons like reference */
+        .size-option {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 14px;
+            font-weight: 600;
+            border: 1px solid #00512C; /* theme border */
+        }
+
+        .color-option:hover, .size-option:hover {
+            border-color: #00512C;
+            background: #e6f6ef;
+        }
+
+        .color-option.active, .size-option.active {
+            border-color: transparent; /* no extra border when selected */
+            background: #00512C; /* theme fill */
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,81,44,0.2);
+        }
+
+        .color-image-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #e5e7eb;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .color-image-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .color-image-btn.active {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Hide old variation summary card */
+        .variation-info { display: none !important; }
 
         .product-description {
             color: #64748b;
@@ -272,87 +408,103 @@
         .quantity-selector {
             display: flex;
             align-items: center;
-            gap: 20px;
-            margin-bottom: 32px;
-            padding: 20px;
-            background: #f8fafc;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            gap: 16px;
+            margin-bottom: 24px;
         }
 
-        .quantity-selector label {
-            font-weight: 600;
-            color: #374151;
-            font-size: 16px;
-        }
+        .quantity-selector label { display:none; }
 
         .quantity-controls {
             display: flex;
             align-items: center;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
             overflow: hidden;
             background: white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
         .quantity-btn {
-            background: #f8fafc;
+            background: #f9fafb;
             border: none;
-            width: 48px;
-            height: 48px;
+            width: 40px;
+            height: 40px;
             cursor: pointer;
-            font-size: 20px;
-            transition: all 0.3s ease;
-            font-weight: 600;
-            color: #00512C;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            color: #374151;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .quantity-btn:hover {
-            background: #00512C;
-            color: white;
-            transform: scale(1.05);
+            background: #e5e7eb;
         }
 
         .quantity-input {
-            width: 80px;
-            height: 48px;
+            width: 60px;
+            height: 40px;
             text-align: center;
             border: none;
-            border-left: 2px solid #e2e8f0;
-            border-right: 2px solid #e2e8f0;
-            font-size: 18px;
-            font-weight: 600;
+            border-left: 1px solid #d1d5db;
+            border-right: 1px solid #d1d5db;
+            font-size: 14px;
+            font-weight: 500;
             color: #374151;
             background: white;
         }
 
         .quantity-input:focus {
             outline: none;
-            background: #f8fafc;
+            background: #f9fafb;
         }
+
+        /* Purchase Row: quantity + buttons in one line */
+        .purchase-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            align-items: center;
+            gap: 16px;
+            margin: 16px 0 20px 0;
+        }
+        .purchase-row .quantity-selector { margin: 0; width: 100%; }
+        .purchase-row .btn { width: 100%; min-width: 0; }
+        .purchase-row form { display: block; margin: 0; width: 100%; }
+        .purchase-row .btn-add-cart,
+        .purchase-row .btn-buy-now { width: 100%; min-width: 0; }
+        @media (max-width: 576px) {
+            .purchase-row { grid-template-columns: 1fr; gap: 10px; }
+        }
+
+        /* Buy Now uses theme color, not hard-coded */
+        .btn-buy-now {
+            background: #00512C !important; /* theme primary */
+            color: #fff !important;
+            border: 1px solid #00512C !important;
+        }
+        .btn-buy-now:hover { background: #004322 !important; }
+        .btn-buy-now:disabled { background:#9fb6ae !important; border-color:#9fb6ae !important; }
 
         .action-buttons {
             display: flex;
-            gap: 16px;
+            gap: 12px;
             flex-wrap: wrap;
+            margin-bottom: 24px;
         }
 
         .btn {
-            padding: 16px 32px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
+            border-radius: 8px;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-weight: 600;
+            font-weight: 500;
             position: relative;
             overflow: hidden;
         }
@@ -373,16 +525,20 @@
         }
 
         .btn-add-cart {
-            background: linear-gradient(135deg, #00512C 0%, #10B981 100%);
-            color: white;
-            flex: 1;
-            min-width: 200px;
-            box-shadow: 0 4px 12px rgba(0, 81, 44, 0.3);
+            background: #f3f4f6 !important; /* light grey like reference */
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
         }
 
         .btn-add-cart:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 81, 44, 0.4);
+            background: #e5e7eb !important;
+            transform: translateY(-1px);
+        }
+
+        /* Active focus ring in theme color */
+        .btn-add-cart:not(:disabled):focus-visible {
+        outline: 2px solid #00512C !important;
+            outline-offset: 2px;
         }
 
         .btn-add-cart:disabled {
@@ -415,24 +571,226 @@
         }
 
         .btn-outline-custom {
-            background: white;
-            color: #00512C;
-            border: 2px solid #00512C;
-            padding: 14px 30px;
-            min-width: 120px;
+            background: #ffffff;
+            color: #00512C; /* theme primary */
+            border: 1px solid #00512C;
+            padding: 12px 24px;
+            min-width: 170px;
         }
 
         .btn-outline-custom:hover {
             background: #00512C;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 81, 44, 0.3);
+            color: #ffffff;
+            transform: translateY(-1px);
         }
 
         .btn-outline-custom.border {
             border: 2px solid #e2e8f0;
             color: #64748b;
             background: white;
+        }
+
+        .contact-info {
+            background: #1e40af;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .wishlist-share {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .wishlist-link {
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .wishlist-link:hover {
+            color: #ef4444;
+        }
+
+        .share-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .share-label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .share-icons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .share-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+        }
+
+        .share-icon:hover {
+            background: #e9ecef;
+            color: #495057;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .share-icon i.fab.fa-facebook-f:hover {
+            color: #1877f2;
+        }
+
+        .share-icon i.fab.fa-twitter:hover {
+            color: #1da1f2;
+        }
+
+        .share-icon i.fab.fa-instagram:hover {
+            color: #e4405f;
+        }
+
+        .share-icon i.fab.fa-youtube:hover {
+            color: #ff0000;
+        }
+
+        .share-icon i.fab.fa-linkedin-in:hover {
+            color: #0077b5;
+        }
+
+
+        /* Enhanced Messenger System Styling */
+        .messenger-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .messenger-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .messenger-title i {
+            color: #00512C;
+        }
+
+        .messenger-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .messenger-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 140px;
+            justify-content: center;
+        }
+
+        .messenger-btn:hover {
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .messenger-btn i {
+            font-size: 18px;
+        }
+
+        /* WhatsApp Button */
+        .whatsapp-btn {
+            background: #25D366;
+        }
+
+        .whatsapp-btn:hover {
+            background: #20ba5a;
+            box-shadow: 0 4px 8px rgba(37, 211, 102, 0.3);
+        }
+
+        /* Facebook Messenger Button */
+        .messenger-fb-btn {
+            background: #0084ff;
+        }
+
+        .messenger-fb-btn:hover {
+            background: #0066cc;
+            box-shadow: 0 4px 8px rgba(0, 132, 255, 0.3);
+        }
+
+        /* Telegram Button */
+        .telegram-btn {
+            background: #0088cc;
+        }
+
+        .telegram-btn:hover {
+            background: #006699;
+            box-shadow: 0 4px 8px rgba(0, 136, 204, 0.3);
+        }
+
+        /* Email Button */
+        .email-btn {
+            background: #6b7280;
+        }
+
+        .email-btn:hover {
+            background: #4b5563;
+            box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .messenger-buttons {
+                flex-direction: column;
+            }
+            
+            .messenger-btn {
+                min-width: auto;
+                width: 100%;
+            }
         }
 
         .btn-outline-custom.border:hover {
@@ -1947,67 +2305,54 @@
             <!-- Product Gallery -->
             <div class="col-lg-6 col-md-7 col-12" style="padding: 20px;">
                 <div class="product-gallery">
-                    <div class="swiper main-swiper">
-                        <div class="swiper-wrapper" id="main-swiper-wrapper">
-                            <!-- Main product image -->
-                            <div class="swiper-slide" data-image-type="product">
-                                <img src="{{ asset($product->image) }}" alt="{{ $product->name }}" class="main-image" id="main-product-image">
+                    <div class="gallery-thumbs">
+                        <!-- Main product image thumbnail -->
+                        <div class="thumb-item active" data-image-type="product">
+                            <img src="{{ asset($product->image) }}" alt="{{ $product->name }}">
+                        </div>
+                        <!-- Product gallery thumbnails -->
+                        @foreach($product->galleries as $gallery)
+                            <div class="thumb-item" data-image-type="gallery">
+                                <img src="{{ asset($gallery->image) }}" alt="{{ $product->name }}">
                             </div>
+                        @endforeach
+                        <!-- Variation image thumbnails (hidden by default) -->
+                        @if($product->has_variations)
+                            @foreach($product->variations as $variation)
+                                @if($variation->image)
+                                    <div class="thumb-item variation-thumb-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation" style="display: none;">
+                                        <img src="{{ asset($variation->image) }}" alt="{{ $variation->name }}">
+                                    </div>
+                                @endif
+                                @foreach($variation->galleries as $gallery)
+                                    <div class="thumb-item variation-gallery-thumb-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation-gallery" style="display: none;">
+                                        <img src="{{ asset($gallery->image) }}" alt="{{ $variation->name }}">
+                                    </div>
+                                @endforeach
+                            @endforeach
+                        @endif
+                    </div>
+                    <div class="gallery-main">
+                        <div class="main-image-container">
+                            <!-- Main product image -->
+                            <img src="{{ asset($product->image) }}" alt="{{ $product->name }}" class="main-image" id="main-product-image" data-image-type="product">
                             <!-- Product galleries -->
                             @foreach($product->galleries as $gallery)
-                                <div class="swiper-slide" data-image-type="gallery">
-                                    <img src="{{ asset($gallery->image) }}" alt="{{ $product->name }}" class="main-image">
-                                </div>
+                                <img src="{{ asset($gallery->image) }}" alt="{{ $product->name }}" class="main-image" data-image-type="gallery" style="display: none;">
                             @endforeach
                             <!-- Variation images (hidden by default) -->
                             @if($product->has_variations)
                                 @foreach($product->variations as $variation)
                                     @if($variation->image)
-                                        <div class="swiper-slide variation-image-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation" style="display: none;">
-                                            <img src="{{ asset($variation->image) }}" alt="{{ $variation->name }}" class="main-image">
-                                        </div>
+                                        <img src="{{ asset($variation->image) }}" alt="{{ $variation->name }}" class="main-image variation-image-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation" style="display: none;">
                                     @endif
                                     @foreach($variation->galleries as $gallery)
-                                        <div class="swiper-slide variation-gallery-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation-gallery" style="display: none;">
-                                            <img src="{{ asset($gallery->image) }}" alt="{{ $variation->name }}" class="main-image">
-                                        </div>
-                                    @endforeach
-                                @endforeach
-                            @endif
-                        </div>
-                        <div class="swiper-button-next"></div>
-                        <div class="swiper-button-prev"></div>
-                    </div>
-                    <div class="swiper thumb-swiper mt-2">
-                        <div class="swiper-wrapper" id="thumb-swiper-wrapper">
-                            <!-- Main product image thumbnail -->
-                            <div class="swiper-slide" data-image-type="product">
-                                <img src="{{ asset($product->image) }}" alt="{{ $product->name }}">
-                            </div>
-                            <!-- Product gallery thumbnails -->
-                            @foreach($product->galleries as $gallery)
-                                <div class="swiper-slide" data-image-type="gallery">
-                                    <img src="{{ asset($gallery->image) }}" alt="{{ $product->name }}">
-                                </div>
-                            @endforeach
-                            <!-- Variation image thumbnails (hidden by default) -->
-                            @if($product->has_variations)
-                                @foreach($product->variations as $variation)
-                                    @if($variation->image)
-                                        <div class="swiper-slide variation-thumb-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation" style="display: none;">
-                                            <img src="{{ asset($variation->image) }}" alt="{{ $variation->name }}">
-                                        </div>
-                                    @endif
-                                    @foreach($variation->galleries as $gallery)
-                                        <div class="swiper-slide variation-gallery-thumb-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation-gallery" style="display: none;">
-                                            <img src="{{ asset($gallery->image) }}" alt="{{ $variation->name }}">
-                                        </div>
+                                        <img src="{{ asset($gallery->image) }}" alt="{{ $variation->name }}" class="main-image variation-gallery-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation-gallery" style="display: none;">
                                     @endforeach
                                 @endforeach
                             @endif
                         </div>
                     </div>
-                    
                 </div>
             </div>
             <!-- Product Info -->
@@ -2016,15 +2361,15 @@
                     <h1>{{ $product->name }}</h1>
                     <div class="product-price mb-3">
                         @if(isset($product->discount) && $product->discount > 0)
-                            <span class="fw-bold text-primary fs-4">
-                                {{ number_format($product->discount, 2) }}৳
+                            <span class="fw-bold current-price">
+                                TK. {{ number_format($product->discount, 0) }}
                             </span>
-                            <span class="text-muted text-decoration-line-through ms-2">
-                                {{ number_format($product->price, 2) }}৳
+                            <span class="text-muted text-decoration-line-through ms-2 original-price">
+                                TK. {{ number_format($product->price, 0) }}
                             </span>
                         @else
-                            <span class="fw-bold text-primary fs-4">
-                                {{ number_format($product->price, 2) }}৳
+                            <span class="fw-bold current-price">
+                                TK. {{ number_format($product->price, 0) }}
                             </span>
                         @endif
                     </div>
@@ -2046,12 +2391,11 @@
                                 @endif
                             @endfor
                         </div>
+                        <span class="rating-text">{{ $avgRating }} | {{ $product->reviews->count() }} Reviews</span>
                     </div>
 
-                    @if ($product->short_desc)
-                    <div class="product-description">
-                        <p>{{ $product->short_desc }}</p>
-                    </div>
+                    @if (!empty($product->short_desc))
+                    <p class="mt-2 mb-3" style="color:#4b5563; font-size:14px; line-height:1.7;">{{ $product->short_desc }}</p>
                     @endif
 
                     @if($product->has_variations)
@@ -2085,21 +2429,14 @@
                     @endphp
 
                     <div class="variation-section mt-3">
-                        <div class="alert alert-info mb-3" role="alert">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Please select your preferred options below to add this item to cart.
-                        </div>
                         @foreach($attributeGroups as $attrId => $group)
-                            <div class="variation-group">
-                                <div class="d-flex align-items-center mb-2">
-                                    <strong class="me-2">{{ $group['name'] }}:</strong>
-                                    <span class="text-muted small" data-selected-label="attr-{{ $attrId }}">Choose {{ $group['name'] }}</span>
-                                </div>
-                                <div class="d-flex flex-wrap gap-2" data-attribute-id="{{ $attrId }}">
+                            <div class="product-info-section">
+                                <div class="section-label">{{ strtoupper($group['name']) }}:</div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap" data-attribute-id="{{ $attrId }}">
                                     @foreach($group['values'] as $valId => $val)
                                         @php
                                             $isColor = strtolower($group['name']) === 'color';
-                                            $buttonClass = $isColor ? 'btn btn-sm color-option' : 'btn btn-sm size-option';
+                                            $buttonClass = $isColor ? 'color-option' : 'size-option';
                                             $label = is_array($val) ? ($val['label'] ?? (string)$val) : (string)$val;
                                             $imgPath = is_array($val) ? ($val['image'] ?? null) : null;
                                             $colorCode = is_array($val) ? ($val['color_code'] ?? null) : null;
@@ -2123,8 +2460,30 @@
                                         @endif
                                     @endforeach
                                 </div>
+                                @if(false)
+                                <!-- stock inline moved to a single global container below -->
+                                @endif
                             </div>
                         @endforeach
+
+                        <!-- Inline stock display under SIZE group (shown only when size attribute exists) -->
+                        @php
+                            $hasSizeAttr = false;
+                            foreach ($attributeGroups as $ag) {
+                                if (strtolower($ag['name'] ?? '') === 'size') { $hasSizeAttr = true; break; }
+                            }
+                        @endphp
+                        @if($hasSizeAttr)
+                        <div class="mt-2" id="size-stock-inline" style="color:#111827; font-weight:600;"
+                             data-has-variations="{{ $product->has_variations ? '1' : '0' }}"
+                             data-initial-stock="{{ isset($product->available_stock) ? $product->available_stock : ($product->stock ?? 0) }}">
+                        </div>
+                        @endif
+
+                        <!-- Always keep a fallback container so stock can render even without SIZE attribute -->
+                        <div class="mt-2" id="inline-stock-display" style="color:#111827; font-weight:600;"></div>
+
+                        
 
                         <input type="hidden" id="selected-variation-id" value="">
                         <div id="selected-attribute-values" style="display:none;"></div>
@@ -2144,6 +2503,60 @@
                         </div>
                     </div>
                     @endif
+
+                    <!-- Make stock helper available before variation scripts -->
+                    <script>
+                        window.setInlineStock = function(qty) {
+                            var el = document.getElementById('size-stock-inline') || document.getElementById('inline-stock-display');
+                            if (!el) return;
+                            var n = (qty != null ? Number(qty) : NaN);
+                            if ((qty == null || isNaN(n)) && document.getElementById('selected-variation-stock')) {
+                                var raw = document.getElementById('selected-variation-stock').textContent || '';
+                                var m = raw.match(/(\d+)/);
+                                if (m) n = Number(m[1]);
+                            }
+                            if (!isNaN(n) && n > 0) {
+                                el.textContent = 'In stock: ' + n;
+                            } else if (!isNaN(n) && n === 0) {
+                                el.textContent = 'Out of stock';
+                            } else {
+                                el.textContent = '';
+                            }
+                        };
+
+                        // Keep inline stock in sync with any updates to the hidden summary text
+                        (function(){
+                            var src = document.getElementById('selected-variation-stock');
+                            if (!src) return;
+                            var sync = function(){
+                                var raw = src.textContent || '';
+                                var m = raw.match(/(\d+)/);
+                                if (m) { window.setInlineStock(Number(m[1])); }
+                            };
+                            try {
+                                var mo = new MutationObserver(function(){ sync(); });
+                                mo.observe(src, { characterData:true, childList:true, subtree:true });
+                                // one immediate sync in case resolve already happened
+                                sync();
+                            } catch (e) { /* noop */ }
+                        })();
+
+                        // Unified actions toggle for Add to Cart and Buy Now
+                        window.updateActionButtons = function(qty, isComplete) {
+                            var addBtn = document.querySelector('.btn-add-cart');
+                            var buyNowBtn = document.querySelector('.btn-buy-now');
+                            var n = (qty != null ? Number(qty) : NaN);
+                            var enable = (isComplete === true) && !isNaN(n) && n > 0;
+                            if (addBtn) {
+                                addBtn.disabled = !enable;
+                                if (addBtn.disabled) { addBtn.setAttribute('disabled','disabled'); } else { addBtn.removeAttribute('disabled'); }
+                            }
+                            if (buyNowBtn) {
+                                buyNowBtn.disabled = !enable;
+                                if (buyNowBtn.disabled) { buyNowBtn.setAttribute('disabled','disabled'); } else { buyNowBtn.removeAttribute('disabled'); }
+                            }
+                        };
+                    </script>
 
                     <!-- Variation Scripts - Moved here for AJAX compatibility -->
                         @if($product->has_variations)
@@ -2232,20 +2645,6 @@
                                     }
                                 };
                             })();
-                        
-                        // IMMEDIATE TEST - Run variation logic right away
-                        console.log('[VARIATION] Running immediate test...');
-                        var testBtns = document.querySelectorAll('.color-option, .size-option, .color-image-btn');
-                        console.log('[VARIATION] Found ' + testBtns.length + ' variation buttons immediately');
-                        
-                        // Add immediate click listener
-                        document.addEventListener('click', function(e) {
-                            console.log('[VARIATION] IMMEDIATE CLICK DETECTED on:', e.target);
-                            if (e.target.classList.contains('color-option') || e.target.classList.contains('size-option') || e.target.classList.contains('color-image-btn')) {
-                                console.log('[VARIATION] IMMEDIATE: Variation button clicked!');
-                                alert('Variation button clicked: ' + e.target.textContent);
-                            }
-                        });
                         
                         // Button state will be managed by the global cart handler
                         
@@ -2510,33 +2909,72 @@
 
                                 var resolved = tryResolveVariation(selectedMap);
                                 console.log('[VARIATION] resolved =', resolved);
+                                
+                                // Try to compute qty robustly and log it
+                                var _qty = (resolved && (resolved.available_stock != null ? resolved.available_stock : (resolved.stock != null ? resolved.stock : resolved.quantity)));
+                                
                                 var varIdEl = document.getElementById('selected-variation-id');
                                 var nameEl = document.getElementById('selected-variation-name');
                                 var priceEl = document.getElementById('selected-variation-price');
                                 var stockEl = document.getElementById('selected-variation-stock');
                                 var addBtn = document.querySelector('.btn-add-cart');
-                                if (resolved) {
+                                var buyNowBtn = document.querySelector('.btn-buy-now');
+
+                                // Require complete selection (all attributes chosen)
+                                var allAttributeIds = Object.keys(selectedMap).length;
+                                var totalAttributes = document.querySelectorAll('[data-attribute-id]').length;
+                                var isCompleteMatch = allAttributeIds === totalAttributes;
+
+                                if (resolved && isCompleteMatch) {
                                     if (varIdEl) {
                                         varIdEl.value = resolved.id;
-                                        console.log('[VARIATION] Set variation ID to:', resolved.id);
+                                    console.log('[VARIATION] Set variation ID to:', resolved.id);
+                                    
                                     }
                                     if (nameEl) nameEl.textContent = resolved.name || 'Selected';
                                     if (priceEl) priceEl.textContent = (resolved.price != null ? Number(resolved.price).toFixed(2) : '') + '৳';
                                     if (stockEl) stockEl.textContent = resolved.available_stock > 0 ? ('In stock: ' + resolved.available_stock) : 'Out of stock';
-                                    if (addBtn) { addBtn.disabled = resolved.available_stock <= 0; console.log('[VARIATION] add-to-cart disabled =', addBtn.disabled); }
+                                    // Update inline stock under SIZE options if present
+                                    var qty = (resolved.available_stock != null ? resolved.available_stock : (resolved.stock != null ? resolved.stock : resolved.quantity));
+                                    setInlineStock(qty);
+                                    if (addBtn) { 
+                                        addBtn.disabled = resolved.available_stock <= 0; 
+                                        if (addBtn.disabled) { addBtn.setAttribute('disabled', 'disabled'); } else { addBtn.removeAttribute('disabled'); }
+                                        console.log('[VARIATION] add-to-cart disabled =', addBtn.disabled); 
+                                    }
+                                    if (buyNowBtn) {
+                                        var disableBN = resolved.available_stock <= 0;
+                                        buyNowBtn.disabled = disableBN;
+                                        if (disableBN) { buyNowBtn.setAttribute('disabled', 'disabled'); } else { buyNowBtn.removeAttribute('disabled'); }
+                                    }
                                     
                                     // Switch to variation images
                                     switchToVariationImages(resolved);
                                     
+                                } else if (resolved && !isCompleteMatch) {
+                                    // Partial match: keep actions disabled and show guidance
+                                    if (varIdEl) { varIdEl.value = ''; }
+                                    if (nameEl) nameEl.textContent = 'Please select all options';
+                                    if (priceEl) priceEl.textContent = '—';
+                                    if (stockEl) stockEl.textContent = 'Select all options to see price and availability';
+                                    setInlineStock(null);
+                                    if (addBtn && hasVariations) { addBtn.disabled = true; addBtn.setAttribute('disabled', 'disabled'); }
+                                    if (buyNowBtn && hasVariations) { buyNowBtn.disabled = true; buyNowBtn.setAttribute('disabled', 'disabled'); }
+
+                                    // Still switch images to the partially matched variation
+                                    switchToVariationImages(resolved);
+
                                 } else {
                                     if (varIdEl) {
                                         varIdEl.value = '';
                                         console.log('[VARIATION] Cleared variation ID');
+                                        
                                     }
                                     if (nameEl) nameEl.textContent = 'Please select options above';
                                     if (priceEl) priceEl.textContent = '—';
                                     if (stockEl) stockEl.textContent = 'Select your preferences to see availability';
-                                    if (addBtn && hasVariations) { addBtn.disabled = true; }
+                                    if (addBtn && hasVariations) { addBtn.disabled = true; addBtn.setAttribute('disabled', 'disabled'); }
+                                    if (buyNowBtn && hasVariations) { buyNowBtn.disabled = true; buyNowBtn.setAttribute('disabled', 'disabled'); }
                                     
                                     // Show product images when no variation is selected
                                     switchToVariationImages(null);
@@ -2618,6 +3056,7 @@
                                 var totalAttributes = document.querySelectorAll('[data-attribute-id]').length;
                                 var isCompleteMatch = allAttributeIds === totalAttributes;
                                 
+                                
                                 if (resolved) {
                                     if (isCompleteMatch) {
                                         // Complete match - show full variation details and enable add to cart
@@ -2628,7 +3067,9 @@
                                         if (nameEl) nameEl.textContent = resolved.name || 'Selected';
                                         if (priceEl) priceEl.textContent = (resolved.price != null ? Number(resolved.price).toFixed(2) : '') + '৳';
                                         if (stockEl) stockEl.textContent = resolved.available_stock > 0 ? ('In stock: ' + resolved.available_stock) : 'Out of stock';
-                                        if (addBtn) { addBtn.disabled = resolved.available_stock <= 0; console.log('[VARIATION] add-to-cart disabled =', addBtn.disabled); }
+                                        // Keep inline stock in sync for visible UI
+                                        setInlineStock(resolved.available_stock);
+                                        window.updateActionButtons(resolved.available_stock, true);
                                     } else {
                                         // Partial match - show images but keep add to cart disabled
                                         if (varIdEl) {
@@ -2638,7 +3079,8 @@
                                         if (nameEl) nameEl.textContent = 'Please select all options';
                                         if (priceEl) priceEl.textContent = '—';
                                         if (stockEl) stockEl.textContent = 'Select all options to see price and availability';
-                                        if (addBtn && hasVariations) { addBtn.disabled = true; }
+                                        setInlineStock(null);
+                                        window.updateActionButtons(null, false);
                                     }
                                     
                                     // Switch to variation images for both complete and partial matches
@@ -2652,7 +3094,9 @@
                                     if (nameEl) nameEl.textContent = 'Please select options above';
                                     if (priceEl) priceEl.textContent = '—';
                                     if (stockEl) stockEl.textContent = 'Select your preferences to see availability';
+                                    setInlineStock(null);
                                     if (addBtn && hasVariations) { addBtn.disabled = true; }
+                                    if (buyNowBtn && hasVariations) { buyNowBtn.disabled = true; }
                                     
                                     // Show product images when no variation is selected
                                     switchToVariationImages(null);
@@ -2665,58 +3109,67 @@
                     </script>
                     @endif
 
-                    <div class="quantity-selector align-items-center mt-4">
-                        <label for="quantity">Quantity:</label>
-                        <div class="input-group" style="width: 135px; flex-wrap: nowrap;">
-                            <button class="btn nav-button border py-1 px-3 quantity-btn" type="button"
-                                onclick="changeQuantity(-1)">-</button>
-                            <input type="number" class="form-control text-center ps-3 pe-0 py-0 w-100" id="quantityInput"
-                                name="quantity" value="1" min="1" max="10">
-                            <button class="btn nav-button border py-1 px-3 quantity-btn" type="button"
-                                onclick="changeQuantity(1)">+</button>
+                    <div class="purchase-row">
+                        <div class="quantity-selector">
+                            <div class="quantity-controls">
+                                <button class="quantity-btn" type="button" onclick="changeQuantity(-1)">-</button>
+                                <input type="number" class="quantity-input" id="quantityInput" name="quantity" value="1" min="1" max="10">
+                                <button class="quantity-btn" type="button" onclick="changeQuantity(1)">+</button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="action-buttons">
                         @php
                             $hasStock = $product->hasStock();
                         @endphp
-                        <button class="btn-add-cart" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-has-stock="{{ $hasStock ? 'true' : 'false' }}"
-                                {{ !$hasStock ? 'disabled' : '' }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" id="Outline" viewBox="0 0 24 24" fill="#fff" width="14"
-                                height="14">
-                                <path
-                                    d="M22.713,4.077A2.993,2.993,0,0,0,20.41,3H4.242L4.2,2.649A3,3,0,0,0,1.222,0H1A1,1,0,0,0,1,2h.222a1,1,0,0,1,.993.883l1.376,11.7A5,5,0,0,0,8.557,19H19a1,1,0,0,0,0-2H8.557a3,3,0,0,1-2.82-2h11.92a5,5,0,0,0,4.921-4.113l.785-4.354A2.994,2.994,0,0,0,22.713,4.077ZM21.4,6.178l-.786,4.354A3,3,0,0,1,17.657,13H5.419L4.478,5H20.41A1,1,0,0,1,21.4,6.178Z">
-                                </path>
-                                <circle cx="7" cy="22" r="2"></circle>
-                                <circle cx="17" cy="22" r="2"></circle>
-                            </svg> {{ $hasStock ? 'Add to Cart' : 'Out of Stock' }}
+                        <button class="btn btn-add-cart" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-has-stock="{{ $hasStock ? 'true' : 'false' }}"
+                                {{ (!$hasStock || $product->has_variations) ? 'disabled' : '' }}>
+                            {{ $hasStock ? 'Add To Cart' : 'Out of Stock' }}
                         </button>
 
-                        <form action="{{ url('/buy-now') }}/{{ $product->id }}" method="POST">
+                        <form action="{{ url('/buy-now') }}/{{ $product->id }}" method="POST" style="display:inline-block; margin:0;">
                             @csrf
-                            <button type="submit" class="btn btn-outline-custom" style="white-space: nowrap; font-size: 14px;" 
-                                    {{ !$hasStock ? 'disabled' : '' }}>
+                            <button type="submit" class="btn btn-buy-now" {{ (!$hasStock || $product->has_variations) ? 'disabled' : '' }}>
                                 {{ $hasStock ? 'Buy Now' : 'Out of Stock' }}
                             </button>
                         </form>
+                    </div>
 
-                        <button class="btn btn-outline-custom border d-flex" onclick="addToWishlist()">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="var(--primary-blue)" id="Outline"
-                                viewBox="0 0 24 24" width="20" height="20">
-                                <path
-                                    d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z" />
-                            </svg>
-                        </button>
-                        <a href="https://wa.me/880198693458555?text={{ route('product.details', $product->slug) }}
-    " target="_blank" class="btn btn-outline-custom border d-flex">
-                            <svg stroke="currentColor" fill="green" stroke-width="0" viewBox="0 0 448 512" height="20"
-                                width="20" xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z">
-                                </path>
-                            </svg>
+                    <!-- Quick Chat Section -->
+                    <div class="messenger-section">
+                        <div class="messenger-title">
+                            <i class="fas fa-comments"></i>
+                            <span>Quick Chat</span>
+                        </div>
+                        <div class="messenger-buttons">
+                            @if(!empty($settings->whatsapp_url))
+                                <a href="{{ str_starts_with($settings->whatsapp_url, 'http') ? $settings->whatsapp_url : 'https://' . $settings->whatsapp_url }}" target="_blank" class="messenger-btn whatsapp-btn" title="Chat on WhatsApp">
+                                    <i class="fab fa-whatsapp"></i>
+                                    <span>WhatsApp</span>
+                                </a>
+                            @endif
+                            
+                            @if(!empty($settings->facebook_url))
+                                <a href="javascript:void(0)" onclick="openFacebookMessenger()" class="messenger-btn messenger-fb-btn" title="Chat on Facebook Messenger">
+                                    <i class="fab fa-facebook-messenger"></i>
+                                    <span>Messenger</span>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="wishlist-share">
+                        <a href="#" class="wishlist-link" onclick="addToWishlist()">
+                            <i class="fas fa-heart"></i>
+                            ADD TO WISHLIST
                         </a>
+                        <div class="share-section">
+                            <span class="share-label">Share To:</span>
+                            <div class="share-icons">
+                                <a href="#" onclick="shareToFacebook()" class="share-icon" title="Share on Facebook">
+                                    <i class="fab fa-facebook-f"></i>
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3001,6 +3454,11 @@
     <script>
         console.log('[PD] Product Details page script running');
         
+        // Debug helper removed for production
+        window.VDEBUG = { log: function(){}, enable:function(){}, disable:function(){} };
+
+        // Use earlier-defined window.setInlineStock
+
         // Global quantity control function
         window.changeQuantity = function(delta) {
             console.log('[QTY] changeQuantity called with delta:', delta);
@@ -3096,6 +3554,84 @@
             });
         }
 
+        // Social Media Sharing Functions
+        function shareToFacebook() {
+            const url = encodeURIComponent(window.location.href);
+            const title = encodeURIComponent('{{ $product->name }}');
+            const description = encodeURIComponent('{{ strip_tags(substr($product->description, 0, 200)) }}...');
+            const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${title}%20-%20${description}`;
+            window.open(shareUrl, '_blank', 'width=600,height=400');
+        }
+
+        function shareToTwitter() {
+            const url = encodeURIComponent(window.location.href);
+            const title = encodeURIComponent('{{ $product->name }}');
+            const shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`;
+            window.open(shareUrl, '_blank', 'width=600,height=400');
+        }
+
+        function shareToWhatsApp() {
+            const url = encodeURIComponent(window.location.href);
+            const title = encodeURIComponent('{{ $product->name }}');
+            const shareUrl = `https://wa.me/?text=${title}%20${url}`;
+            window.open(shareUrl, '_blank');
+        }
+
+        // New Messenger System Functions
+
+        function openFacebookMessenger() {
+            const productName = encodeURIComponent('{{ $product->name }}');
+            const productUrl = encodeURIComponent(window.location.href);
+            const productPrice = '{{ $product->sale_price ? number_format($product->sale_price, 2) : number_format($product->price, 2) }}';
+            const currency = '{{ $settings->currency ?? "USD" }}';
+            
+            let message = `Hi! I'm interested in this product: ${productName} (${currency} ${productPrice}). Could you provide more information? ${productUrl}`;
+            const encodedMessage = encodeURIComponent(message);
+            
+            // For now, let's use a simple approach - open Messenger directly
+            // You can replace 'your_page_username' with your actual Facebook page username
+            const pageUsername = 'your_page_username'; // This should be set in your Facebook URL setting
+            
+            // Try to get page username from settings
+            const facebookUrl = `{{ $settings->facebook_url ?? '' }}`;
+            let extractedUsername = null;
+            
+            if (facebookUrl) {
+                // Extract username from various Facebook URL formats
+                if (facebookUrl.includes('facebook.com/')) {
+                    const match = facebookUrl.match(/facebook\.com\/([^\/\?]+)/);
+                    if (match && match[1]) {
+                        extractedUsername = match[1];
+                    }
+                } else if (facebookUrl.includes('m.me/')) {
+                    const match = facebookUrl.match(/m\.me\/([^\/\?]+)/);
+                    if (match && match[1]) {
+                        extractedUsername = match[1];
+                    }
+                }
+            }
+            
+            const finalUsername = extractedUsername || pageUsername;
+            
+            if (finalUsername && finalUsername !== 'your_page_username') {
+                // Open Messenger with the specific page
+                window.open(`https://m.me/${finalUsername}?ref=${encodedMessage}`, '_blank');
+            } else {
+                // Fallback: open general Messenger with message
+                window.open(`https://m.me/?text=${encodedMessage}`, '_blank');
+            }
+        }
+
+        
+
+        function shareToLinkedIn() {
+            const url = encodeURIComponent(window.location.href);
+            const title = encodeURIComponent('{{ $product->name }}');
+            const shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+            window.open(shareUrl, '_blank', 'width=600,height=400');
+        }
+
+
         // Simple and robust image gallery initialization
         function initImageGallery() {
             console.log('[GALLERY] Starting initialization...');
@@ -3148,7 +3684,7 @@
             });
 
             // Add click handlers for thumbnails
-            var thumbSlides = document.querySelectorAll('.thumb-swiper .swiper-slide');
+            var thumbSlides = document.querySelectorAll('.thumb-item');
             console.log('[GALLERY] Adding click handlers to', thumbSlides.length, 'thumbnails');
             
             thumbSlides.forEach(function(slide, index) {
@@ -3286,12 +3822,45 @@
         // Make toggleWishlist globally available
         window.toggleWishlist = toggleWishlist;
 
+        // Thumbnail gallery functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const thumbItems = document.querySelectorAll('.thumb-item');
+            const mainImages = document.querySelectorAll('.main-image');
+            
+            thumbItems.forEach(function(thumb, index) {
+                thumb.addEventListener('click', function() {
+                    // Remove active class from all thumbs
+                    thumbItems.forEach(t => t.classList.remove('active'));
+                    // Add active class to clicked thumb
+                    this.classList.add('active');
+                    
+                    // Hide all main images
+                    mainImages.forEach(img => img.style.display = 'none');
+                    
+                    // Show corresponding main image
+                    const imageType = this.getAttribute('data-image-type');
+                    const mainImage = document.querySelector(`.main-image[data-image-type="${imageType}"]`);
+                    if (mainImage) {
+                        mainImage.style.display = 'block';
+                    }
+                });
+            });
+        });
+
         // Test elements on page load
         setTimeout(function() {
             var qtyInput = document.getElementById('quantityInput');
             var qtyButtons = document.querySelectorAll('.quantity-btn');
             var gallery = document.querySelector('.product-gallery');
-            var thumbSlides = document.querySelectorAll('.thumb-swiper .swiper-slide');
+            var thumbSlides = document.querySelectorAll('.thumb-item');
+            // Initialize inline stock for simple products (no variations)
+            try {
+                var stockInline = document.getElementById('size-stock-inline') || document.getElementById('inline-stock-display');
+                if (stockInline && stockInline.getAttribute('data-has-variations') === '0') {
+                    var initial = parseInt(stockInline.getAttribute('data-initial-stock') || '0', 10);
+                    setInlineStock(initial);
+                }
+            } catch (e) { console.warn('Stock init failed', e); }
             
             console.log('[PD] Elements found:');
             console.log('[PD] - Quantity input:', !!qtyInput);
@@ -3595,6 +4164,13 @@
                     body: data.toString()
                 }).then(function(res){
                     console.log('[CART] Response status:', res.status);
+                    
+                    // Handle authentication redirect (401 status)
+                    if (res.status === 401) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    
                     if (!res.ok) {
                         throw new Error('HTTP ' + res.status + ': ' + res.statusText);
                     }
@@ -3607,12 +4183,14 @@
                         showToast((response.message || 'Product added to cart successfully!'), 'success');
                         if (typeof updateCartCount === 'function') { updateCartCount(); }
                         if (typeof updateCartQtyBadge === 'function') { updateCartQtyBadge(); }
-                    } else {
-                        showToast((response && response.message) || 'Failed to add product to cart', 'error');
+                    } else if (response && response.redirect) {
+                        // Check if response contains redirect URL (for authentication)
+                        window.location.href = response.redirect;
                     }
+                    // No error popup needed - redirect handles authentication
                 }).catch(function(error){
                     console.error('[CART] network/error:', error);
-                    showToast('Failed to add product to cart: ' + error.message, 'error');
+                    // No error popup needed - redirect handles authentication
                 }).finally(function(){
                     btnEl.disabled = false;
                     btnEl.removeAttribute('data-processing');

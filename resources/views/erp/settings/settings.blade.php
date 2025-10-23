@@ -42,6 +42,11 @@
                                         <i class="fas fa-share-alt me-2"></i>Social Media
                                     </button>
                                 </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="smtp-tab" data-bs-toggle="tab" data-bs-target="#smtp" type="button" role="tab" aria-controls="smtp" aria-selected="false">
+                                        <i class="fas fa-envelope me-2"></i>SMTP Email
+                                    </button>
+                                </li>
                             </ul>
                         </div>
 
@@ -189,6 +194,104 @@
                                                 <div class="input-group">
                                                     <span class="input-group-text">https://</span>
                                                     <input type="text" name="instagram_url" class="form-control" placeholder="instagram.com/yourusername" value="{{ str_replace('https://', '', $settings->instagram_url ?? '') }}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fab fa-whatsapp text-success me-2"></i>WhatsApp URL
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">https://</span>
+                                                    <input type="text" name="whatsapp_url" class="form-control" placeholder="wa.me/1234567890" value="{{ str_replace('https://', '', $settings->whatsapp_url ?? '') }}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SMTP Email Tab -->
+                                    <div class="tab-pane fade" id="smtp" role="tabpanel" aria-labelledby="smtp-tab">
+                                        <div class="row g-4">
+                                            <div class="col-12">
+                                                <h5 class="fw-semibold text-dark mb-3">SMTP Email Configuration</h5>
+                                                <p class="text-muted">Configure your email server settings for sending emails</p>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fas fa-server text-primary me-2"></i>SMTP Host
+                                                </label>
+                                                <input type="text" name="smtp_host" class="form-control" placeholder="smtp.gmail.com" value="{{ $settings->smtp_host ?? 'smtp.gmail.com' }}">
+                                                <small class="text-muted">e.g., smtp.gmail.com, smtp.outlook.com</small>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fas fa-plug text-success me-2"></i>SMTP Port
+                                                </label>
+                                                <input type="number" name="smtp_port" class="form-control" placeholder="587" value="{{ $settings->smtp_port ?? '587' }}">
+                                                <small class="text-muted">Common ports: 587 (TLS), 465 (SSL), 25</small>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fas fa-user text-info me-2"></i>SMTP Username
+                                                </label>
+                                                <input type="email" name="smtp_username" class="form-control" placeholder="your-email@gmail.com" value="{{ $settings->smtp_username ?? '' }}">
+                                                <small class="text-muted">Your email address</small>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fas fa-lock text-warning me-2"></i>SMTP Password
+                                                </label>
+                                                <input type="password" name="smtp_password" class="form-control" placeholder="Your email password or app password" value="{{ $settings->smtp_password ?? '' }}">
+                                                <small class="text-muted">Use app password for Gmail</small>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fas fa-shield-alt text-danger me-2"></i>Encryption
+                                                </label>
+                                                <select name="smtp_encryption" class="form-control">
+                                                    <option value="tls" {{ ($settings->smtp_encryption ?? 'tls') == 'tls' ? 'selected' : '' }}>TLS (Recommended)</option>
+                                                    <option value="ssl" {{ ($settings->smtp_encryption ?? '') == 'ssl' ? 'selected' : '' }}>SSL</option>
+                                                    <option value="" {{ ($settings->smtp_encryption ?? '') == '' ? 'selected' : '' }}>None</option>
+                                                </select>
+                                                <small class="text-muted">Choose encryption method</small>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fas fa-envelope text-primary me-2"></i>From Address
+                                                </label>
+                                                <input type="email" name="smtp_from_address" class="form-control" placeholder="noreply@yourcompany.com" value="{{ $settings->smtp_from_address ?? '' }}">
+                                                <small class="text-muted">Email address for outgoing emails</small>
+                                            </div>
+                                            
+                                            <div class="col-12">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fas fa-tag text-secondary me-2"></i>From Name
+                                                </label>
+                                                <input type="text" name="smtp_from_name" class="form-control" placeholder="Your Company Name" value="{{ $settings->smtp_from_name ?? '' }}">
+                                                <small class="text-muted">Display name for outgoing emails</small>
+                                            </div>
+                                            
+                                            <!-- SMTP Test Section -->
+                                            <div class="col-12">
+                                                <div class="border-top pt-4">
+                                                    <h6 class="fw-semibold text-dark mb-3">Test SMTP Configuration</h6>
+                                                    <div class="row g-3">
+                                                        <div class="col-md-8">
+                                                            <label class="form-label fw-medium">Test Email Address</label>
+                                                            <input type="email" id="testEmail" class="form-control" placeholder="test@example.com">
+                                                        </div>
+                                                        <div class="col-md-4 d-flex align-items-end">
+                                                            <button type="button" class="btn btn-outline-primary w-100" onclick="testSmtp()">
+                                                                <i class="fas fa-paper-plane me-2"></i>Test SMTP
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div id="smtpTestResult" class="mt-3"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -342,6 +445,51 @@
                 }
             });
         }
+        
+        // SMTP Test Function
+        window.testSmtp = function() {
+            const testEmail = document.getElementById('testEmail').value;
+            const resultDiv = document.getElementById('smtpTestResult');
+            
+            if (!testEmail) {
+                resultDiv.innerHTML = '<div class="alert alert-warning">Please enter a test email address</div>';
+                return;
+            }
+            
+            // Get form data
+            const formData = new FormData();
+            formData.append('test_email', testEmail);
+            formData.append('smtp_host', document.querySelector('input[name="smtp_host"]').value);
+            formData.append('smtp_port', document.querySelector('input[name="smtp_port"]').value);
+            formData.append('smtp_username', document.querySelector('input[name="smtp_username"]').value);
+            formData.append('smtp_password', document.querySelector('input[name="smtp_password"]').value);
+            formData.append('smtp_encryption', document.querySelector('select[name="smtp_encryption"]').value);
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+            
+            // Show loading state
+            resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Testing SMTP configuration...</div>';
+            
+            // Send test request
+            fetch('{{ route("admin.test.smtp") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    resultDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>' + data.message + '</div>';
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>' + data.message + '</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>An error occurred while testing SMTP configuration.</div>';
+            });
+        };
     });
 </script>
 @endpush

@@ -6,11 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductServiceCategory;
 use App\Models\Vlog;
+use App\Models\GeneralSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Wishlist;
 use App\Models\AdditionalPage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ContactMail;
+use Illuminate\Support\Facades\Validator;
+use App\Services\SmtpConfigService;
 
 class PageController extends Controller
 {
@@ -275,9 +280,12 @@ class PageController extends Controller
                 ]
             ]);
 
+            // Get general settings for social media links
+            $settings = GeneralSetting::first();
+            
             // Add cache-busting headers to prevent caching issues
             $seoProduct = $product; // ensure header receives the exact product for meta tags
-            $response = response()->view('ecommerce.productDetails', compact('product','relatedProducts','pageTitle','seoProduct'));
+            $response = response()->view('ecommerce.productDetails', compact('product','relatedProducts','pageTitle','seoProduct','settings'));
             $response->header('Cache-Control', 'no-cache, no-store, must-revalidate, private');
             $response->header('Pragma', 'no-cache');
             $response->header('Expires', '0');
@@ -340,6 +348,67 @@ class PageController extends Controller
         $pageTitle = 'Contact Us';
         
         return view('ecommerce.contact',compact('pageTitle'));
+    }
+
+    public function submitContact(Request $request)
+    {
+        // Validate the form data
+        $validator = Validator::make($request->all(), [
+            'full_name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string|max:2000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please fill in all required fields correctly.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Configure SMTP from admin settings
+            SmtpConfigService::configureFromSettings();
+            
+            // Prepare contact data
+            $contactData = [
+                'full_name' => $request->input('full_name'),
+                'phone_number' => $request->input('phone_number'),
+                'subject' => $request->input('subject'),
+                'message' => $request->input('message'),
+                'submitted_at' => now(),
+            ];
+
+            // Get the contact email from general settings
+            $contactEmail = SmtpConfigService::getContactEmail();
+
+            // Send email
+            Mail::to($contactEmail)->send(new ContactMail($contactData));
+
+            Log::info('Contact form submitted successfully', [
+                'name' => $contactData['full_name'],
+                'phone' => $contactData['phone_number'],
+                'subject' => $contactData['subject']
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Thank you for your message! We will get back to you soon.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Contact form submission failed', [
+                'error' => $e->getMessage(),
+                'data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Sorry, there was an error sending your message. Please try again later.'
+            ], 500);
+        }
     }
 
     public function additionalPage($slug, Request $request)

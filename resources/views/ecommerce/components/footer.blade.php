@@ -12,16 +12,19 @@
                 </p>
                 <div class="social-links">
                     @if($general_settings->facebook_url)
-                    <a href="{{ $general_settings->facebook_url }}" target="_blank"><i class="fab fa-facebook-f"></i></a>
+                    <a href="{{ str_starts_with($general_settings->facebook_url, 'http') ? $general_settings->facebook_url : 'https://' . $general_settings->facebook_url }}" target="_blank"><i class="fab fa-facebook-f"></i></a>
                     @endif
                     @if($general_settings->x_url)
-                    <a href="{{ $general_settings->x_url }}" target="_blank"><i class="fab fa-twitter"></i></a>
+                    <a href="{{ str_starts_with($general_settings->x_url, 'http') ? $general_settings->x_url : 'https://' . $general_settings->x_url }}" target="_blank"><i class="fab fa-twitter"></i></a>
                     @endif
                     @if($general_settings->instagram_url)
-                    <a href="{{ $general_settings->instagram_url }}" target="_blank"><i class="fab fa-instagram"></i></a>
+                    <a href="{{ str_starts_with($general_settings->instagram_url, 'http') ? $general_settings->instagram_url : 'https://' . $general_settings->instagram_url }}" target="_blank"><i class="fab fa-instagram"></i></a>
                     @endif
                     @if($general_settings->youtube_url)
-                    <a href="{{ $general_settings->youtube_url }}" target="_blank"><i class="fab fa-youtube"></i></a>
+                    <a href="{{ str_starts_with($general_settings->youtube_url, 'http') ? $general_settings->youtube_url : 'https://' . $general_settings->youtube_url }}" target="_blank"><i class="fab fa-youtube"></i></a>
+                    @endif
+                    @if($general_settings->whatsapp_url)
+                    <a href="{{ str_starts_with($general_settings->whatsapp_url, 'http') ? $general_settings->whatsapp_url : 'https://' . $general_settings->whatsapp_url }}" target="_blank"><i class="fab fa-whatsapp"></i></a>
                     @endif
                 </div>
             </div>

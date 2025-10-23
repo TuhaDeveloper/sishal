@@ -20,5 +20,14 @@ class GeneralSetting extends Model
         'x_url',
         'youtube_url',
         'instagram_url',
+        'whatsapp_url',
+        'telegram_username',
+        'smtp_host',
+        'smtp_port',
+        'smtp_username',
+        'smtp_password',
+        'smtp_encryption',
+        'smtp_from_address',
+        'smtp_from_name',
     ];
 }
