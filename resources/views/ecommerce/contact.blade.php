@@ -117,7 +117,11 @@
             <!-- Right: Support Image -->
             <div class="col-lg-5">
                 <div class="h-100 w-100 rounded-3 overflow-hidden shadow-sm d-flex align-items-center justify-content-center" style="background:#f7f8fb;">
-                    <img src="{{ asset('public/static/default-site-icon.webp') }}" alt="Customer Support" class="img-fluid" style="object-fit:cover; max-height: 520px;">
+                    @if(isset($general_settings->support_image) && $general_settings->support_image)
+                        <img src="{{ asset($general_settings->support_image) }}" alt="Customer Support" class="img-fluid" style="object-fit:cover; max-height: 520px;">
+                    @else
+                        <img src="{{ asset('public/static/customer-support.jpg') }}" alt="Customer Support" class="img-fluid" style="object-fit:cover; max-height: 520px;">
+                    @endif
                 </div>
             </div>
         </div>

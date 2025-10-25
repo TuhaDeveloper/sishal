@@ -20,12 +20,55 @@ class ProfileController extends Controller
     public function edit(Request $request): View
     {
         $pageTitle = 'My Profile';
-        $orders = Order::where('user_id',auth()->id())->paginate(5);
-        $services = Service::where('user_id',auth()->id())->paginate(5);
+        $user = $request->user();
+        
+        // Get all orders for counting (not paginated)
+        $allOrders = Order::where('user_id', $user->id)->get();
+        
+        // Get paginated orders for display with optional filtering
+        $ordersQuery = Order::where('user_id', $user->id);
+        
+        // Apply status filter if provided
+        if ($request->filled('status') && $request->status !== 'all') {
+            $ordersQuery->where('status', $request->status);
+        }
+        
+        $orders = $ordersQuery->orderBy('created_at', 'desc')->paginate(5);
+        $services = Service::where('user_id', $user->id)->paginate(5);
 
         return view('ecommerce.myprofile', [
-            'user' => $request->user(),
-        ], compact('pageTitle', 'orders', 'services'));
+            'user' => $user,
+        ], compact('pageTitle', 'orders', 'services', 'allOrders'));
+    }
+
+    /**
+     * Filter orders via AJAX
+     */
+    public function filterOrders(Request $request)
+    {
+        $user = $request->user();
+        
+        // Get all orders for counting (not paginated)
+        $allOrders = Order::where('user_id', $user->id)->get();
+        
+        // Get paginated orders for display with optional filtering
+        $ordersQuery = Order::where('user_id', $user->id);
+        
+        // Apply status filter if provided
+        if ($request->filled('status') && $request->status !== 'all') {
+            $ordersQuery->where('status', $request->status);
+        }
+        
+        $orders = $ordersQuery->orderBy('created_at', 'desc')->paginate(5);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('ecommerce.partials.orders-list', compact('orders', 'allOrders'))->render(),
+                'pagination' => view('ecommerce.partials.orders-pagination', compact('orders'))->render()
+            ]);
+        }
+
+        return redirect()->route('profile.edit', ['tab' => 'orders', 'status' => $request->status]);
     }
 
     /**

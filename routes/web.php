@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/request-service', [ServiceController::class, 'submitRequest'])->name('service.request.submit');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile/filter-orders', [ProfileController::class, 'filterOrders'])->name('profile.filter.orders');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 

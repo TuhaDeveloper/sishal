@@ -19,7 +19,9 @@
                 <div class="product-image-container">
                     <img src="{{$product->image ? $product->image : '/default-product.png'}}"
                         class="product-image"
-                        alt="{{ $product->name }}">
+                        alt="{{ $product->name }}"
+                        loading="lazy"
+                        onerror="this.src='/static/default-product.png'">
                 </div>
                 <div class="product-info">
                     <a href="{{ route('product.details', $product->slug) }}" class="product-title"
@@ -27,8 +29,8 @@
                     <p class="product-description">{{$product->short_desc ? $product->short_desc : ''}}</p>
                     <div class="product-meta" style="margin-top:6px;">
                         @php
-                            $avgRating = $product->averageRating();
-                            $totalReviews = $product->totalReviews();
+                            $avgRating = $product->avg_rating ?? 0;
+                            $totalReviews = $product->total_reviews ?? 0;
                         @endphp
                         <div class="stars" aria-label="{{ $avgRating }} out of 5">
                             @for ($i = 1; $i <= 5; $i++)
@@ -56,7 +58,7 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center gap-2">
                         @php
-                            $hasStock = $product->hasStock();
+                            $hasStock = $product->has_stock ?? false;
                         @endphp
                         <button class="btn-add-cart" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-has-stock="{{ $hasStock ? 'true' : 'false' }}"
                                 {{ !$hasStock ? 'disabled' : '' }}><svg

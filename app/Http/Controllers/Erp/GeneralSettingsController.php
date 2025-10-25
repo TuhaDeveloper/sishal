@@ -39,6 +39,7 @@ class GeneralSettingsController extends Controller
             'whatsapp_url' => 'nullable|string|max:255',
             'site_logo' => 'nullable|image|mimes:jpeg,png,jpg,svg,webp|max:2048',
             'site_favicon' => 'nullable|image|mimes:jpeg,png,ico,webp|max:1024',
+            'support_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'smtp_host' => 'nullable|string|max:255',
             'smtp_port' => 'nullable|integer|min:1|max:65535',
             'smtp_username' => 'nullable|email|max:255',
@@ -77,6 +78,20 @@ class GeneralSettingsController extends Controller
             $faviconName = uniqid('favicon_') . '.' . $faviconFile->getClientOriginalExtension();
             $faviconFile->move(public_path('uploads/settings'), $faviconName);
             $validated['site_favicon'] = 'uploads/settings/' . $faviconName;
+        }
+
+        // Handle support image upload
+        if ($request->hasFile('support_image')) {
+            if ($settings->support_image && file_exists(public_path($settings->support_image))) {
+                @unlink(public_path($settings->support_image));
+            }
+            if (!file_exists(public_path('uploads/settings'))) {
+                mkdir(public_path('uploads/settings'), 0777, true);
+            }
+            $supportImageFile = $request->file('support_image');
+            $supportImageName = uniqid('support_') . '.' . $supportImageFile->getClientOriginalExtension();
+            $supportImageFile->move(public_path('uploads/settings'), $supportImageName);
+            $validated['support_image'] = 'uploads/settings/' . $supportImageName;
         }
 
         // Ensure social media URLs have proper protocol

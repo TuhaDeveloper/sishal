@@ -18,6 +18,92 @@ use Illuminate\Support\Str;
 class ProductVariationController extends Controller
 {
     /**
+     * Sanitize filename by removing special characters
+     */
+    private function sanitizeFilename($filename)
+    {
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+        $sanitizedName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $nameWithoutExt);
+        return $sanitizedName . '.' . $extension;
+    }
+
+    /**
+     * Custom file validation that handles special characters in filenames
+     */
+    private function validateFiles($request)
+    {
+        $errors = [];
+        
+        \Log::info('Starting custom file validation');
+        
+        // Validate main image
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            \Log::info('Validating main image', [
+                'original_name' => $image->getClientOriginalName(),
+                'is_valid' => $image->isValid(),
+                'error_message' => $image->getErrorMessage(),
+                'mime_type' => $image->getMimeType(),
+                'size' => $image->getSize()
+            ]);
+            
+            if (!$image->isValid()) {
+                $errors['image'] = ['The main image is invalid: ' . $image->getErrorMessage()];
+            } else {
+                // Check file type
+                $allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/svg+xml', 'image/webp'];
+                if (!in_array($image->getMimeType(), $allowedMimes)) {
+                    $errors['image'] = ['The main image must be a file of type: jpeg, png, jpg, gif, svg, webp.'];
+                }
+                
+                // Check file size (2MB = 2048KB)
+                if ($image->getSize() > 2048 * 1024) {
+                    $errors['image'] = ['The main image may not be greater than 2MB.'];
+                }
+            }
+        }
+        
+        // Validate gallery images
+        if ($request->hasFile('gallery')) {
+            foreach ($request->file('gallery') as $index => $galleryImage) {
+                \Log::info('Validating gallery image', [
+                    'index' => $index,
+                    'original_name' => $galleryImage->getClientOriginalName(),
+                    'is_valid' => $galleryImage->isValid(),
+                    'error_message' => $galleryImage->getErrorMessage(),
+                    'mime_type' => $galleryImage->getMimeType(),
+                    'size' => $galleryImage->getSize()
+                ]);
+                
+                if (!$galleryImage->isValid()) {
+                    $errors["gallery.{$index}"] = ['Gallery image ' . ($index + 1) . ' is invalid: ' . $galleryImage->getErrorMessage()];
+                } else {
+                    // Check file type
+                    $allowedMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/svg+xml', 'image/webp'];
+                    if (!in_array($galleryImage->getMimeType(), $allowedMimes)) {
+                        $errors["gallery.{$index}"] = ['Gallery image ' . ($index + 1) . ' must be a file of type: jpeg, png, jpg, gif, svg, webp.'];
+                    }
+                    
+                    // Check file size (2MB = 2048KB)
+                    if ($galleryImage->getSize() > 2048 * 1024) {
+                        $errors["gallery.{$index}"] = ['Gallery image ' . ($index + 1) . ' may not be greater than 2MB.'];
+                    }
+                }
+            }
+        }
+        
+        \Log::info('File validation completed', ['errors' => $errors]);
+        
+        if (!empty($errors)) {
+            throw new \Illuminate\Validation\ValidationException(
+                validator([], []),
+                $errors
+            );
+        }
+    }
+
+    /**
      * Build a consistent variation name from selected attribute value IDs.
      */
     private function buildVariationName(array $attributeValueIds): string
@@ -138,19 +224,19 @@ class ProductVariationController extends Controller
             }
         }
 
+        // Custom validation for files with special characters
+        $this->validateFiles($request);
+        
         $request->validate([
             'sku' => 'required|string',
             'name' => 'nullable|string|max:255',
             'price' => 'nullable|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
             'is_default' => 'boolean',
             'status' => 'required|in:active,inactive',
             'attributes' => 'required|array',
             'attribute_values' => 'required|array',
-            'gallery' => 'nullable|array',
-            'gallery.*' => 'image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
         ]);
 
         // Check for potential SKU conflicts before processing
@@ -216,9 +302,43 @@ class ProductVariationController extends Controller
             $uploadedImagePath = null;
             if ($request->hasFile('image')) {
                 $image = $request->file('image');
-                $imageName = time() . '_' . $image->getClientOriginalName();
-                $image->move(public_path('uploads/products/variations'), $imageName);
-                $uploadedImagePath = 'uploads/products/variations/' . $imageName;
+                $originalName = $image->getClientOriginalName();
+                $sanitizedFilename = $this->sanitizeFilename($originalName);
+                $imageName = time() . '_' . $sanitizedFilename;
+                
+                try {
+                    // Check if file is valid
+                    if (!$image->isValid()) {
+                        throw new \Exception('Invalid file: ' . $image->getErrorMessage());
+                    }
+                    
+                    // Ensure directory exists
+                    $uploadPath = public_path('uploads/products/variations');
+                    if (!is_dir($uploadPath)) {
+                        mkdir($uploadPath, 0755, true);
+                    }
+                    
+                    \Log::info('Attempting to upload main image', [
+                        'original_name' => $originalName,
+                        'sanitized_name' => $sanitizedFilename,
+                        'final_name' => $imageName,
+                        'file_size' => $image->getSize(),
+                        'file_mime' => $image->getMimeType()
+                    ]);
+                    
+                    $image->move($uploadPath, $imageName);
+                    $uploadedImagePath = 'uploads/products/variations/' . $imageName;
+                    
+                    \Log::info('Main image uploaded successfully', ['filename' => $imageName]);
+                } catch (\Exception $e) {
+                    \Log::error('Main image upload failed', [
+                        'original_name' => $originalName,
+                        'error' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]);
+                    throw new \Exception('Failed to upload main image: ' . $originalName . ' - ' . $e->getMessage());
+                }
             }
 
             if ($isAssociative && $hasArrays) {
@@ -275,13 +395,54 @@ class ProductVariationController extends Controller
                     // Optional: duplicate gallery images to each variation
                     if ($request->hasFile('gallery')) {
                         foreach ($request->file('gallery') as $index => $galleryImage) {
-                            $galleryName = time() . '_' . $variation->id . '_g' . $index . '_' . $galleryImage->getClientOriginalName();
-                            $galleryImage->move(public_path('uploads/products/variations/gallery'), $galleryName);
-                            ProductVariationGallery::create([
-                                'variation_id' => $variation->id,
-                                'image' => 'uploads/products/variations/gallery/' . $galleryName,
-                                'sort_order' => $index,
-                            ]);
+                            $originalName = $galleryImage->getClientOriginalName();
+                            $sanitizedFilename = $this->sanitizeFilename($originalName);
+                            $galleryName = time() . '_' . $variation->id . '_g' . $index . '_' . $sanitizedFilename;
+                            
+                            try {
+                                // Check if file is valid
+                                if (!$galleryImage->isValid()) {
+                                    throw new \Exception('Invalid file: ' . $galleryImage->getErrorMessage());
+                                }
+                                
+                                // Ensure directory exists
+                                $uploadPath = public_path('uploads/products/variations/gallery');
+                                if (!is_dir($uploadPath)) {
+                                    mkdir($uploadPath, 0755, true);
+                                }
+                                
+                                // Check directory permissions
+                                if (!is_writable($uploadPath)) {
+                                    throw new \Exception('Upload directory is not writable: ' . $uploadPath);
+                                }
+                                
+                                \Log::info('Attempting to upload gallery image', [
+                                    'original_name' => $originalName,
+                                    'sanitized_name' => $sanitizedFilename,
+                                    'final_name' => $galleryName,
+                                    'upload_path' => $uploadPath,
+                                    'file_size' => $galleryImage->getSize(),
+                                    'file_mime' => $galleryImage->getMimeType()
+                                ]);
+                                
+                                $galleryImage->move($uploadPath, $galleryName);
+                                
+                                ProductVariationGallery::create([
+                                    'variation_id' => $variation->id,
+                                    'image' => 'uploads/products/variations/gallery/' . $galleryName,
+                                    'sort_order' => $index,
+                                ]);
+                                
+                                \Log::info('Gallery image uploaded successfully', ['filename' => $galleryName]);
+                            } catch (\Exception $e) {
+                                \Log::error('Gallery image upload failed', [
+                                    'original_name' => $originalName,
+                                    'error' => $e->getMessage(),
+                                    'file' => $e->getFile(),
+                                    'line' => $e->getLine()
+                                ]);
+                                throw new \Exception('Failed to upload gallery image: ' . $originalName . ' - ' . $e->getMessage());
+                            }
                         }
                     }
                 }
@@ -332,13 +493,48 @@ class ProductVariationController extends Controller
 
                 if ($request->hasFile('gallery')) {
                     foreach ($request->file('gallery') as $index => $galleryImage) {
-                        $galleryName = time() . '_gallery_' . $index . '_' . $galleryImage->getClientOriginalName();
-                        $galleryImage->move(public_path('uploads/products/variations/gallery'), $galleryName);
-                        ProductVariationGallery::create([
-                            'variation_id' => $variation->id,
-                            'image' => 'uploads/products/variations/gallery/' . $galleryName,
-                            'sort_order' => $index,
-                        ]);
+                        $originalName = $galleryImage->getClientOriginalName();
+                        $sanitizedFilename = $this->sanitizeFilename($originalName);
+                        $galleryName = time() . '_gallery_' . $index . '_' . $sanitizedFilename;
+                        
+                        try {
+                            // Check if file is valid
+                            if (!$galleryImage->isValid()) {
+                                throw new \Exception('Invalid file: ' . $galleryImage->getErrorMessage());
+                            }
+                            
+                            // Ensure directory exists
+                            $uploadPath = public_path('uploads/products/variations/gallery');
+                            if (!is_dir($uploadPath)) {
+                                mkdir($uploadPath, 0755, true);
+                            }
+                            
+                            \Log::info('Attempting to upload single variation gallery image', [
+                                'original_name' => $originalName,
+                                'sanitized_name' => $sanitizedFilename,
+                                'final_name' => $galleryName,
+                                'file_size' => $galleryImage->getSize(),
+                                'file_mime' => $galleryImage->getMimeType()
+                            ]);
+                            
+                            $galleryImage->move($uploadPath, $galleryName);
+                            
+                            ProductVariationGallery::create([
+                                'variation_id' => $variation->id,
+                                'image' => 'uploads/products/variations/gallery/' . $galleryName,
+                                'sort_order' => $index,
+                            ]);
+                            
+                            \Log::info('Single variation gallery image uploaded successfully', ['filename' => $galleryName]);
+                        } catch (\Exception $e) {
+                            \Log::error('Single variation gallery image upload failed', [
+                                'original_name' => $originalName,
+                                'error' => $e->getMessage(),
+                                'file' => $e->getFile(),
+                                'line' => $e->getLine()
+                            ]);
+                            throw new \Exception('Failed to upload gallery image: ' . $originalName . ' - ' . $e->getMessage());
+                        }
                     }
                 }
 
@@ -412,19 +608,19 @@ class ProductVariationController extends Controller
         $product = Product::findOrFail($productId);
         $variation = ProductVariation::findOrFail($variationId);
         
+        // Custom validation for files with special characters
+        $this->validateFiles($request);
+        
         $request->validate([
             'sku' => 'required|string|unique:product_variations,sku,' . $variationId,
             'name' => 'required|string|max:255',
             'price' => 'nullable|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
             'is_default' => 'boolean',
             'status' => 'required|in:active,inactive',
             'attributes' => 'required|array',
             'attribute_values' => 'required|array',
-            'gallery' => 'nullable|array',
-            'gallery.*' => 'image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
         ]);
 
         DB::beginTransaction();
@@ -450,9 +646,17 @@ class ProductVariationController extends Controller
                 }
                 
                 $image = $request->file('image');
-                $imageName = time() . '_' . $image->getClientOriginalName();
-                $image->move(public_path('uploads/products/variations'), $imageName);
-                $variationData['image'] = 'uploads/products/variations/' . $imageName;
+                $originalName = $image->getClientOriginalName();
+                $sanitizedFilename = $this->sanitizeFilename($originalName);
+                $imageName = time() . '_' . $sanitizedFilename;
+                
+                try {
+                    $image->move(public_path('uploads/products/variations'), $imageName);
+                    $variationData['image'] = 'uploads/products/variations/' . $imageName;
+                } catch (\Exception $e) {
+                    \Log::error('Main image upload failed during update: ' . $e->getMessage());
+                    throw new \Exception('Failed to upload main image: ' . $originalName);
+                }
             }
 
             $variation->update($variationData);
@@ -499,14 +703,22 @@ class ProductVariationController extends Controller
                 $variation->galleries()->delete();
                 
                 foreach ($request->file('gallery') as $index => $galleryImage) {
-                    $galleryName = time() . '_gallery_' . $index . '_' . $galleryImage->getClientOriginalName();
-                    $galleryImage->move(public_path('uploads/products/variations/gallery'), $galleryName);
+                    $originalName = $galleryImage->getClientOriginalName();
+                    $sanitizedFilename = $this->sanitizeFilename($originalName);
+                    $galleryName = time() . '_gallery_' . $index . '_' . $sanitizedFilename;
                     
-                    ProductVariationGallery::create([
-                        'variation_id' => $variation->id,
-                        'image' => 'uploads/products/variations/gallery/' . $galleryName,
-                        'sort_order' => $index,
-                    ]);
+                    try {
+                        $galleryImage->move(public_path('uploads/products/variations/gallery'), $galleryName);
+                        
+                        ProductVariationGallery::create([
+                            'variation_id' => $variation->id,
+                            'image' => 'uploads/products/variations/gallery/' . $galleryName,
+                            'sort_order' => $index,
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error('Gallery image upload failed during update: ' . $e->getMessage());
+                        throw new \Exception('Failed to upload gallery image: ' . $originalName);
+                    }
                 }
             }
 

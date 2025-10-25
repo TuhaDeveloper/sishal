@@ -12,7 +12,7 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url('/') }}" class="text-decoration-none">Home</a></li>
-                <li class="breadcrumb-item"><a href="#" class="text-decoration-none">{{ $product->category->name ?? 'Category' }}</a></li>
+                <li class="breadcrumb-item"><a href="{{ route('product.archive') }}?category={{ $product->category->slug ?? '' }}" class="text-decoration-none">{{ $product->category->name ?? 'Category' }}</a></li>
                 <li class="breadcrumb-item active" aria-current="page">{{ $product->name }}</li>
             </ol>
         </nav>
@@ -53,42 +53,132 @@
 
         /* Product Gallery */
         .product-gallery {
-            display: flex;
-            flex-direction: row;
             position: relative;
             background: #ffffff;
-            gap: 20px;
         }
 
-        .gallery-main {
-            flex: 1;
-            position: relative;
+        /* Main Swiper */
+        .main-swiper {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
         }
 
-        .gallery-thumbs {
-            width: 80px;
+        /* Responsive Main Swiper */
+        @media (max-width: 992px) {
+            .main-swiper {
+                height: 450px;
+                margin-bottom: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-swiper {
+                height: 400px;
+                margin-bottom: 15px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .main-swiper {
+                height: 350px;
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-swiper {
+                height: 300px;
+                margin-bottom: 10px;
+            }
+        }
+
+        .main-swiper .swiper-slide {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            cursor: zoom-in;
         }
 
-        .thumb-item {
+        .main-swiper .main-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+            cursor: zoom-in;
+            transition: transform 0.3s ease;
+        }
+
+        /* Simple hover zoom effect */
+        .main-swiper .swiper-slide:hover .main-image {
+            transform: scale(1.1);
+            cursor: zoom-out;
+        }
+
+        /* Thumbnail Swiper */
+        .thumb-swiper {
+            width: 100%;
+            height: 80px;
+        }
+
+        .thumb-swiper .swiper-slide {
             width: 80px;
             height: 80px;
-            border-radius: 8px;
-            overflow: hidden;
             cursor: pointer;
             border: 2px solid transparent;
+            border-radius: 8px;
+            overflow: hidden;
             transition: all 0.3s ease;
         }
 
-        .thumb-item:hover,
-        .thumb-item.active {
-            border-color: #3b82f6;
-            transform: scale(1.05);
+        /* Responsive Thumbnail Swiper */
+        @media (max-width: 768px) {
+            .thumb-swiper {
+                height: 70px;
+            }
+            
+            .thumb-swiper .swiper-slide {
+                width: 70px;
+                height: 70px;
+            }
         }
 
-        .thumb-item img {
+        @media (max-width: 576px) {
+            .thumb-swiper {
+                height: 60px;
+            }
+            
+            .thumb-swiper .swiper-slide {
+                width: 60px;
+                height: 60px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .thumb-swiper {
+                height: 50px;
+            }
+            
+            .thumb-swiper .swiper-slide {
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        .thumb-swiper .swiper-slide:hover {
+            border-color: #00512C;
+        }
+
+        .thumb-swiper .swiper-slide-thumb-active {
+            border-color: #00512C;
+            box-shadow: 0 0 0 2px rgba(0, 81, 44, 0.25);
+        }
+
+        .thumb-swiper .swiper-slide img {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -136,13 +226,7 @@
             margin: 0 auto;
         }
 
-        .swiper-container,
-        .swiper-wrapper,
-        .main-swiper .swiper-slide {
-            width: 100% !important;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
+        /* Removed unused Swiper container styles */
 
         .main-image {
             width: 100%;
@@ -153,40 +237,7 @@
             margin: 0 auto;
         }
 
-        .thumb-swiper {
-            width: 100% !important;
-            padding: 20px;
-            background: white;
-        }
-
-        .thumb-swiper .swiper-slide {
-            width: max-content !important;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .thumb-swiper .swiper-slide:hover {
-            transform: translateY(-2px);
-        }
-
-        .thumb-swiper .swiper-slide img {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-        }
-
-        .thumb-swiper .swiper-slide:hover img {
-            border-color: #00512C;
-            box-shadow: 0 4px 12px rgba(0, 81, 44, 0.15);
-        }
-
-        .thumb-swiper .swiper-slide-thumb-active img {
-            border-color: #00512C;
-            box-shadow: 0 4px 12px rgba(0, 81, 44, 0.25);
-        }
+        /* Removed unused Swiper thumbnail styles */
 
         .main-image {
             width: 100%;
@@ -213,28 +264,180 @@
             transform: scale(1.05);
         }
 
-        .swiper-button-next,
-        .swiper-button-prev {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            color: #00512C;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        /* Gallery Modal */
+        .gallery-modal {
+            display: none;
+            position: fixed;
+            z-index: 20000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+
+        .gallery-modal-content {
+            position: relative;
+            margin: auto;
+            padding: 20px;
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gallery-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 20001;
+            transition: color 0.3s ease;
+        }
+
+        .gallery-close:hover {
+            color: #ff6b6b;
+        }
+
+        .gallery-modal-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .gallery-modal-image-container {
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gallery-modal-image {
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .gallery-modal-thumbs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .gallery-modal-thumb {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
             transition: all 0.3s ease;
         }
 
-        .swiper-button-next:hover,
-        .swiper-button-prev:hover {
-            background: #00512C;
-            color: white;
-            transform: scale(1.1);
+        .gallery-modal-thumb:hover,
+        .gallery-modal-thumb.active {
+            border-color: #00512C;
+            transform: scale(1.05);
         }
 
-        .swiper-button-next:after,
-        .swiper-button-prev:after {
-            font-size: 18px;
-            font-weight: bold;
+        .gallery-modal-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Responsive Gallery Modal */
+        @media (max-width: 768px) {
+            .gallery-modal-content {
+                padding: 15px;
+                width: 95%;
+                height: 95vh;
+            }
+
+            .gallery-close {
+                top: 15px;
+                right: 20px;
+                font-size: 35px;
+            }
+
+            .gallery-modal-image {
+                max-height: 60vh;
+            }
+
+            .gallery-modal-thumbs {
+                gap: 8px;
+            }
+
+            .gallery-modal-thumb {
+                width: 60px;
+                height: 60px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .gallery-modal-content {
+                padding: 10px;
+                width: 98%;
+                height: 98vh;
+            }
+
+            .gallery-close {
+                top: 10px;
+                right: 15px;
+                font-size: 30px;
+            }
+
+            .gallery-modal-image {
+                max-height: 50vh;
+            }
+
+            .gallery-modal-thumbs {
+                gap: 6px;
+                max-width: 100%;
+                overflow-x: auto;
+                padding: 0 10px;
+            }
+
+            .gallery-modal-thumb {
+                width: 50px;
+                height: 50px;
+                flex-shrink: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .gallery-modal-content {
+                padding: 8px;
+            }
+
+            .gallery-close {
+                top: 8px;
+                right: 12px;
+                font-size: 28px;
+            }
+
+            .gallery-modal-image {
+                max-height: 45vh;
+            }
+
+            .gallery-modal-thumb {
+                width: 45px;
+                height: 45px;
+            }
         }
 
         /* Removed unused zoom overlay and legacy thumbnail grid/styles */
@@ -411,20 +614,26 @@
             gap: 16px;
             margin-bottom: 24px;
         }
+        
+        /* Override margin when inside purchase-row */
+        .purchase-row .quantity-selector {
+            margin-bottom: 0;
+        }
 
         .quantity-selector label { display:none; }
 
         .quantity-controls {
             display: flex;
             align-items: center;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            overflow: hidden;
-            background: white;
+            border: none;
+            border-radius: 25px;
+            background: #f3f4f6;
+            padding: 4px;
+            gap: 0;
         }
 
         .quantity-btn {
-            background: #f9fafb;
+            background: transparent;
             border: none;
             width: 40px;
             height: 40px;
@@ -432,14 +641,16 @@
             font-size: 16px;
             transition: all 0.2s ease;
             font-weight: 500;
-            color: #374151;
+            color: #6b7280;
             display: flex;
             align-items: center;
             justify-content: center;
+            border-radius: 50%;
         }
 
         .quantity-btn:hover {
-            background: #e5e7eb;
+            color: #374151;
+            background: rgba(255, 255, 255, 0.5);
         }
 
         .quantity-input {
@@ -447,34 +658,109 @@
             height: 40px;
             text-align: center;
             border: none;
-            border-left: 1px solid #d1d5db;
-            border-right: 1px solid #d1d5db;
             font-size: 14px;
             font-weight: 500;
             color: #374151;
-            background: white;
+            background: transparent;
+            border-radius: 0;
         }
 
         .quantity-input:focus {
             outline: none;
-            background: #f9fafb;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
         }
 
-        /* Purchase Row: quantity + buttons in one line */
+        /* Purchase Row: quantity + buttons in one line - always responsive */
         .purchase-row {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: auto 1fr 1fr;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
             margin: 16px 0 20px 0;
         }
-        .purchase-row .quantity-selector { margin: 0; width: 100%; }
-        .purchase-row .btn { width: 100%; min-width: 0; }
-        .purchase-row form { display: block; margin: 0; width: 100%; }
+        .purchase-row .quantity-selector { 
+            margin: 0; 
+            width: auto; 
+            min-width: 100px;
+        }
+        .purchase-row .btn { 
+            width: 100%; 
+            min-width: 0; 
+            padding: 10px 8px;
+            font-size: 14px;
+        }
+        .purchase-row form { 
+            display: block; 
+            margin: 0; 
+            width: 100%; 
+        }
         .purchase-row .btn-add-cart,
-        .purchase-row .btn-buy-now { width: 100%; min-width: 0; }
-        @media (max-width: 576px) {
-            .purchase-row { grid-template-columns: 1fr; gap: 10px; }
+        .purchase-row .btn-buy-now { 
+            width: 100%; 
+            min-width: 0; 
+        }
+        
+        /* Mobile adjustments - keep in one row */
+        @media (max-width: 768px) {
+            .purchase-row {
+                gap: 8px;
+            }
+            .purchase-row .quantity-selector {
+                min-width: 80px;
+            }
+            .purchase-row .btn {
+                padding: 8px 6px;
+                font-size: 13px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .purchase-row {
+                gap: 6px;
+            }
+            .purchase-row .quantity-selector {
+                min-width: 70px;
+            }
+            .purchase-row .quantity-controls {
+                width: 100%;
+            }
+            .purchase-row .quantity-btn {
+                width: 32px;
+                height: 32px;
+            }
+            .purchase-row .quantity-input {
+                width: 50px;
+                height: 32px;
+                font-size: 13px;
+            }
+            .purchase-row .btn {
+                padding: 8px 4px;
+                font-size: 12px;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .purchase-row {
+                gap: 4px;
+            }
+            .purchase-row .quantity-selector {
+                min-width: 60px;
+            }
+            .purchase-row .quantity-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 12px;
+            }
+            .purchase-row .quantity-input {
+                width: 40px;
+                height: 28px;
+                font-size: 12px;
+            }
+            .purchase-row .btn {
+                padding: 6px 2px;
+                font-size: 11px;
+            }
         }
 
         /* Buy Now uses theme color, not hard-coded */
@@ -687,48 +973,30 @@
         /* Enhanced Messenger System Styling */
         .messenger-section {
             margin: 20px 0;
-            padding: 20px;
-            background: #f8fafc;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .messenger-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .messenger-title i {
-            color: #00512C;
+            padding: 0;
         }
 
         .messenger-buttons {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: flex-start;
         }
 
         .messenger-btn {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
+            justify-content: center;
+            padding: 12px;
             color: white;
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: 50%;
             font-weight: 500;
             font-size: 14px;
             transition: all 0.3s ease;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            flex: 1;
-            min-width: 140px;
-            justify-content: center;
+            width: 48px;
+            height: 48px;
         }
 
         .messenger-btn:hover {
@@ -738,7 +1006,7 @@
         }
 
         .messenger-btn i {
-            font-size: 18px;
+            font-size: 20px;
         }
 
         /* WhatsApp Button */
@@ -1369,7 +1637,7 @@
             position: relative;
             overflow: hidden;
             background: #f8fafc;
-            padding: 16px;
+            padding: 0;
             height: 160px;
             display: flex;
             align-items: center;
@@ -1380,7 +1648,7 @@
         .related-product-image {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover;
             transition: transform 0.3s ease;
         }
 
@@ -1790,7 +2058,7 @@
             
             .related-product-image-container {
                 height: 140px;
-                padding: 12px;
+                padding: 0;
             }
             
             .related-product-content {
@@ -1858,7 +2126,7 @@
             
             .related-product-image-container {
                 height: 120px;
-                padding: 10px;
+                padding: 0;
             }
             
             .related-product-content {
@@ -1897,12 +2165,19 @@
                 border-radius: 16px;
             }
 
+            /* Gallery improvements for mobile */
+            .product-gallery {
+                margin-bottom: 20px;
+            }
+
             .product-info {
                 padding: 24px;
             }
 
             .product-info h1 {
                 font-size: 24px;
+                line-height: 1.3;
+                margin-bottom: 15px;
             }
 
             .product-price .fw-bold {
@@ -1912,17 +2187,21 @@
             .action-buttons {
                 flex-direction: column;
                 gap: 12px;
+                margin-top: 20px;
             }
 
             .btn-add-cart,
             .btn-outline-custom {
                 width: 100%;
                 justify-content: center;
+                padding: 12px 20px;
+                font-size: 16px;
             }
 
             .tab-nav {
                 flex-wrap: wrap;
                 gap: 8px;
+                margin-top: 20px;
             }
 
             .tab-btn {
@@ -1938,30 +2217,13 @@
                 gap: 20px;
             }
 
-            .main-image {
-                height: 300px;
+            /* Improved mobile spacing */
+            .product-info > * {
+                margin-bottom: 15px;
             }
 
-            .thumb-swiper .swiper-slide img {
-                width: 60px;
-                height: 60px;
-            }
-
-            .thumb-swiper {
-                padding: 16px;
-            }
-
-
-
-            .swiper-button-next,
-            .swiper-button-prev {
-                width: 40px;
-                height: 40px;
-            }
-
-            .swiper-button-next:after,
-            .swiper-button-prev:after {
-                font-size: 14px;
+            .product-info > *:last-child {
+                margin-bottom: 0;
             }
         }
 
@@ -1972,25 +2234,30 @@
 
             .product-info h1 {
                 font-size: 20px;
+                line-height: 1.2;
+                margin-bottom: 12px;
             }
 
             .product-price .fw-bold {
                 font-size: 24px;
             }
 
-            .main-image {
-                height: 250px;
+            .action-buttons {
+                gap: 10px;
+                margin-top: 15px;
             }
 
-            .thumb-swiper .swiper-slide img {
-                width: 50px;
-                height: 50px;
+            .btn-add-cart,
+            .btn-outline-custom {
+                padding: 12px 16px;
+                font-size: 15px;
             }
 
             .quantity-selector {
                 flex-direction: column;
                 gap: 12px;
                 text-align: center;
+                margin-top: 15px;
             }
 
             .quantity-controls {
@@ -2003,6 +2270,15 @@
 
             .rating-stars {
                 font-size: 20px;
+            }
+
+            /* Improved mobile spacing */
+            .product-info > * {
+                margin-bottom: 12px;
+            }
+
+            .product-info > *:last-child {
+                margin-bottom: 0;
             }
         }
 
@@ -2022,7 +2298,6 @@
         .color-image-btn {
             width: 60px;
             height: 60px;
-            border-radius: 8px;
             overflow: hidden;
             padding: 0;
             display: flex;
@@ -2101,8 +2376,6 @@
         }
 
         .size-option {
-            min-width: 56px;
-            height: 42px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2305,49 +2578,62 @@
             <!-- Product Gallery -->
             <div class="col-lg-6 col-md-7 col-12" style="padding: 20px;">
                 <div class="product-gallery">
-                    <div class="gallery-thumbs">
-                        <!-- Main product image thumbnail -->
-                        <div class="thumb-item active" data-image-type="product">
-                            <img src="{{ asset($product->image) }}" alt="{{ $product->name }}">
-                        </div>
-                        <!-- Product gallery thumbnails -->
-                        @foreach($product->galleries as $gallery)
-                            <div class="thumb-item" data-image-type="gallery">
-                                <img src="{{ asset($gallery->image) }}" alt="{{ $product->name }}">
-                            </div>
-                        @endforeach
-                        <!-- Variation image thumbnails (hidden by default) -->
-                        @if($product->has_variations)
-                            @foreach($product->variations as $variation)
-                                @if($variation->image)
-                                    <div class="thumb-item variation-thumb-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation" style="display: none;">
-                                        <img src="{{ asset($variation->image) }}" alt="{{ $variation->name }}">
-                                    </div>
-                                @endif
-                                @foreach($variation->galleries as $gallery)
-                                    <div class="thumb-item variation-gallery-thumb-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation-gallery" style="display: none;">
-                                        <img src="{{ asset($gallery->image) }}" alt="{{ $variation->name }}">
-                                    </div>
-                                @endforeach
-                            @endforeach
-                        @endif
-                    </div>
-                    <div class="gallery-main">
-                        <div class="main-image-container">
+                    <!-- Main Swiper -->
+                    <div class="swiper main-swiper">
+                        <div class="swiper-wrapper">
                             <!-- Main product image -->
-                            <img src="{{ asset($product->image) }}" alt="{{ $product->name }}" class="main-image" id="main-product-image" data-image-type="product">
+                            <div class="swiper-slide" data-image-type="product">
+                                <img src="{{ asset($product->image) }}" alt="{{ $product->name }}" class="main-image" loading="eager">
+                            </div>
                             <!-- Product galleries -->
                             @foreach($product->galleries as $gallery)
-                                <img src="{{ asset($gallery->image) }}" alt="{{ $product->name }}" class="main-image" data-image-type="gallery" style="display: none;">
+                                <div class="swiper-slide" data-image-type="gallery">
+                                    <img src="{{ asset($gallery->image) }}" alt="{{ $product->name }}" class="main-image" loading="lazy">
+                                </div>
                             @endforeach
                             <!-- Variation images (hidden by default) -->
                             @if($product->has_variations)
                                 @foreach($product->variations as $variation)
                                     @if($variation->image)
-                                        <img src="{{ asset($variation->image) }}" alt="{{ $variation->name }}" class="main-image variation-image-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation" style="display: none;">
+                                        <div class="swiper-slide variation-image-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation" style="display: none;">
+                                            <img src="{{ asset($variation->image) }}" alt="{{ $variation->name }}" class="main-image" loading="lazy">
+                                        </div>
                                     @endif
                                     @foreach($variation->galleries as $gallery)
-                                        <img src="{{ asset($gallery->image) }}" alt="{{ $variation->name }}" class="main-image variation-gallery-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation-gallery" style="display: none;">
+                                        <div class="swiper-slide variation-gallery-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation-gallery" style="display: none;">
+                                            <img src="{{ asset($gallery->image) }}" alt="{{ $variation->name }}" class="main-image" loading="lazy">
+                                        </div>
+                                    @endforeach
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
+                    
+                    <!-- Thumbnail Swiper -->
+                    <div class="swiper thumb-swiper">
+                        <div class="swiper-wrapper">
+                            <!-- Main product image thumbnail -->
+                            <div class="swiper-slide" data-image-type="product">
+                                <img src="{{ asset($product->image) }}" alt="{{ $product->name }}">
+                            </div>
+                            <!-- Product gallery thumbnails -->
+                            @foreach($product->galleries as $gallery)
+                                <div class="swiper-slide" data-image-type="gallery">
+                                    <img src="{{ asset($gallery->image) }}" alt="{{ $product->name }}">
+                                </div>
+                            @endforeach
+                            <!-- Variation image thumbnails (hidden by default) -->
+                            @if($product->has_variations)
+                                @foreach($product->variations as $variation)
+                                    @if($variation->image)
+                                        <div class="swiper-slide variation-thumb-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation" style="display: none;">
+                                            <img src="{{ asset($variation->image) }}" alt="{{ $variation->name }}">
+                                        </div>
+                                    @endif
+                                    @foreach($variation->galleries as $gallery)
+                                        <div class="swiper-slide variation-gallery-thumb-slide" data-variation-id="{{ $variation->id }}" data-image-type="variation-gallery" style="display: none;">
+                                            <img src="{{ asset($gallery->image) }}" alt="{{ $variation->name }}">
+                                        </div>
                                     @endforeach
                                 @endforeach
                             @endif
@@ -2356,7 +2642,7 @@
                 </div>
             </div>
             <!-- Product Info -->
-            <div class="col-lg-6 col-md-5 col-12">
+            <div class="col-lg-6 col-md-5 col-12" style="padding-top: 20px;">
                 <div class="product-info">
                     <h1>{{ $product->name }}</h1>
                     <div class="product-price mb-3">
@@ -2391,7 +2677,6 @@
                                 @endif
                             @endfor
                         </div>
-                        <span class="rating-text">{{ $avgRating }} | {{ $product->reviews->count() }} Reviews</span>
                     </div>
 
                     @if (!empty($product->short_desc))
@@ -3026,19 +3311,29 @@
                                     return;
                                 }
                                 
+                                // Check if this button is already selected by comparing with selectedMap
+                                var currentSelectedValue = selectedMap[String(attrId)];
+                                var isCurrentlySelected = currentSelectedValue === String(valId);
+                                
                                 // Toggle selection per attribute
                                 var container = btn.closest('[data-attribute-id]');
                                 if (container) {
                                     container.querySelectorAll('.size-option, .color-option, .color-image-btn').forEach(function(b){ 
-                                        b.classList.remove('active'); 
+                                        b.classList.remove('active', 'variation-active'); 
                                     });
                                 }
-                                btn.classList.add('active');
                                 
-                                // Use CSS classes instead of direct style overrides
-                                btn.classList.add('variation-active');
+                                // If clicking the same button that's already selected, unselect it
+                                if (isCurrentlySelected) {
+                                    console.log('[VARIATION] Unselecting variation - attrId:', attrId, 'valId:', valId);
+                                    delete selectedMap[String(attrId)];
+                                } else {
+                                    // Select the new variation
+                                    console.log('[VARIATION] Selecting variation - attrId:', attrId, 'valId:', valId);
+                                    btn.classList.add('active', 'variation-active');
+                                    selectedMap[String(attrId)] = String(valId);
+                                }
                                 
-                                selectedMap[String(attrId)] = String(valId);
                                 console.log('[VARIATION] Updated selectedMap:', selectedMap);
                                 updateHiddenSelectedValues(selectedMap);
                                 renderSelectionLabels(selectedMap);
@@ -3050,6 +3345,7 @@
                                 var priceEl = document.getElementById('selected-variation-price');
                                 var stockEl = document.getElementById('selected-variation-stock');
                                 var addBtn = document.querySelector('.btn-add-cart');
+                                var buyNowBtn = document.querySelector('.btn-buy-now');
                                 
                                 // Check if this is a complete match (all attributes selected)
                                 var allAttributeIds = Object.keys(selectedMap).length;
@@ -3136,22 +3432,16 @@
 
                     <!-- Quick Chat Section -->
                     <div class="messenger-section">
-                        <div class="messenger-title">
-                            <i class="fas fa-comments"></i>
-                            <span>Quick Chat</span>
-                        </div>
                         <div class="messenger-buttons">
                             @if(!empty($settings->whatsapp_url))
                                 <a href="{{ str_starts_with($settings->whatsapp_url, 'http') ? $settings->whatsapp_url : 'https://' . $settings->whatsapp_url }}" target="_blank" class="messenger-btn whatsapp-btn" title="Chat on WhatsApp">
                                     <i class="fab fa-whatsapp"></i>
-                                    <span>WhatsApp</span>
                                 </a>
                             @endif
                             
                             @if(!empty($settings->facebook_url))
                                 <a href="javascript:void(0)" onclick="openFacebookMessenger()" class="messenger-btn messenger-fb-btn" title="Chat on Facebook Messenger">
                                     <i class="fab fa-facebook-messenger"></i>
-                                    <span>Messenger</span>
                                 </a>
                             @endif
                         </div>
@@ -3221,98 +3511,101 @@
                         <p class="reviews-subtitle">Share your experience and read what others think</p>
                     </div>
                     
-                    <!-- Reviews Summary -->
-                    <div class="reviews-summary-card">
+                    <!-- Reviews Summary and Form Combined -->
+                    <div class="reviews-main-section">
                         <div class="row">
-                            <div class="col-md-4">
-                                <div class="rating-overview text-center">
-                                    <div class="overall-rating" id="overall-rating">0.0</div>
-                                    <div class="rating-stars" id="rating-stars">
-                                        <i class="far fa-star"></i>
-                                        <i class="far fa-star"></i>
-                                        <i class="far fa-star"></i>
-                                        <i class="far fa-star"></i>
-                                        <i class="far fa-star"></i>
-                                    </div>
-                                    <div class="rating-count" id="rating-count">0 reviews</div>
+                            <!-- Left Column: Review Form -->
+                            <div class="col-md-6">
+                                <div class="review-form-section">
+                                    @auth
+                                        <div class="review-form-card">
+                                            <h4 class="form-title">
+                                                <i class="fas fa-edit me-2"></i>
+                                                Write a Review
+                                            </h4>
+                                            <form id="review-form" class="review-form">
+                                                @csrf
+                                                <div class="form-group">
+                                                    <label for="rating" class="form-label">Rating *</label>
+                                                    <div class="rating-input">
+                                                        <input type="radio" name="rating" value="5" id="star5">
+                                                        <label for="star5" class="star-label" data-rating="5">
+                                                            <i class="far fa-star"></i>
+                                                        </label>
+                                                        <input type="radio" name="rating" value="4" id="star4">
+                                                        <label for="star4" class="star-label" data-rating="4">
+                                                            <i class="far fa-star"></i>
+                                                        </label>
+                                                        <input type="radio" name="rating" value="3" id="star3">
+                                                        <label for="star3" class="star-label" data-rating="3">
+                                                            <i class="far fa-star"></i>
+                                                        </label>
+                                                        <input type="radio" name="rating" value="2" id="star2">
+                                                        <label for="star2" class="star-label" data-rating="2">
+                                                            <i class="far fa-star"></i>
+                                                        </label>
+                                                        <input type="radio" name="rating" value="1" id="star1">
+                                                        <label for="star1" class="star-label" data-rating="1">
+                                                            <i class="far fa-star"></i>
+                                                        </label>
+                                                    </div>
+                                                    <div class="rating-text" id="rating-text">Select a rating</div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="comment" class="form-label">Your Review *</label>
+                                                    <textarea class="form-control" name="comment" id="comment" rows="4" 
+                                                              placeholder="Tell us about your experience with this product" required></textarea>
+                                                </div>
+                                                <div class="form-actions">
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fas fa-paper-plane me-2"></i>
+                                                        Submit Review
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary" id="cancel-review" style="display: none;">
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    @else
+                                        <div class="review-login-prompt">
+                                            <div class="login-prompt-content">
+                                                <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+                                                <h5>Login Required</h5>
+                                                <p>Please log in to write a review and share your experience with others.</p>
+                                                <a href="{{ route('login') }}" class="btn btn-primary">
+                                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                                    Login to Write Review
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endauth
                                 </div>
                             </div>
-                            <div class="col-md-8">
-                                <div class="rating-breakdown">
-                                    <h6>Rating Breakdown</h6>
-                                    <div id="rating-bars">
-                                        <!-- Dynamic rating bars will be loaded here -->
+                            
+                            <!-- Right Column: Rating Summary -->
+                            <div class="col-md-6">
+                                <div class="reviews-summary-card">
+                                    <div class="rating-overview text-center">
+                                        <div class="overall-rating" id="overall-rating">0.0</div>
+                                        <div class="rating-stars" id="rating-stars">
+                                            <i class="far fa-star"></i>
+                                            <i class="far fa-star"></i>
+                                            <i class="far fa-star"></i>
+                                            <i class="far fa-star"></i>
+                                            <i class="far fa-star"></i>
+                                        </div>
+                                        <div class="rating-count" id="rating-count">0 reviews</div>
+                                    </div>
+                                    <div class="rating-breakdown">
+                                        <h6>Rating Breakdown</h6>
+                                        <div id="rating-bars">
+                                            <!-- Dynamic rating bars will be loaded here -->
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Review Form -->
-                    <div class="review-form-section">
-                        @auth
-                            <div class="review-form-card">
-                                <h4 class="form-title">
-                                    <i class="fas fa-edit me-2"></i>
-                                    Write a Review
-                                </h4>
-                                <form id="review-form" class="review-form">
-                                    @csrf
-                                    <div class="form-group">
-                                        <label for="rating" class="form-label">Rating *</label>
-                                        <div class="rating-input">
-                                            <input type="radio" name="rating" value="5" id="star5">
-                                            <label for="star5" class="star-label" data-rating="5">
-                                                <i class="far fa-star"></i>
-                                            </label>
-                                            <input type="radio" name="rating" value="4" id="star4">
-                                            <label for="star4" class="star-label" data-rating="4">
-                                                <i class="far fa-star"></i>
-                                            </label>
-                                            <input type="radio" name="rating" value="3" id="star3">
-                                            <label for="star3" class="star-label" data-rating="3">
-                                                <i class="far fa-star"></i>
-                                            </label>
-                                            <input type="radio" name="rating" value="2" id="star2">
-                                            <label for="star2" class="star-label" data-rating="2">
-                                                <i class="far fa-star"></i>
-                                            </label>
-                                            <input type="radio" name="rating" value="1" id="star1">
-                                            <label for="star1" class="star-label" data-rating="1">
-                                                <i class="far fa-star"></i>
-                                            </label>
-                                        </div>
-                                        <div class="rating-text" id="rating-text">Select a rating</div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="comment" class="form-label">Your Review *</label>
-                                        <textarea class="form-control" name="comment" id="comment" rows="4" 
-                                                  placeholder="Tell us about your experience with this product" required></textarea>
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-paper-plane me-2"></i>
-                                            Submit Review
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary" id="cancel-review" style="display: none;">
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        @else
-                            <div class="review-login-prompt">
-                                <div class="login-prompt-content">
-                                    <i class="fas fa-lock fa-3x text-muted mb-3"></i>
-                                    <h5>Login Required</h5>
-                                    <p>Please log in to write a review and share your experience with others.</p>
-                                    <a href="{{ route('login') }}" class="btn btn-primary">
-                                        <i class="fas fa-sign-in-alt me-2"></i>
-                                        Login to Write Review
-                                    </a>
-                                </div>
-                            </div>
-                        @endauth
                     </div>
 
                     <!-- Reviews List -->
@@ -3380,7 +3673,7 @@
                                             </a>
                                             
                                             <p class="related-product-description">
-                                                {{ Str::limit($product->short_desc ?? $product->description, 100) }}
+                                                {{ Str::limit(strip_tags($product->short_desc ?? $product->description), 100) }}
                                             </p>
                                             
                                             <!-- Rating Display -->
@@ -3632,9 +3925,9 @@
         }
 
 
-        // Simple and robust image gallery initialization
+        // Swiper image gallery initialization
         function initImageGallery() {
-            console.log('[GALLERY] Starting initialization...');
+            console.log('[GALLERY] Starting Swiper initialization...');
             
             var gallery = document.querySelector('.product-gallery');
             if (!gallery) {
@@ -3643,7 +3936,8 @@
             }
 
             if (typeof Swiper === 'undefined') {
-                console.error('[GALLERY] Swiper not loaded');
+                console.log('[GALLERY] Swiper not loaded, retrying in 500ms...');
+                setTimeout(initImageGallery, 500);
                 return;
             }
 
@@ -3651,7 +3945,7 @@
             var mainContainer = gallery.querySelector('.main-swiper');
             
             if (!thumbContainer || !mainContainer) {
-                console.error('[GALLERY] Containers not found');
+                console.error('[GALLERY] Swiper containers not found');
                 return;
             }
 
@@ -3663,41 +3957,76 @@
                 try { window.mainSwiper.destroy(true, true); } catch(e) {}
             }
 
-            // Create thumb swiper
-            window.thumbSwiper = new Swiper(thumbContainer, {
-                spaceBetween: 10,
-                slidesPerView: 'auto',
-                freeMode: true,
-                watchSlidesProgress: true
-            });
-
-            // Create main swiper
-            window.mainSwiper = new Swiper(mainContainer, {
-                spaceBetween: 10,
-                navigation: {
-                    nextEl: '.main-swiper .swiper-button-next',
-                    prevEl: '.main-swiper .swiper-button-prev',
-                },
-                thumbs: { 
-                    swiper: window.thumbSwiper 
-                }
-            });
-
-            // Add click handlers for thumbnails
-            var thumbSlides = document.querySelectorAll('.thumb-item');
-            console.log('[GALLERY] Adding click handlers to', thumbSlides.length, 'thumbnails');
-            
-            thumbSlides.forEach(function(slide, index) {
-                slide.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('[GALLERY] Thumbnail clicked, index:', index);
-                    if (window.mainSwiper) {
-                        window.mainSwiper.slideTo(index);
+            try {
+                // Create thumb swiper
+                window.thumbSwiper = new Swiper(thumbContainer, {
+                    spaceBetween: 10,
+                    slidesPerView: 'auto',
+                    freeMode: true,
+                    watchSlidesProgress: true,
+                    touchRatio: 1,
+                    touchAngle: 45,
+                    grabCursor: true,
+                    breakpoints: {
+                        0: {
+                            slidesPerView: 3,
+                            spaceBetween: 8,
+                            touchRatio: 1.5
+                        },
+                        480: {
+                            slidesPerView: 4,
+                            spaceBetween: 10,
+                            touchRatio: 1.2
+                        },
+                        768: {
+                            slidesPerView: 5,
+                            spaceBetween: 10,
+                            touchRatio: 1
+                        }
                     }
                 });
-            });
 
-            console.log('[GALLERY] Initialization complete');
+                // Create main swiper
+                window.mainSwiper = new Swiper(mainContainer, {
+                    spaceBetween: 10,
+                    thumbs: { 
+                        swiper: window.thumbSwiper 
+                    },
+                    zoom: {
+                        maxRatio: 3,
+                        minRatio: 1
+                    },
+                    lazy: {
+                        loadPrevNext: true,
+                        loadPrevNextAmount: 2
+                    },
+                    touchRatio: 1,
+                    touchAngle: 45,
+                    grabCursor: true,
+                    resistance: true,
+                    resistanceRatio: 0.85,
+                    breakpoints: {
+                        0: {
+                            touchRatio: 1.5,
+                            spaceBetween: 5
+                        },
+                        768: {
+                            touchRatio: 1,
+                            spaceBetween: 10
+                        }
+                    }
+                });
+                
+                console.log('[GALLERY] Main gallery Swiper initialized successfully');
+                
+            } catch (error) {
+                console.error('[GALLERY] Failed to initialize main gallery Swiper:', error);
+            }
+
+            // Initialize simple click to gallery modal
+            initSimpleGallery();
+
+            console.log('[GALLERY] Swiper initialization complete');
         }
 
         // Initialize when DOM is ready
@@ -3747,6 +4076,121 @@
 
         // Make showToast globally available
         window.showToast = showToast;
+
+        // Simple gallery functionality
+        function initSimpleGallery() {
+            console.log('[GALLERY] Initializing simple gallery functionality...');
+            var mainImages = document.querySelectorAll('.main-swiper .main-image');
+            console.log('[GALLERY] Found', mainImages.length, 'main images');
+            
+            mainImages.forEach(function(img, index) {
+                // Click to open gallery modal
+                img.addEventListener('click', function() {
+                    console.log('[GALLERY] Click detected - opening gallery modal');
+                    openGalleryModal(img.src, img.alt);
+                });
+            });
+            
+            // Initialize gallery modal
+            initGalleryModal();
+            
+            console.log('[GALLERY] Simple gallery initialization complete');
+        }
+
+        // Gallery modal functionality
+        function initGalleryModal() {
+            var modal = document.getElementById('galleryModal');
+            var closeBtn = document.querySelector('.gallery-close');
+            var modalImage = document.getElementById('galleryModalImage');
+            
+            // Close modal
+            closeBtn.addEventListener('click', closeGalleryModal);
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeGalleryModal();
+                }
+            });
+            
+            // ESC key to close
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modal.style.display === 'block') {
+                    closeGalleryModal();
+                }
+            });
+        }
+
+        // Open gallery modal
+        function openGalleryModal(src, alt) {
+            var modal = document.getElementById('galleryModal');
+            var modalImage = document.getElementById('galleryModalImage');
+            var thumbsContainer = document.querySelector('.gallery-modal-thumbs');
+            
+            modalImage.src = src;
+            modalImage.alt = alt;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            
+            // Get all images from the current product's gallery (both main image and gallery images)
+            var allImages = [];
+            
+            // Add main product image
+            var mainImage = document.querySelector('.main-swiper .swiper-slide[data-image-type="product"] img');
+            if (mainImage) {
+                allImages.push({
+                    src: mainImage.src,
+                    alt: mainImage.alt
+                });
+            }
+            
+            // Add gallery images
+            var galleryImages = document.querySelectorAll('.main-swiper .swiper-slide[data-image-type="gallery"] img');
+            galleryImages.forEach(function(img) {
+                allImages.push({
+                    src: img.src,
+                    alt: img.alt
+                });
+            });
+            
+            // Clear existing thumbnails
+            thumbsContainer.innerHTML = '';
+            
+            // Create new thumbnails
+            allImages.forEach(function(imageData, index) {
+                var thumbDiv = document.createElement('div');
+                thumbDiv.className = 'gallery-modal-thumb';
+                thumbDiv.setAttribute('data-src', imageData.src);
+                
+                if (imageData.src === src) {
+                    thumbDiv.classList.add('active');
+                }
+                
+                var thumbImg = document.createElement('img');
+                thumbImg.src = imageData.src;
+                thumbImg.alt = imageData.alt;
+                
+                thumbDiv.appendChild(thumbImg);
+                thumbsContainer.appendChild(thumbDiv);
+                
+                // Add click event to thumbnail
+                thumbDiv.addEventListener('click', function() {
+                    modalImage.src = imageData.src;
+                    modalImage.alt = imageData.alt;
+                    
+                    // Update active thumbnail
+                    document.querySelectorAll('.gallery-modal-thumb').forEach(function(thumb) {
+                        thumb.classList.remove('active');
+                    });
+                    thumbDiv.classList.add('active');
+                });
+            });
+        }
+
+        // Close gallery modal
+        function closeGalleryModal() {
+            var modal = document.getElementById('galleryModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
 
         // Toggle wishlist function
         function toggleWishlist(productId) {
@@ -3886,10 +4330,10 @@
             // Test image gallery
             if (gallery && thumbSlides.length > 0) {
                 console.log('[PD] Testing image gallery...');
-                if (window.mainSwiper) {
-                    console.log('[PD] ✓ Image gallery initialized');
+                if (window.mainSwiper && window.thumbSwiper) {
+                    console.log('[PD] ✓ Swiper gallery initialized with', thumbSlides.length, 'thumbnails');
                 } else {
-                    console.log('[PD] ✗ Image gallery not initialized');
+                    console.log('[PD] ✗ Swiper gallery not initialized');
                 }
             }
             
@@ -3932,6 +4376,21 @@
         style="position: fixed; top: 24px; right: 24px; z-index: 16000; display: flex; flex-direction: column; gap: 10px;">
     </div>
 
+    <!-- Gallery Modal -->
+    <div id="galleryModal" class="gallery-modal">
+        <div class="gallery-modal-content">
+            <span class="gallery-close">&times;</span>
+            <div class="gallery-modal-main">
+                <div class="gallery-modal-image-container">
+                    <img id="galleryModalImage" src="" alt="" class="gallery-modal-image">
+                </div>
+            </div>
+            <div class="gallery-modal-thumbs">
+                <!-- Thumbnails will be dynamically populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -3947,70 +4406,104 @@
             } catch(_) {}
         }
 
-        // Enhanced Related products slider
-        if (document.querySelector('.related-swiper') && typeof Swiper !== 'undefined') {
-            new Swiper('.related-swiper', {
-                slidesPerView: 4,
-                spaceBetween: 30,
-                centeredSlides: false,
-                loop: false,
-                freeMode: false,
-                autoHeight: true,
-                autoplay: {
-                    delay: 5000,
-                    disableOnInteraction: false,
-                    pauseOnMouseEnter: true
-                },
-                speed: 600,
-                navigation: {
-                    nextEl: '.related-swiper .swiper-button-next',
-                    prevEl: '.related-swiper .swiper-button-prev',
-                },
-                pagination: {
-                    el: '.related-swiper .swiper-pagination',
-                    clickable: true,
-                    dynamicBullets: true
-                },
-                breakpoints: {
-                    0: {
-                        slidesPerView: 1.2,
-                        spaceBetween: 20
+        // Enhanced Related products slider with improved initialization
+        function initializeRelatedProductsSlider() {
+            const swiperContainer = document.querySelector('.related-swiper');
+            
+            if (!swiperContainer) {
+                console.log('[SWIPER] Related products container not found');
+                return;
+            }
+            
+            if (typeof Swiper === 'undefined') {
+                console.log('[SWIPER] Swiper library not loaded, retrying in 500ms...');
+                setTimeout(initializeRelatedProductsSlider, 500);
+                return;
+            }
+            
+            console.log('[SWIPER] Initializing related products slider...');
+            
+            try {
+                const swiper = new Swiper('.related-swiper', {
+                    slidesPerView: 4,
+                    spaceBetween: 30,
+                    centeredSlides: false,
+                    loop: false,
+                    freeMode: false,
+                    autoHeight: true,
+                    autoplay: {
+                        delay: 5000,
+                        disableOnInteraction: false,
+                        pauseOnMouseEnter: true
                     },
-                    480: {
-                        slidesPerView: 1.5,
-                        spaceBetween: 20
+                    speed: 600,
+                    navigation: {
+                        nextEl: '.related-swiper .swiper-button-next',
+                        prevEl: '.related-swiper .swiper-button-prev',
                     },
-                    640: { 
-                        slidesPerView: 2.2,
-                        spaceBetween: 25
+                    pagination: {
+                        el: '.related-swiper .swiper-pagination',
+                        clickable: true,
+                        dynamicBullets: true
                     },
-                    768: { 
-                        slidesPerView: 2.5,
-                        spaceBetween: 25
+                    breakpoints: {
+                        0: {
+                            slidesPerView: 1.2,
+                            spaceBetween: 20
+                        },
+                        480: {
+                            slidesPerView: 1.5,
+                            spaceBetween: 20
+                        },
+                        640: { 
+                            slidesPerView: 2.2,
+                            spaceBetween: 25
+                        },
+                        768: { 
+                            slidesPerView: 2.5,
+                            spaceBetween: 25
+                        },
+                        1024: { 
+                            slidesPerView: 3.2,
+                            spaceBetween: 30
+                        },
+                        1200: { 
+                            slidesPerView: 4,
+                            spaceBetween: 35
+                        }
                     },
-                    1024: { 
-                        slidesPerView: 3.2,
-                        spaceBetween: 30
-                    },
-                    1200: { 
-                        slidesPerView: 4,
-                        spaceBetween: 35
+                    on: {
+                        init: function() {
+                            console.log('[SWIPER] Related products slider initialized successfully');
+                            // Add fade-in animation to slides
+                            this.slides.forEach((slide, index) => {
+                                slide.style.opacity = '0';
+                                setTimeout(() => {
+                                    slide.style.transition = 'opacity 0.6s ease';
+                                    slide.style.opacity = '1';
+                                }, index * 100);
+                            });
+                        },
+                        error: function(error) {
+                            console.error('[SWIPER] Error initializing related products slider:', error);
+                        }
                     }
-                },
-                on: {
-                    init: function() {
-                        // Add fade-in animation to slides
-                        this.slides.forEach((slide, index) => {
-                            slide.style.opacity = '0';
-                            slide.style.opacity = '0';
-                            setTimeout(() => {
-                                slide.style.transition = 'opacity 0.6s ease';
-                                slide.style.opacity = '1';
-                            }, index * 100);
-                        });
-                    }
-                }
-            });
+                });
+                
+                // Store swiper instance globally for debugging
+                window.relatedProductsSwiper = swiper;
+                
+            } catch (error) {
+                console.error('[SWIPER] Failed to initialize related products slider:', error);
+            }
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeRelatedProductsSlider);
+        } else {
+            // DOM is already ready
+            initializeRelatedProductsSlider();
         }
 
 
@@ -4604,6 +5097,7 @@
 
     </script>
 @endpush
+
 
 
 

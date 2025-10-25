@@ -819,15 +819,18 @@
                     success: function (response) {
                         if (response.success) {
                             $('#changeStatusModal').modal('hide');
-                            location.reload();
+                            showCustomAlert('Order status updated successfully!', 'success');
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
                         } else {
-                            alert(response.message || 'Failed to update status.');
+                            showCustomAlert(response.message || 'Failed to update status.', 'error');
                         }
                     },
                     error: function (xhr) {
                         let msg = 'Failed to update status.';
                         if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
-                        alert(msg);
+                        showCustomAlert(msg, 'error');
                     }
                 });
             });
@@ -1048,7 +1051,65 @@
                 });
             });
         });
+
+        // Custom Alert Function
+        function showCustomAlert(message, type = 'warning') {
+            const modal = $('#customAlertModal');
+            const icon = $('#alertIcon');
+            const title = $('#customAlertModalLabel');
+            const messageEl = $('#alertMessage');
+            const okBtn = $('#alertOkBtn');
+
+            // Set icon and colors based on type
+            switch(type) {
+                case 'success':
+                    icon.html('<i class="fas fa-check-circle text-success fa-2x"></i>');
+                    title.text('Success');
+                    okBtn.removeClass('btn-primary btn-danger btn-warning').addClass('btn-success');
+                    break;
+                case 'error':
+                    icon.html('<i class="fas fa-times-circle text-danger fa-2x"></i>');
+                    title.text('Error');
+                    okBtn.removeClass('btn-primary btn-success btn-warning').addClass('btn-danger');
+                    break;
+                case 'info':
+                    icon.html('<i class="fas fa-info-circle text-info fa-2x"></i>');
+                    title.text('Information');
+                    okBtn.removeClass('btn-primary btn-success btn-danger').addClass('btn-info');
+                    break;
+                default: // warning
+                    icon.html('<i class="fas fa-exclamation-triangle text-warning fa-2x"></i>');
+                    title.text('Warning');
+                    okBtn.removeClass('btn-primary btn-success btn-danger').addClass('btn-warning');
+            }
+
+            messageEl.text(message);
+            modal.modal('show');
+        }
     </script>
+
+    <!-- Custom Alert Modal -->
+    <div class="modal fade" id="customAlertModal" tabindex="-1" aria-labelledby="customAlertModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <div class="d-flex align-items-center">
+                        <div class="alert-icon me-3" id="alertIcon">
+                            <i class="fas fa-exclamation-triangle text-warning fa-2x"></i>
+                        </div>
+                        <h5 class="modal-title mb-0" id="customAlertModalLabel">Alert</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <p class="mb-0" id="alertMessage">This is an alert message.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="alertOkBtn">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
         rel="stylesheet" />

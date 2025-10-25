@@ -150,6 +150,25 @@
                                                 </label>
                                                 <textarea name="contact_address" class="form-control" rows="3" placeholder="Enter your business address">{{ $settings->contact_address ?? '' }}</textarea>
                                             </div>
+                                            <div class="col-12">
+                                                <label class="form-label fw-medium">
+                                                    <i class="fas fa-headset me-2 text-info"></i>Customer Support Image
+                                                </label>
+                                                <div class="upload-area border-2 border-dashed rounded-3 p-4 text-center">
+                                                    <input type="file" name="support_image" class="form-control d-none" id="supportImageUpload" accept="image/*">
+                                                    <label for="supportImageUpload" class="cursor-pointer">
+                                                        @if(!empty($settings->support_image))
+                                                            <img src="{{ asset($settings->support_image) }}" alt="Support Image" class="img-thumbnail mb-2" style="max-height: 120px;">
+                                                            <div class="text-muted small">Click to change support image</div>
+                                                        @else
+                                                            <i class="fas fa-image fa-2x text-muted mb-2"></i>
+                                                            <div class="text-muted">Click to upload support image</div>
+                                                            <small class="text-muted d-block">JPG, PNG, WEBP up to 2MB</small>
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                                <small class="text-muted">This image appears on the contact page customer support section</small>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -439,6 +458,33 @@
                             img.className = 'img-thumbnail mb-2';
                             img.style.maxHeight = '60px';
                             faviconInput.closest('.upload-area').prepend(img);
+                        }
+                    };
+                    reader.readAsDataURL(e.target.files[0]);
+                }
+            });
+        }
+
+        // Support Image preview
+        const supportImageInput = document.querySelector('input[name="support_image"]');
+        const supportImageUploadArea = document.querySelector('#supportImageUpload').closest('.upload-area');
+        const supportImagePreview = supportImageUploadArea.querySelector('img');
+        if (supportImageInput) {
+            supportImageInput.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        // Hide default text/icon
+                        supportImageUploadArea.querySelectorAll('i, div.text-muted, small').forEach(function(el) { el.style.display = 'none'; });
+                        if (supportImagePreview) {
+                            supportImagePreview.src = ev.target.result;
+                            supportImagePreview.style.display = 'block';
+                        } else {
+                            const img = document.createElement('img');
+                            img.src = ev.target.result;
+                            img.className = 'img-thumbnail mb-2';
+                            img.style.maxHeight = '120px';
+                            supportImageInput.closest('.upload-area').prepend(img);
                         }
                     };
                     reader.readAsDataURL(e.target.files[0]);

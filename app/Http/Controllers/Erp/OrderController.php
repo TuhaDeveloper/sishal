@@ -102,72 +102,169 @@ class OrderController extends Controller
         $order = Order::with('items')->findOrFail($id);
 
         if ($request->status === 'shipping') {
-            if (!$order->employee_id) {
-                return response()->json(['success' => false, 'message' => 'Assign a technician before shipping.']);
-            }
+            // For e-commerce orders, we need to manage stock but don't require technician
+            $isServiceOrder = $order->employee_id && $order->items->where('current_position_type')->count() > 0;
             
-            foreach ($order->items as $item) {
-                if (!$item->current_position_type || !$item->current_position_id) {
-                    return response()->json(['success' => false, 'message' => 'All items must have a stock source before shipping.']);
+            if ($isServiceOrder) {
+                // Service order: requires technician and complex stock management
+                if (!$order->employee_id) {
+                    return response()->json(['success' => false, 'message' => 'Assign a technician before shipping.']);
                 }
-            }
-
-            foreach ($order->items as $item) {
-                $productId = $item->product_id;
-                $qty = $item->quantity;
-                $fromType = $item->current_position_type;
-                $fromId = $item->current_position_id;
-                $employeeId = $order->employee_id;
-
-                // Find or create employee stock
-                $employeeStock = EmployeeProductStock::firstOrCreate(
-                    ['employee_id' => $employeeId, 'product_id' => $productId],
-                    ['quantity' => 0, 'issued_by' => auth()->id() ?? 1]
-                );
-
-                // Get source stock
-                if ($fromType === 'branch') {
-                    $fromStock = BranchProductStock::where('branch_id', $fromId)
-                        ->where('product_id', $productId)
-                        ->lockForUpdate()
-                        ->first();
-                } elseif ($fromType === 'warehouse') {
-                    $fromStock = WarehouseProductStock::where('warehouse_id', $fromId)
-                        ->where('product_id', $productId)
-                        ->lockForUpdate()
-                        ->first();
-                } elseif ($fromType === 'employee') {
-                    $fromStock = EmployeeProductStock::where('employee_id', $fromId)
-                        ->where('product_id', $productId)
-                        ->lockForUpdate()
-                        ->first();
-                } else {
-                    return response()->json(['success' => false, 'message' => 'Invalid stock source for item.']);
+                
+                foreach ($order->items as $item) {
+                    if (!$item->current_position_type || !$item->current_position_id) {
+                        return response()->json(['success' => false, 'message' => 'All items must have a stock source before shipping.']);
+                    }
                 }
 
-                if (!$fromStock || $fromStock->quantity < $qty) {
-                    return response()->json(['success' => false, 'message' => 'Insufficient stock for item: ' . $item->id]);
+                foreach ($order->items as $item) {
+                    $productId = $item->product_id;
+                    $qty = $item->quantity;
+                    $fromType = $item->current_position_type;
+                    $fromId = $item->current_position_id;
+                    $employeeId = $order->employee_id;
+
+                    // Find or create employee stock
+                    $employeeStock = EmployeeProductStock::firstOrCreate(
+                        ['employee_id' => $employeeId, 'product_id' => $productId],
+                        ['quantity' => 0, 'issued_by' => auth()->id() ?? 1]
+                    );
+
+                    // Get source stock
+                    if ($fromType === 'branch') {
+                        $fromStock = BranchProductStock::where('branch_id', $fromId)
+                            ->where('product_id', $productId)
+                            ->lockForUpdate()
+                            ->first();
+                    } elseif ($fromType === 'warehouse') {
+                        $fromStock = WarehouseProductStock::where('warehouse_id', $fromId)
+                            ->where('product_id', $productId)
+                            ->lockForUpdate()
+                            ->first();
+                    } elseif ($fromType === 'employee') {
+                        $fromStock = EmployeeProductStock::where('employee_id', $fromId)
+                            ->where('product_id', $productId)
+                            ->lockForUpdate()
+                            ->first();
+                    } else {
+                        return response()->json(['success' => false, 'message' => 'Invalid stock source for item.']);
+                    }
+
+                    if (!$fromStock || $fromStock->quantity < $qty) {
+                        $productName = $item->product ? $item->product->name : 'Product ID: ' . $item->product_id;
+                        $availableQty = $fromStock ? $fromStock->quantity : 0;
+                        return response()->json([
+                            'success' => false, 
+                            'message' => "Insufficient stock for '{$productName}'. Required: {$qty}, Available: {$availableQty}. Please add stock before shipping."
+                        ]);
+                    }
+
+                    // Transfer stock
+                    $fromStock->quantity -= $qty;
+                    $fromStock->save();
+
+                    $employeeStock->quantity += $qty;
+                    $employeeStock->save();
+
+                    // Update item's current_position_type/id to employee
+                    $item->current_position_type = 'employee';
+                    $item->current_position_id = $employeeId;
+                    $item->save();
                 }
+            } else {
+                // E-commerce order: stock deduction from defined sources
+                foreach ($order->items as $item) {
+                    $productId = $item->product_id;
+                    $qty = $item->quantity;
 
-                // Transfer stock
-                $fromStock->quantity -= $qty;
-                $fromStock->save();
+                    // Check if item has stock source defined
+                    if ($item->current_position_type && $item->current_position_id) {
+                        // Use defined stock source (branch, warehouse, or employee)
+                        $fromType = $item->current_position_type;
+                        $fromId = $item->current_position_id;
 
-                $employeeStock->quantity += $qty;
-                $employeeStock->save();
+                        if ($fromType === 'branch') {
+                            $fromStock = BranchProductStock::where('branch_id', $fromId)
+                                ->where('product_id', $productId)
+                                ->lockForUpdate()
+                                ->first();
+                        } elseif ($fromType === 'warehouse') {
+                            $fromStock = WarehouseProductStock::where('warehouse_id', $fromId)
+                                ->where('product_id', $productId)
+                                ->lockForUpdate()
+                                ->first();
+                        } elseif ($fromType === 'employee') {
+                            $fromStock = EmployeeProductStock::where('employee_id', $fromId)
+                                ->where('product_id', $productId)
+                                ->lockForUpdate()
+                                ->first();
+                        } else {
+                            return response()->json(['success' => false, 'message' => 'Invalid stock source for item: ' . $item->id]);
+                        }
 
-                // Optionally, update item's current_position_type/id to employee
-                $item->current_position_type = 'employee';
-                $item->current_position_id = $employeeId;
-                $item->save();
+                        if (!$fromStock || $fromStock->quantity < $qty) {
+                            $productName = $item->product ? $item->product->name : 'Product ID: ' . $item->product_id;
+                            $availableQty = $fromStock ? $fromStock->quantity : 0;
+                            return response()->json([
+                                'success' => false, 
+                                'message' => "Insufficient stock for '{$productName}'. Required: {$qty}, Available: {$availableQty}. Please add stock before shipping."
+                            ]);
+                        }
+
+                        // Deduct from source stock
+                        $fromStock->quantity -= $qty;
+                        $fromStock->save();
+
+                        // Mark item as shipped (remove from inventory tracking)
+                        $item->current_position_type = null;
+                        $item->current_position_id = null;
+                        $item->save();
+                    } else {
+                        // For e-commerce orders without specific stock source,
+                        // we'll deduct from a default warehouse (ID 1) or create one
+                        $defaultWarehouseId = 1; // You can change this to your preferred default warehouse
+                        
+                        $fromStock = WarehouseProductStock::where('warehouse_id', $defaultWarehouseId)
+                            ->where('product_id', $productId)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (!$fromStock) {
+                            // Create default warehouse stock if it doesn't exist
+                            $fromStock = WarehouseProductStock::create([
+                                'warehouse_id' => $defaultWarehouseId,
+                                'product_id' => $productId,
+                                'quantity' => 0,
+                                'updated_by' => auth()->id() ?? 1
+                            ]);
+                        }
+
+                        if ($fromStock->quantity < $qty) {
+                            $productName = $item->product ? $item->product->name : 'Product ID: ' . $item->product_id;
+                            return response()->json([
+                                'success' => false, 
+                                'message' => "Insufficient stock for '{$productName}'. Required: {$qty}, Available: {$fromStock->quantity}. Please add stock to warehouse before shipping."
+                            ]);
+                        }
+
+                        // Deduct from default warehouse stock
+                        $fromStock->quantity -= $qty;
+                        $fromStock->save();
+
+                        // Mark item as shipped
+                        $item->current_position_type = null;
+                        $item->current_position_id = null;
+                        $item->save();
+                    }
+                }
             }
         }
 
-        // If all checks pass, update status
+        // Update the order status
         $order->status = $request->status;
         $order->save();
 
-        return response()->json(['success' => true, 'message' => 'Status updated.']);
+        return response()->json(['success' => true, 'message' => 'Status updated successfully.']);
     }
 
     public function updateTechnician($id, $employee_id)

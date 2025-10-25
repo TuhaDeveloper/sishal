@@ -13,6 +13,7 @@ use App\Models\Wishlist;
 use App\Models\AdditionalPage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 use App\Mail\ContactMail;
 use Illuminate\Support\Facades\Validator;
 use App\Services\SmtpConfigService;
@@ -69,6 +70,19 @@ class PageController extends Controller
 
     public function products(Request $request)
     {
+        // Create cache key based on request parameters
+        $cacheKey = 'products_list_' . md5(serialize($request->all()));
+        
+        // Check if we should use cache (not for admin or when cache is disabled)
+        $useCache = !$request->has('no_cache') && !$request->has('admin');
+        
+        if ($useCache) {
+            $cachedData = Cache::get($cacheKey);
+            if ($cachedData) {
+                return response()->view('ecommerce.products', $cachedData);
+            }
+        }
+        
         $categories = ProductServiceCategory::where('status','active')->get();
         $query = Product::query();
 
@@ -127,10 +141,19 @@ class PageController extends Controller
             return $response;
         }
 
-        $products = $query->where('type','product')->paginate(20)->appends($request->all());
+        // Optimize query with eager loading to prevent N+1 queries
+        $products = $query->where('type','product')
+            ->with([
+                'category',
+                'reviews' => function($q) { 
+                    $q->where('is_approved', true); 
+                },
+                'branchStock',
+                'warehouseStock'
+            ])
+            ->paginate(20)->appends($request->all());
         
-
-        // Add is_wishlisted property for each product
+        // Pre-calculate ratings, reviews, and stock status to avoid N+1 queries
         $userId = Auth::id();
         $wishlistedIds = [];
         if ($userId) {
@@ -139,8 +162,19 @@ class PageController extends Controller
                 ->pluck('product_id')
                 ->toArray();
         }
+        
         foreach ($products as $product) {
+            // Add wishlist status
             $product->is_wishlisted = in_array($product->id, $wishlistedIds);
+            
+            // Pre-calculate ratings and reviews (avoid N+1 queries)
+            $product->avg_rating = $product->reviews->avg('rating') ?? 0;
+            $product->total_reviews = $product->reviews->count();
+            
+            // Pre-calculate stock status (avoid N+1 queries)
+            $branchStock = $product->branchStock->sum('quantity') ?? 0;
+            $warehouseStock = $product->warehouseStock->sum('quantity') ?? 0;
+            $product->has_stock = ($branchStock + $warehouseStock) > 0;
         }
 
         // Handle selected categories for both array and single category
@@ -163,6 +197,12 @@ class PageController extends Controller
         ];
         
         $viewData['pageTitle'] = $pageTitle;
+        
+        // Cache the view data for 15 minutes if caching is enabled
+        if ($useCache) {
+            Cache::put($cacheKey, $viewData, 900); // 15 minutes
+        }
+        
         $response = response()->view('ecommerce.products', $viewData);
         $response->header('Cache-Control', 'no-cache, no-store, must-revalidate');
         $response->header('Pragma', 'no-cache');
@@ -173,6 +213,18 @@ class PageController extends Controller
     public function productDetails($slug, Request $request)
     {
         try {
+            // Create cache key for product details
+            $cacheKey = 'product_details_' . $slug;
+            $useCache = !$request->has('no_cache');
+            
+            // Try to get from cache first
+            if ($useCache) {
+                $cachedData = Cache::get($cacheKey);
+                if ($cachedData) {
+                    return response()->view('ecommerce.productDetails', $cachedData);
+                }
+            }
+            
             \Log::info('=== PRODUCT DETAILS REQUEST ===', [
                 'slug' => $slug,
                 'url' => $request->url(),
@@ -180,39 +232,34 @@ class PageController extends Controller
                 'request_id' => uniqid()
             ]);
             
-            // Check all products with similar slugs first
-            $allSimilarProducts = Product::where('slug', 'like', '%' . $slug . '%')
-                ->orWhere('name', 'like', '%' . $slug . '%')
-                ->get(['id', 'name', 'slug']);
-            
-            \Log::info('Similar products found', [
-                'similar_products' => $allSimilarProducts->toArray()
-            ]);
-            
+            // First, get the basic product with minimal relations
             $product = Product::with([
+                'category',
                 'branchStock',
                 'warehouseStock',
                 'productAttributes',
-                // Eager-load only active variations and their nested relations
-                'variations' => function($q) {
-                    $q->where('status', 'active')
-                      ->with([
-                          'combinations.attribute', 
-                          'combinations.attributeValue',
-                          'stocks.branch',
-                          'stocks.warehouse',
-                          'galleries',
-                      ]);
-                },
+                'galleries'
             ])->where('slug', $slug)->first();
             
             if (!$product) {
-                \Log::error('Product not found', [
-                    'slug' => $slug,
-                    'searched_slug' => $slug,
-                    'available_products' => $allSimilarProducts->toArray()
-                ]);
+                \Log::error('Product not found', ['slug' => $slug]);
                 abort(404, 'Product not found');
+            }
+            
+            // Only load variations if the product has variations
+            if ($product->has_variations) {
+                $product->load([
+                    'variations' => function($q) {
+                        $q->where('status', 'active')
+                          ->with([
+                              'combinations.attribute', 
+                              'combinations.attributeValue',
+                              'stocks.branch',
+                              'stocks.warehouse',
+                              'galleries',
+                          ]);
+                    }
+                ]);
             }
             
             \Log::info('Product found successfully', [
@@ -283,9 +330,16 @@ class PageController extends Controller
             // Get general settings for social media links
             $settings = GeneralSetting::first();
             
-            // Add cache-busting headers to prevent caching issues
+            // Prepare view data
             $seoProduct = $product; // ensure header receives the exact product for meta tags
-            $response = response()->view('ecommerce.productDetails', compact('product','relatedProducts','pageTitle','seoProduct','settings'));
+            $viewData = compact('product','relatedProducts','pageTitle','seoProduct','settings');
+            
+            // Cache the view data for 30 minutes if caching is enabled
+            if ($useCache) {
+                Cache::put($cacheKey, $viewData, 1800); // 30 minutes
+            }
+            
+            $response = response()->view('ecommerce.productDetails', $viewData);
             $response->header('Cache-Control', 'no-cache, no-store, must-revalidate, private');
             $response->header('Pragma', 'no-cache');
             $response->header('Expires', '0');

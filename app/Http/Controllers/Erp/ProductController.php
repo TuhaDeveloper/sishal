@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductServiceCategory;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
@@ -318,6 +319,9 @@ class ProductController extends Controller
             }
         }
 
+        // Clear product cache after creating new product
+        $this->clearProductCache();
+
         return redirect()->route('product.list')->with('success', 'Product created successfully!');
     }
 
@@ -457,6 +461,9 @@ class ProductController extends Controller
         $finalAttributes = $product->productAttributes()->get();
         \Log::info('Final product attributes count:', ['count' => $finalAttributes->count()]);
 
+        // Clear product cache after updating product
+        $this->clearProductCache();
+
         return redirect()->route('product.list')->with('success', 'Product updated successfully!');
     }
 
@@ -594,6 +601,60 @@ class ProductController extends Controller
             'per_page' => $products->perPage(),
             'total' => $products->total(),
         ]);
+    }
+
+    /**
+     * Clear product-related cache
+     */
+    private function clearProductCache()
+    {
+        try {
+            // Clear product listing cache
+            $this->clearCachePattern('products_list_*');
+            
+            // Clear product details cache
+            $this->clearCachePattern('product_details_*');
+            
+            // Clear API cache
+            $this->clearCachePattern('top_selling_products_*');
+            $this->clearCachePattern('new_arrivals_products_*');
+            $this->clearCachePattern('best_deals_products_*');
+        } catch (\Exception $e) {
+            \Log::warning('Failed to clear product cache: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Clear cache by pattern
+     */
+    private function clearCachePattern($pattern)
+    {
+        try {
+            $store = Cache::getStore();
+            
+            // Check if we're using Redis cache driver
+            if (method_exists($store, 'getRedis')) {
+                // Redis-specific pattern clearing
+                $keys = $store->getRedis()->keys($pattern);
+                if (!empty($keys)) {
+                    $store->getRedis()->del($keys);
+                }
+            } else {
+                // For non-Redis drivers (database, file, array), we need to clear cache differently
+                // Since pattern matching isn't available, we'll clear the entire cache
+                // This is a fallback approach for database/file cache drivers
+                \Log::info("Clearing entire cache due to pattern matching not supported for current driver: " . get_class($store));
+                Cache::flush();
+            }
+        } catch (\Exception $e) {
+            // Fallback: try to clear individual cache entries or flush entire cache
+            \Log::warning("Could not clear cache pattern {$pattern}: " . $e->getMessage());
+            try {
+                Cache::flush();
+            } catch (\Exception $flushException) {
+                \Log::error("Failed to flush cache: " . $flushException->getMessage());
+            }
+        }
     }
 
 }

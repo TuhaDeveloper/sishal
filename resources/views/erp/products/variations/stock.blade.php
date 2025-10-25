@@ -88,7 +88,11 @@
                                             </button>
                                         </div>
                                         <div class="card-body">
-                                            <pre id="stockLevels" class="bg-light p-3 rounded" style="min-height:120px"></pre>
+                                            <div id="stockLevels">
+                                                <div class="text-center text-muted">
+                                                    <i class="fas fa-spinner fa-spin me-2"></i>Loading stock information...
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -149,7 +153,140 @@ async function loadStockLevels(){
     const url = `{{ route('erp.products.variations.stock.levels', [$product->id, $variation->id]) }}`;
     const res = await fetch(url);
     const data = await res.json();
-    document.getElementById('stockLevels').textContent = JSON.stringify(data, null, 2);
+    
+    const stockLevelsDiv = document.getElementById('stockLevels');
+    
+    // Create a user-friendly display
+    let html = `
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total Stock</h5>
+                        <h2 class="mb-0">${data.total_stock || 0}</h2>
+                        <small>units</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Available Stock</h5>
+                        <h2 class="mb-0">${data.available_stock || 0}</h2>
+                        <small>units</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Branch stocks section
+    if (data.branch_stocks && data.branch_stocks.length > 0) {
+        html += `
+            <div class="mb-4">
+                <h6 class="fw-bold text-primary mb-3">
+                    <i class="fas fa-store me-2"></i>Branch Stock
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Branch Name</th>
+                                <th class="text-center">Total Quantity</th>
+                                <th class="text-center">Available</th>
+                                <th class="text-center">Reserved</th>
+                                <th class="text-center">Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        data.branch_stocks.forEach(stock => {
+            const lastUpdated = stock.last_updated_at ? new Date(stock.last_updated_at).toLocaleDateString() : 'N/A';
+            html += `
+                <tr>
+                    <td><strong>${stock.branch_name}</strong></td>
+                    <td class="text-center"><span class="badge bg-primary">${stock.quantity}</span></td>
+                    <td class="text-center"><span class="badge bg-success">${stock.available_quantity || stock.quantity}</span></td>
+                    <td class="text-center"><span class="badge bg-warning">${stock.reserved_quantity || 0}</span></td>
+                    <td class="text-center text-muted small">${lastUpdated}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="mb-4">
+                <h6 class="fw-bold text-primary mb-3">
+                    <i class="fas fa-store me-2"></i>Branch Stock
+                </h6>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No stock available in branches
+                </div>
+            </div>
+        `;
+    }
+    
+    // Warehouse stocks section
+    if (data.warehouse_stocks && data.warehouse_stocks.length > 0) {
+        html += `
+            <div class="mb-4">
+                <h6 class="fw-bold text-success mb-3">
+                    <i class="fas fa-warehouse me-2"></i>Warehouse Stock
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Warehouse Name</th>
+                                <th class="text-center">Total Quantity</th>
+                                <th class="text-center">Available</th>
+                                <th class="text-center">Reserved</th>
+                                <th class="text-center">Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        data.warehouse_stocks.forEach(stock => {
+            const lastUpdated = stock.last_updated_at ? new Date(stock.last_updated_at).toLocaleDateString() : 'N/A';
+            html += `
+                <tr>
+                    <td><strong>${stock.warehouse_name}</strong></td>
+                    <td class="text-center"><span class="badge bg-primary">${stock.quantity}</span></td>
+                    <td class="text-center"><span class="badge bg-success">${stock.available_quantity || stock.quantity}</span></td>
+                    <td class="text-center"><span class="badge bg-warning">${stock.reserved_quantity || 0}</span></td>
+                    <td class="text-center text-muted small">${lastUpdated}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="mb-4">
+                <h6 class="fw-bold text-success mb-3">
+                    <i class="fas fa-warehouse me-2"></i>Warehouse Stock
+                </h6>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No stock available in warehouses
+                </div>
+            </div>
+        `;
+    }
+    
+    stockLevelsDiv.innerHTML = html;
 }
 document.addEventListener('DOMContentLoaded', loadStockLevels);
 </script>

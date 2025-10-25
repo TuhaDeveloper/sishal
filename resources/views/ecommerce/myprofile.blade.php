@@ -299,12 +299,12 @@
                     <div>
                         <h3 class="mb-1">{{$user->first_name}} {{$user->last_name}}</h3>
                         <p class="mb-1 text-muted-simple">{{$user->email}}</p>
-                        <small class="text-muted-simple">Member since {{ $user->created_at->format('M Y') }} • {{ $orders->count() }} Orders</small>
+                        <small class="text-muted-simple">Member since {{ $user->created_at->format('M Y') }} • {{ $allOrders->count() }} Orders</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-4 text-md-end mt-2 mt-md-0">
-                <small class="text-muted-simple">{{ $orders->where('status', 'delivered')->count() }} completed orders</small>
+                <small class="text-muted-simple">{{ $allOrders->where('status', 'delivered')->count() }} delivered orders</small>
             </div>
         </div>
     </div>
@@ -457,14 +457,22 @@
                     <div class="tab-pane fade {{ request()->get('tab') == 'orders' ? 'show active' : '' }}" id="orders" role="tabpanel" aria-labelledby="orders-tab">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0">Order History</h6>
-                            <select class="form-control-simple w-auto">
-                                <option>All Orders</option>
-                                <option>Completed</option>
-                                <option>Pending</option>
-                                <option>Cancelled</option>
-                            </select>
+                            <div class="d-flex align-items-center gap-2">
+                                <select class="form-control-simple w-auto" name="status" id="orderStatusFilter">
+                                    <option value="all" {{ request('status') == 'all' || !request('status') ? 'selected' : '' }}>All Orders</option>
+                                    <option value="delivered" {{ request('status') == 'delivered' ? 'selected' : '' }}>Delivered</option>
+                                    <option value="shipping" {{ request('status') == 'shipping' ? 'selected' : '' }}>Shipping</option>
+                                    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                </select>
+                                <div id="filterLoading" class="d-none">
+                                    <i class="fas fa-spinner fa-spin text-primary"></i>
+                                </div>
+                            </div>
                         </div>
 
+                        <div id="ordersContainer">
                         @forelse ($orders as $order)
                         <div class="order-card-simple">
                             <div class="d-flex justify-content-between align-items-start mb-3">
@@ -547,19 +555,37 @@
                         </div>
                         @empty
                             <div class="text-center py-4">
-                                <h6 class="text-muted mb-2">No Orders Found</h6>
-                                <p class="text-muted-simple">You haven't placed any orders yet.</p>
-                                <a href="{{ route('ecommerce.home') }}" class="btn-simple">
-                                    Start Shopping
-                                </a>
+                                <i class="fas fa-shopping-bag fa-3x text-muted mb-3"></i>
+                                <h6 class="text-muted">
+                                    @if(request('status') && request('status') !== 'all')
+                                        No {{ ucfirst(request('status')) }} Orders Found
+                                    @else
+                                        No orders found
+                                    @endif
+                                </h6>
+                                <p class="text-muted-simple">
+                                    @if(request('status') && request('status') !== 'all')
+                                        You don't have any {{ request('status') }} orders.
+                                    @else
+                                        You haven't placed any orders yet.
+                                    @endif
+                                </p>
+                                @if(!request('status') || request('status') === 'all')
+                                    <a href="{{ route('product.archive') }}" class="btn-simple">Start Shopping</a>
+                                @else
+                                    <a href="{{ route('profile.edit', ['tab' => 'orders']) }}" class="btn-simple">View All Orders</a>
+                                @endif
                             </div>
                         @endforelse
+                        </div>
 
+                        <div id="ordersPagination">
                         @if($orders->count() > 0)
                         <div class="d-flex justify-content-center mt-3">
-                            {{ $orders->appends(['tab' => 'orders'])->links('vendor.pagination.bootstrap-5') }}
+                            {{ $orders->appends(['tab' => 'orders', 'status' => request('status')])->links('vendor.pagination.bootstrap-5') }}
                         </div>
                         @endif
+                        </div>
                     </div>
 
                     
@@ -685,6 +711,88 @@
                 });
             }
             
+            // Order Filter Enhancement with AJAX
+            const orderStatusFilter = document.getElementById('orderStatusFilter');
+            const filterLoading = document.getElementById('filterLoading');
+            const ordersContainer = document.getElementById('ordersContainer');
+            const ordersPagination = document.getElementById('ordersPagination');
+            
+            if (orderStatusFilter) {
+                orderStatusFilter.addEventListener('change', function() {
+                    const status = this.value;
+                    
+                    // Show loading state
+                    filterLoading.classList.remove('d-none');
+                    orderStatusFilter.disabled = true;
+                    
+                    // Make AJAX request
+                    fetch('{{ route("profile.filter.orders") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            status: status
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update orders container
+                        ordersContainer.innerHTML = data.html;
+                        
+                        // Update pagination
+                        ordersPagination.innerHTML = data.pagination;
+                        
+                        // Update URL without page reload
+                        const url = new URL(window.location);
+                        if (status === 'all') {
+                            url.searchParams.delete('status');
+                        } else {
+                            url.searchParams.set('status', status);
+                        }
+                        window.history.pushState({}, '', url);
+                        
+                        // Re-initialize order buttons for new content
+                        initializeOrderButtons();
+                    })
+                    .catch(error => {
+                        console.error('Error filtering orders:', error);
+                        // Fallback to page reload
+                        window.location.href = '{{ route("profile.edit") }}?tab=orders&status=' + status;
+                    })
+                    .finally(() => {
+                        // Hide loading state
+                        filterLoading.classList.add('d-none');
+                        orderStatusFilter.disabled = false;
+                    });
+                });
+            }
+            
+            // Function to re-initialize order buttons after AJAX update
+            function initializeOrderButtons() {
+                // Cancel Order Modal
+                const cancelButtons = document.querySelectorAll('.btn-cancel-order');
+                cancelButtons.forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        formToSubmit = this.closest('form');
+                    });
+                });
+                
+                // Delete Order Modal
+                const deleteButtons = document.querySelectorAll('.btn-delete-order');
+                deleteButtons.forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        formToSubmit = this.closest('form');
+                        const orderNumber = this.getAttribute('data-order-number');
+                        document.getElementById('deleteOrderNumber').textContent = orderNumber;
+                    });
+                });
+            }
+            
             // Delete Order Modal
             const deleteButtons = document.querySelectorAll('.btn-delete-order');
             console.log('Found delete buttons:', deleteButtons.length);
@@ -730,5 +838,8 @@
                     }
                 });
             });
+            
+            // Initialize order buttons on page load
+            initializeOrderButtons();
         });
     </script>

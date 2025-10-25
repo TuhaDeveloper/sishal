@@ -14,6 +14,7 @@ class GeneralSetting extends Model
         'contact_email',
         'contact_phone',
         'contact_address',
+        'support_image',
         'top_text',
         'footer_text',
         'facebook_url',
