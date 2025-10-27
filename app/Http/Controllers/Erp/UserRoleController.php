@@ -11,6 +11,9 @@ class UserRoleController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermissionTo('view list user role')) {
+            abort(403, 'Unauthorized action.');
+        }
         $roles = Role::all();
         $permissions = Permission::all();
         

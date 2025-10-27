@@ -61,7 +61,7 @@
                             </div>
 
                             <div class="row g-4">
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <div class="mb-3">
                                         <label class="form-label small text-muted fw-medium">Email Address</label>
                                         <div class="d-flex align-items-center">
@@ -76,8 +76,7 @@
                                             <span>{{ $employee->phone ?? '-' }}</span>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-md-6">
+                                    {{-- Branch and Balance sections hidden for ecommerce only business
                                     <div class="mb-3">
                                         <label class="form-label small text-muted fw-medium">Branch</label>
                                         <div class="d-flex align-items-center">
@@ -92,6 +91,7 @@
                                             <span class="fw-semibold">{{ number_format($employeeBalance, 2) }}৳</span>
                                         </div>
                                     </div>
+                                    --}}
                                 </div>
                             </div>
                         </div>

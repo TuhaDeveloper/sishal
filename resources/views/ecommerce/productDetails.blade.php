@@ -1410,6 +1410,43 @@
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
         }
 
+        /* Featured Review Styles */
+        .review-item.featured-review {
+            background: linear-gradient(135deg, #fff9e6 0%, #fff4d1 100%);
+            border: 2px solid #fbbf24;
+            box-shadow: 0 4px 16px rgba(251, 191, 36, 0.2);
+            position: relative;
+        }
+
+        .review-item.featured-review::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+            border-radius: 16px 16px 0 0;
+        }
+
+        .featured-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+        }
+
+        .featured-badge i {
+            font-size: 10px;
+        }
+
         .review-header {
             display: flex;
             justify-content: space-between;
@@ -1426,6 +1463,9 @@
             color: #1a202c;
             font-size: 16px;
             margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
         .review-rating {
@@ -4901,17 +4941,24 @@
                     product_id: review.product_id,
                     expected_product_id: reviewProductId,
                     rating: review.rating,
+                    is_featured: review.is_featured,
                     comment: review.comment.substring(0, 50) + '...'
                 });
                 
                 const stars = generateStars(review.rating);
                 const date = new Date(review.created_at).toLocaleDateString();
+                const isFeatured = review.is_featured || false;
+                const featuredClass = isFeatured ? 'featured-review' : '';
+                const featuredBadge = isFeatured ? '<span class="featured-badge"><i class="fas fa-star"></i> Featured Review</span>' : '';
                 
                 return `
-                    <div class="review-item" data-review-id="${review.id}">
+                    <div class="review-item ${featuredClass}" data-review-id="${review.id}">
                         <div class="review-header">
                             <div class="reviewer-info">
-                                <div class="reviewer-name">${review.user_name}</div>
+                                <div class="reviewer-name">
+                                    ${review.user_name}
+                                    ${featuredBadge}
+                                </div>
                                 <div class="review-rating">${stars}</div>
                                 <div class="review-date">${date}</div>
                             </div>

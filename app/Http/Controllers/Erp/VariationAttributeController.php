@@ -16,6 +16,9 @@ class VariationAttributeController extends Controller
      */
     public function index()
     {
+        if (!auth()->user()->hasPermissionTo('view attribute list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $attributes = VariationAttribute::with('values')->orderBy('sort_order')->get();
         return view('erp.variation-attributes.index', compact('attributes'));
     }

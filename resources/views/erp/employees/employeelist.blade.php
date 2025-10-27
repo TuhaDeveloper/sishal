@@ -21,9 +21,11 @@
                     <p class="text-muted mb-0">Manage employee information, roles, branches and status.</p>
                 </div>
                 <div class="col-md-4 text-end">
+                    @can('employee create')
                     <a href="{{ route('employees.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Add Employee
                     </a>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -86,9 +88,13 @@
                                 <th class="border-0">Email</th>
                                 <th class="border-0 text-center">Phone</th>
                                 <th class="border-0 text-center">Designation</th>
+                                {{-- Balance column hidden for ecommerce only business
                                 <th class="border-0 text-center">Balance</th>
+                                --}}
                                 <th class="border-0 text-center">Status</th>
+                                @canany(['employee view', 'employee edit', 'employee delete'])
                                 <th class="border-0 text-center">Actions</th>
+                                @endcanany
                             </tr>
                         </thead>
                         <tbody>
@@ -109,33 +115,43 @@
                                     <td class="text-center">
                                         <span class="fw-medium">{{ $employee->designation ?? '—' }}</span>
                                     </td>
+                                    {{-- Balance column hidden for ecommerce only business
                                     <td class="text-center">
                                         <span class="fw-medium">{{ $employee->balance ? number_format($employee->balance->balance, 2) . '৳' : '—' }}</span>
                                     </td>
+                                    --}}
                                     <td class="text-center">
                                         <span class="text-muted">{{ $employee->status ? ucfirst($employee->status) : 'Active' }}</span>
                                     </td>
+                                    @canany(['employee view', 'employee edit', 'employee delete'])
                                     <td class="text-center">
                                         <div class="d-flex gap-2 justify-content-center" role="group">
-                                            <a href="{{ route('employees.show', $employee->id) }}" class="btn btn-sm btn-outline-info" title="View">
+                                           
+                                        <a href="{{ route('employees.show', $employee->id) }}" class="btn btn-sm btn-outline-info" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                    
+                                         
                                             <a href="{{ route('employees.edit', $employee->id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                         
                                             <form action="{{ route('employees.destroy', $employee->id) }}" method="POST">
                                                 @csrf
                                                 @method('DELETE')
+                                              
                                                 <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this employee?')" title="Delete">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
+                                             
                                             </form>
                                         </div>
                                     </td>
                                 </tr>
+                                @endcanany
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-4">
+                                    <td colspan="6" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="fas fa-users fa-2x mb-3"></i>
                                             <p class="mb-0">No Employees found</p>

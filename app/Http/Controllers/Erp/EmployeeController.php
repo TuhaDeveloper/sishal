@@ -15,8 +15,12 @@ class EmployeeController extends Controller
     /**
      * Display a listing of the resource.
      */
+    
     public function index(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view employee list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = Employee::with('user','balance');
         if ($request->filled('name')) {
             $query->whereHas('user', function($q) use ($request) {
@@ -41,6 +45,9 @@ class EmployeeController extends Controller
      */
     public function create()
     {
+        if (!auth()->user()->hasPermissionTo('employee create')) {
+            abort(403, 'Unauthorized action.');
+        }
         $roles = Role::all();
         return view('erp.employees.create', compact('roles'));
     }
@@ -50,6 +57,7 @@ class EmployeeController extends Controller
      */
     public function store(Request $request)
     {
+       
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -87,6 +95,10 @@ class EmployeeController extends Controller
      */
     public function show(string $id)
     {
+        if (!auth()->user()->hasPermissionTo('view employee')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $employee = Employee::with(['user.roles', 'branch'])->findOrFail($id);
 
         // Derive simple computed fields for the view
@@ -117,6 +129,9 @@ class EmployeeController extends Controller
      */
     public function edit($id)
     {
+        if (!auth()->user()->hasPermissionTo('employee edit')) {
+            abort(403, 'Unauthorized action.');
+        }
         $employee = Employee::with(['user', 'branch'])->findOrFail($id);
         $roles = Role::all();
         return view('erp.employees.edit', compact('employee', 'roles'));
@@ -158,6 +173,10 @@ class EmployeeController extends Controller
      */
     public function destroy($id)
     {
+        if (!auth()->user()->hasPermissionTo('employee delete')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $employee = Employee::with('user')->findOrFail($id);
         if ($employee->user) {
             $employee->user->delete();

@@ -15,6 +15,9 @@ class StockController extends Controller
 {
     public function stocklist(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view product stock list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $branches = Branch::all();
         $warehouses = Warehouse::all();
         $query = Product::with(['branchStock', 'warehouseStock', 'category', 'variations.stocks']);

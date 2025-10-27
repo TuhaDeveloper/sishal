@@ -1,11 +1,33 @@
-@extends('ecommerce.master')
-
-@section('main-section')
-<style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Login - SISAL FASHION</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
     .login-page {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        min-height: 80vh;
-        padding: 60px 0;
+        width: 100%;
+        max-width: 450px;
+        padding: 20px;
     }
     
     .login-card {
@@ -54,8 +76,8 @@
     }
     
     .form-control:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        border-color: #00512C;
+        box-shadow: 0 0 0 0.2rem rgba(0, 81, 44, 0.25);
         background-color: white;
         outline: none;
     }
@@ -70,7 +92,7 @@
     
     .btn-login {
         height: 55px;
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        background: linear-gradient(135deg, #00512C 0%, #0b7a4a 100%);
         border: none;
         border-radius: 12px;
         font-weight: 600;
@@ -79,12 +101,13 @@
         width: 100%;
         position: relative;
         overflow: hidden;
+        color: white;
     }
     
     .btn-login:hover {
-        background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+        background: linear-gradient(135deg, #004124 0%, #00512C 100%);
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+        box-shadow: 0 8px 25px rgba(0, 81, 44, 0.3);
     }
     
     .btn-login:active {
@@ -106,8 +129,8 @@
     }
     
     .form-check-input:checked {
-        background-color: #007bff;
-        border-color: #007bff;
+        background-color: #00512C;
+        border-color: #00512C;
     }
     
     .form-check-label {
@@ -117,14 +140,14 @@
     }
     
     .forgot-password {
-        color: #007bff;
+        color: #00512C;
         text-decoration: none;
         font-size: 15px;
         font-weight: 500;
     }
     
     .forgot-password:hover {
-        color: #0056b3;
+        color: #004124;
         text-decoration: underline;
     }
     
@@ -136,13 +159,13 @@
     }
     
     .signup-link a {
-        color: #007bff;
+        color: #00512C;
         text-decoration: none;
         font-weight: 600;
     }
     
     .signup-link a:hover {
-        color: #0056b3;
+        color: #004124;
         text-decoration: underline;
     }
     
@@ -192,9 +215,13 @@
     }
     
     @media (max-width: 768px) {
+        body {
+            align-items: flex-start;
+        }
+        
         .login-page {
-            padding: 20px 0;
-            min-height: 70vh;
+            padding: 20px;
+            margin-top: 20px;
         }
         
         .login-card {
@@ -293,90 +320,86 @@
             margin-bottom: 20px;
         }
     }
-</style>
+    </style>
+</head>
+<body>
 
 <!-- Login Section -->
-<section class="login-page">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-6 col-md-8 col-sm-10">
-                <div class="login-card">
-                    <!-- Title -->
-                    <div class="login-title">
-                        <h2>Welcome Back</h2>
-                        <p>Sign in to your account to continue</p>
-                    </div>
+<div class="login-page">
+    <div class="login-card">
+        <!-- Title -->
+        <div class="login-title">
+            <h2>Welcome Back</h2>
+            <p>Sign in to your account to continue</p>
+        </div>
 
-                    <!-- Session Status -->
-                    @if (session('status'))
-                        <div class="success-message">
-                            <i class="fas fa-check-circle me-2"></i>
-                            {{ session('status') }}
-                        </div>
-                    @endif
-
-                    <!-- Login Form -->
-                    <form method="POST" action="{{ route('login') }}" id="loginForm">
-                        @csrf
-
-                        <!-- Email Address -->
-                        <div class="form-group">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username" 
-                                   class="form-control" placeholder="Enter your email address">
-                            @error('email')
-                                <div class="error-message">
-                                    <i class="fas fa-exclamation-circle me-2"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- Password -->
-                        <div class="form-group">
-                            <label for="password" class="form-label">Password</label>
-                            <input id="password" type="password" name="password" required autocomplete="current-password" 
-                                   class="form-control" placeholder="Enter your password">
-                            @error('password')
-                                <div class="error-message">
-                                    <i class="fas fa-exclamation-circle me-2"></i>
-                                    {{ $message }}
-                                </div>
-                            @enderror
-                        </div>
-
-                        <!-- Remember Me & Forgot Password -->
-                        <div class="login-options">
-                            <div class="form-check">
-                                <input id="remember_me" type="checkbox" name="remember" class="form-check-input">
-                                <label for="remember_me" class="form-check-label">Remember me</label>
-                            </div>
-                            @if (Route::has('password.request'))
-                                <a href="{{ route('password.request') }}" class="forgot-password">
-                                    Forgot password?
-                                </a>
-                            @endif
-                        </div>
-
-                        <!-- Login Button -->
-                        <button type="submit" class="btn btn-primary btn-login" id="loginBtn">
-                            <i class="fas fa-sign-in-alt me-2"></i>
-                            <span class="btn-text">Sign In</span>
-                        </button>
-                    </form>
-
-                    <!-- Sign Up Link -->
-                    <div class="signup-link">
-                        Don't have an account? 
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}">Sign up here</a>
-                        @endif
-                    </div>
-                </div>
+        <!-- Session Status -->
+        @if (session('status'))
+            <div class="success-message">
+                <i class="fas fa-check-circle me-2"></i>
+                {{ session('status') }}
             </div>
+        @endif
+
+        <!-- Login Form -->
+        <form method="POST" action="{{ route('login') }}" id="loginForm">
+            @csrf
+
+            <!-- Email Address -->
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username" 
+                       class="form-control" placeholder="Enter your email address">
+                @error('email')
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        {{ $message }}
+                    </div>
+                @enderror
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input id="password" type="password" name="password" required autocomplete="current-password" 
+                       class="form-control" placeholder="Enter your password">
+                @error('password')
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        {{ $message }}
+                    </div>
+                @enderror
+            </div>
+
+            <!-- Remember Me & Forgot Password -->
+            <div class="login-options">
+                <div class="form-check">
+                    <input id="remember_me" type="checkbox" name="remember" class="form-check-input">
+                    <label for="remember_me" class="form-check-label">Remember me</label>
+                </div>
+                @if (Route::has('password.request'))
+                    <a href="{{ route('password.request') }}" class="forgot-password">
+                        Forgot password?
+                    </a>
+                @endif
+            </div>
+
+            <!-- Login Button -->
+            <button type="submit" class="btn btn-primary btn-login" id="loginBtn">
+                <i class="fas fa-sign-in-alt me-2"></i>
+                <span class="btn-text">Sign In</span>
+            </button>
+        </form>
+
+        <!-- Sign Up Link -->
+        <div class="signup-link">
+            Don't have an account? 
+            @if (Route::has('register'))
+                <a href="{{ route('register') }}">Sign up here</a>
+            @endif
         </div>
     </div>
-</section>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -395,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const inputs = document.querySelectorAll('.form-control');
     inputs.forEach(input => {
         input.addEventListener('focus', function() {
-            this.style.borderColor = '#007bff';
+            this.style.borderColor = '#00512C';
             this.style.backgroundColor = 'white';
         });
         
@@ -419,4 +442,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-@endsection
+</body>
+</html>

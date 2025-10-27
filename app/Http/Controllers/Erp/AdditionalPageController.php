@@ -10,6 +10,9 @@ class AdditionalPageController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermissionTo('view additional list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $additionalPages = AdditionalPage::all();
         return view('erp.additionalPages.additionalPageList', compact('additionalPages'));
     }

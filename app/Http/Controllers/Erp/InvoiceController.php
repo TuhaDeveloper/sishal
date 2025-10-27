@@ -21,6 +21,9 @@ class InvoiceController extends Controller
 {
     public function templateList(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view invoice list template')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = InvoiceTemplate::query();
 
         // Search by name
@@ -73,6 +76,9 @@ class InvoiceController extends Controller
 
     public function index(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view invoice list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = Invoice::query();
 
         // Join salesman (user) and employee for phone

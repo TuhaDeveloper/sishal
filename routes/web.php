@@ -316,7 +316,6 @@ Route::prefix('erp')->middleware(['auth', 'admin'])->group(function () {
     Route::put('/employees/{employee}', [\App\Http\Controllers\Erp\EmployeeController::class, 'update'])->name('employees.update');
     Route::delete('/employees/{employee}', [\App\Http\Controllers\Erp\EmployeeController::class, 'destroy'])->name('employees.destroy');
 
-
     // Invoice
     Route::get('/invoice-templates', [InvoiceController::class, 'templateList'])->name('invoice.template.list');
     Route::post('/invoice-templates', [InvoiceController::class, 'storeTemplate'])->name('invoice.template.store');

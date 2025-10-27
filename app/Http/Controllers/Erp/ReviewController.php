@@ -15,6 +15,9 @@ class ReviewController extends Controller
      */
     public function index(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view review list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = Review::with(['product', 'user']);
 
         // Filter by approval status

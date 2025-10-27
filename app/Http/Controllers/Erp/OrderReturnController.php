@@ -14,6 +14,9 @@ class OrderReturnController extends Controller
 {
     public function index(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view order return list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = OrderReturn::query();
 
         // Search by customer name, phone, email, or POS order_number

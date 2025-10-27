@@ -11,6 +11,9 @@ class VloggingController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermissionTo('view list vlog')) {
+            abort(403, 'Unauthorized action.');
+        }
         $vlogs = Vlog::all();
         return view('erp.vlogs.vloglist', compact('vlogs'));
     }

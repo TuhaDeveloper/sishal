@@ -16,6 +16,9 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view customer list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = Customer::with('addedBy');
 
         // Search by Customer ID

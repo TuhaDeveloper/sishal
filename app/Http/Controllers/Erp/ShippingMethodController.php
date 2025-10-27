@@ -13,6 +13,9 @@ class ShippingMethodController extends Controller
      */
     public function index()
     {
+        if (!auth()->user()->hasPermissionTo('view shipping list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $shippingMethods = ShippingMethod::ordered()->get();
         return view('erp.shipping-methods.index', compact('shippingMethods'));
     }

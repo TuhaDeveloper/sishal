@@ -14,6 +14,9 @@ class GeneralSettingsController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermissionTo('setting manage')) {
+            abort(403, 'Unauthorized action.');
+        }
         $settings = GeneralSetting::first();
         return view('erp.settings.settings',compact('settings'));
     }

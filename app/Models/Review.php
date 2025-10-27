@@ -57,6 +57,11 @@ class Review extends Model
         return $query->orderBy('created_at', 'desc');
     }
 
+    public function scopeOrderByFeatured($query)
+    {
+        return $query->orderByDesc('is_featured')->orderBy('created_at', 'desc');
+    }
+
     public function scopeByRating($query, $rating)
     {
         return $query->where('rating', $rating);

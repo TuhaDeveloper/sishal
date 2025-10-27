@@ -16,6 +16,9 @@ class BannerController extends Controller
      */
     public function index(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view banner list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = Banner::query();
 
         // Filter by status

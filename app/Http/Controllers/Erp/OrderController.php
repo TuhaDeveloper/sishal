@@ -23,6 +23,9 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view order list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = Order::query();
 
         // Search by order number, name, phone, email

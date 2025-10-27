@@ -29,6 +29,7 @@
             @endcan
         </div>
         @endcanany
+        @canany(['view employee list'])
         <div class="nav-item">
             <a href="#" class="nav-link {{ request()->is('erp/employees*') ? ' active' : '' }}" data-bs-toggle="collapse" data-bs-target="#hrmSubmenu" aria-expanded="{{ request()->is('erp/employees*') ? 'true' : 'false' }}" aria-controls="hrmSubmenu">
                 <div class="d-flex align-items-center">
@@ -46,8 +47,8 @@
                 </ul>
             </div>
         </div>
-        
-       
+        @endcanany
+       {{--
         <div class="nav-item">
             <a href="#accountingSubmenu" class="nav-link {{ (request()->is('erp/supplier*') || request()->is('erp/bills*') || request()->is('erp/account-type*') || request()->is('erp/chart-of-account*') || request()->is('erp/financial-accounts*') || request()->is('erp/journal*') || request()->is('erp/transfer*') || request()->is('erp/ledger*') || request()->is('erp/balance-sheet*') || request()->is('erp/profit-and-loss*')) ? ' active' : '' }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ (request()->is('erp/supplier*') || request()->is('erp/bills*') || request()->is('erp/account-type*') || request()->is('erp/chart-of-account*') || request()->is('erp/financial-accounts*') || request()->is('erp/journal*') || request()->is('erp/transfer*') || request()->is('erp/ledger*') || request()->is('erp/balance-sheet*') || request()->is('erp/profit-and-loss*')) ? 'true' : 'false' }}" aria-controls="accountingSubmenu">
                 <div class="d-flex align-items-center">
@@ -102,8 +103,8 @@
                 </ul>
             </div>
         </div>
-
-       
+--}}
+        @canany(['view list user role'])
         <div class="nav-item">
             <a href="#" class="nav-link {{ (request()->is('erp/user-role*')) ? ' active' : '' }}" data-bs-toggle="collapse" data-bs-target="#userManagementSubMenu" aria-expanded="{{ (request()->is('erp/user-role*')) ? 'true' : 'false' }}" aria-controls="userManagementSubMenu">
                 <div class="d-flex align-items-center">
@@ -120,7 +121,8 @@
                 </ul>
             </div>
         </div>
-        
+      @endcanany
+        @canany(['view products list'])
         <div class="nav-item">
             <a href="#" class="nav-link {{ (request()->is('erp/categories*') || request()->is('erp/products*') || request()->is('erp/product-stock*') || request()->is('erp/attributes*') || request()->is('erp/subcategories*') || request()->is('erp/reviews*') || request()->is('erp/variation-attributes*')) ? ' active' : '' }}" data-bs-toggle="collapse" data-bs-target="#productsSubMenu" aria-expanded="{{ (request()->is('erp/categories*') || request()->is('erp/products*') || request()->is('erp/product-stock*') || request()->is('erp/attributes*') || request()->is('erp/subcategories*') || request()->is('erp/reviews*') || request()->is('erp/variation-attributes*')) ? 'true' : 'false' }}" aria-controls="productsSubMenu">
                 <div class="d-flex align-items-center">
@@ -131,34 +133,46 @@
             </a>
             <div class="collapse{{ (request()->is('erp/categories*') || request()->is('erp/products*') || request()->is('erp/product-stock*') || request()->is('erp/attributes*') || request()->is('erp/subcategories*') || request()->is('erp/reviews*') || request()->is('erp/variation-attributes*')) ? ' show' : '' }}" id="productsSubMenu">
                 <ul class="nav flex-column ms-4">
+                    @canany(['view product category list'])
                     <li class="nav-item">
                         <a href="{{ route('category.list') }}" class="nav-link {{ request()->is('erp/categories*') ? ' active' : '' }}">Category</a>
                     </li>
+                    @endcanany
+                    @canany(['view subcategory list'])
                     <li class="nav-item">
                         <a href="{{ route('subcategory.list') }}" class="nav-link {{ request()->is('erp/subcategories*') ? ' active' : '' }}">Sub Categories</a>
                     </li>
+                    @endcanany
+                    @canany(['view products list'])
                     <li class="nav-item">
                         <a href="{{ route('product.list') }}" class="nav-link {{ request()->is('erp/products*') ? ' active' : '' }}">Products</a>
                     </li>
-                    <!-- <li class="nav-item">
-                        <a href="" class="nav-link">Raw Material</a>
-                    </li> -->
-                    <li class="nav-item">
-                        <a href="{{ route('attribute.list') }}" class="nav-link {{ request()->is('erp/attributes*') ? ' active' : '' }}">Attributes</a>
-                    </li>
+                    @endcanany
+                    @canany(['view attribute list'])
+                        <li class="nav-item">
+                            <a href="{{ route('attribute.list') }}" class="nav-link {{ request()->is('erp/attributes*') ? ' active' : '' }}">Attributes</a>
+                        </li>
+                    @endcanany
+                    @canany(['view review list'])
                     <li class="nav-item">
                         <a href="{{ route('reviews.index') }}" class="nav-link {{ request()->is('erp/reviews*') ? ' active' : '' }}">Reviews</a>
                     </li>
+                    @endcanany
+                    @canany(['view product stock list'])
                     <li class="nav-item">
                         <a href="{{ route('productstock.list') }}" class="nav-link {{ request()->is('erp/product-stock*') ? ' active' : '' }}">Product Stock</a>
                     </li>
+                    @endcanany
+                    @canany(['view variation list'])
                     <li class="nav-item">
                         <a href="{{ route('erp.variation-attributes.index') }}" class="nav-link {{ request()->is('erp/variation-attributes*') ? ' active' : '' }}">Variation Attributes</a>
                     </li>
+                    @endcanany
                 </ul>
             </div>
         </div>
-        
+        @endcanany
+     {{--
         <div class="nav-item">
             <a href="#posSubmenu" class="nav-link {{ (request()->is('erp/stock-transfer*') || request()->is('erp/purchases*') || request()->is('erp/purchase-return*') || request()->is('erp/pos*') || request()->is('erp/sale-return*')) ? ' active' : '' }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ (request()->is('erp/stock-transfer*') || request()->is('erp/purchases*') || request()->is('erp/purchase-return*') || request()->is('erp/pos*') || request()->is('erp/sale-return*')) ? 'true' : 'false' }}" aria-controls="posSubmenu">
                 <div class="d-flex align-items-center">
@@ -190,6 +204,8 @@
                 </ul>
             </div>
         </div>
+        --}}
+        
         {{-- Service functionality disabled - commented out
         <div class="nav-item">
             <a href="#" class="nav-link {{ request()->is('erp/customer-services*') ? ' active' : '' }}" data-bs-toggle="collapse" data-bs-target="#serviceSubMenu" aria-expanded="{{ request()->is('erp/customer-services*') ? 'true' : 'false' }}" aria-controls="productsSubMenu">
@@ -208,7 +224,7 @@
             </div>
         </div>
         --}}
-        
+        @canany(['view order list', 'view order return list', 'view customer list', 'view invoice list', 'view invoice template list'])
         <div class="nav-item">
             <a href="#" class="nav-link {{ (request()->is('erp/order-list*') || request()->is('erp/order-return*') || request()->is('erp/customers*') || request()->is('erp/invoices*') || request()->is('erp/invoice-templates*')) ? ' active' : '' }}" data-bs-toggle="collapse" data-bs-target="#ecommerceSubMenu" aria-expanded="{{ (request()->is('erp/order-list*') || request()->is('erp/order-return*') || request()->is('erp/customers*') || request()->is('erp/invoices*') || request()->is('erp/invoice-templates*')) ? 'true' : 'false' }}" aria-controls="ecommerceSubMenu">
                 <div class="d-flex align-items-center">
@@ -219,6 +235,7 @@
             </a>
             <div class="collapse{{ (request()->is('erp/order-list*') || request()->is('erp/order-return*') || request()->is('erp/customers*') || request()->is('erp/invoices*') || request()->is('erp/invoice-templates*')) ? ' show' : '' }}" id="ecommerceSubMenu">
                 <ul class="nav flex-column ms-4">
+                    @canany(['view customer list', 'view invoice list', 'view invoice template list'])
                     <li class="nav-item">
                         <a href="#salesSubmenu" class="nav-link {{ (request()->is('erp/customers*') || request()->is('erp/invoices*') || request()->is('erp/invoice-templates*')) ? ' active' : '' }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ (request()->is('erp/customers*') || request()->is('erp/invoices*') || request()->is('erp/invoice-templates*')) ? 'true' : 'false' }}" aria-controls="salesSubmenu">
                             <span>Sales</span>
@@ -232,15 +249,22 @@
                             </ul>
                         </div>
                     </li>
+                    @endcanany
+                    @can('view order list')
                     <li class="nav-item">
                         <a href="{{ route('order.list') }}" class="nav-link {{ request()->is('erp/order-list*') ? ' active' : '' }}">Order</a>
                     </li>
+                    @endcan
+                    @can('view order return list')
                     <li class="nav-item">
                         <a href="{{ route('orderReturn.list') }}" class="nav-link {{ request()->is('erp/order-return*') ? ' active' : '' }}">Order Return</a>
                     </li>
+                    @endcan
                 </ul>
             </div>
         </div>
+        @endcanany
+        @canany(['view vlog list'])
         <div class="nav-item">
             <a href="{{ route('vlogging.index') }}" class="nav-link {{ request()->is('erp/vlogging*') ? ' active' : '' }}">
                 <div class="d-flex align-items-center">
@@ -249,6 +273,8 @@
                 </div>
             </a>
         </div> 
+        @endcanany
+        @canany(['view additional page list'])
         <div class="nav-item">
             <a href="{{ route('additionalPages.index') }}" class="nav-link {{ request()->is('erp/additional-pages*') ? ' active' : '' }}">
                 <div class="d-flex align-items-center">
@@ -257,6 +283,8 @@
                 </div>
             </a>
         </div>
+        @endcanany
+        @canany(['view banner list'])
         <div class="nav-item">
             <a href="{{ route('banners.index') }}" class="nav-link {{ request()->is('erp/banners*') ? ' active' : '' }}">
                 <div class="d-flex align-items-center">
@@ -265,6 +293,8 @@
                 </div>
             </a>
         </div>
+        @endcanany
+        @canany(['setting manage'])
         <div class="nav-item">
             <a href="{{ route('settings.index') }}" class="nav-link {{ request()->is('erp/settings*') ? ' active' : '' }}">
                 <div class="d-flex align-items-center">
@@ -273,6 +303,8 @@
                 </div>
             </a>
         </div>
+        @endcanany
+        @canany(['view shipping list'])
         <div class="nav-item">
             <a href="{{ route('shipping-methods.index') }}" class="nav-link {{ request()->is('erp/shipping-methods*') ? ' active' : '' }}">
                 <div class="d-flex align-items-center">
@@ -281,5 +313,6 @@
                 </div>
             </a>
         </div>
+        @endcanany
     </nav>
 </div> 

@@ -29,7 +29,7 @@ class ReviewController extends Controller
             $query = Review::with(['user'])
                 ->where('product_id', $productId)
                 ->approved()
-                ->recent();
+                ->orderByFeatured();
             
             // Apply rating filter if provided
             if ($request->filled('rating')) {

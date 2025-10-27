@@ -16,6 +16,10 @@ class ProductController extends Controller
      */
     public function categoryList(Request $request)
     {
+     
+        if (!auth()->user()->hasPermissionTo('view category list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = ProductServiceCategory::with(['parent', 'children'])->whereNull('parent_id');
         if ($request->has('search') && $request->search) {
             $search = $request->search;
@@ -33,6 +37,9 @@ class ProductController extends Controller
 
     public function subcategoryList(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('view subcategory list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $query = ProductServiceCategory::with('parent')->whereNotNull('parent_id');
         if ($request->has('search') && $request->search) {
             $search = $request->search;
@@ -126,6 +133,9 @@ class ProductController extends Controller
 
     public function storeCategory(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('create category')) {
+            abort(403, 'Unauthorized action.');
+        }
         $request->validate([
             'name' => 'required|string|max:255',
             'slug' => 'required|unique:product_service_categories,slug',
@@ -212,26 +222,31 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        $query = Product::query();
+        if (auth()->user()->hasPermissionTo('view products list')) {
+            $query = Product::query();
 
-        // Filter by category if provided
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
+            // Filter by category if provided
+            if ($request->filled('category_id')) {
+                $query->where('category_id', $request->category_id);
+            }
+    
+            // Search by product name or SKU if provided
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%$search%")
+                      ->orWhere('sku', 'like', "%$search%")
+                      ;
+                });
+            }
+    
+            $products = $query->with(['category', 'variations.stocks', 'branchStock', 'warehouseStock'])->paginate(12)->withQueryString();
+    
+            return view('erp.products.productlist', compact('products'));
         }
-
-        // Search by product name or SKU if provided
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%$search%")
-                  ->orWhere('sku', 'like', "%$search%")
-                  ;
-            });
+        else{
+            abort(403, 'Unauthorized action.');
         }
-
-        $products = $query->with(['category', 'variations.stocks', 'branchStock', 'warehouseStock'])->paginate(12)->withQueryString();
-
-        return view('erp.products.productlist', compact('products'));
     }
 
     public function create()

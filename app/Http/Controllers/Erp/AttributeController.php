@@ -10,12 +10,18 @@ class AttributeController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermissionTo('view attribute list')) {
+            abort(403, 'Unauthorized action.');
+        }
         $attributes = Attribute::orderByDesc('id')->paginate(12);
         return view('erp.attributes.attributelist', compact('attributes'));
     }
 
     public function create()
     {
+        if (!auth()->user()->hasPermissionTo('create attribute')) {
+            abort(403, 'Unauthorized action.');
+        }
         return view('erp.attributes.create');
     }
 
