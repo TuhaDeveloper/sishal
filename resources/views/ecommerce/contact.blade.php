@@ -16,9 +16,9 @@
                     <p class="section-subtitle text-start mb-0">We're here to help you find the perfect water purification solution for your needs</p>
                 </div>
 
-                <div class="row g-4">
-                    <!-- Contact Cards -->
-                    <div class="col-md-4">
+				<div class="row g-4">
+					<!-- Contact Cards -->
+					<div class="col-md-3">
                         <div class="card h-100 border-0 shadow-sm text-center">
                             <div class="card-body p-4">
                                 <div class="service-icon d-inline-flex align-items-center justify-content-center mb-4"
@@ -28,12 +28,12 @@
                                 <h4 class="promo-title mb-3">Call Us</h4>
                                 <p class="promo-description mb-3">Speak directly with our experts</p>
                                 <p class="stat-number fs-5">{{$general_settings->contact_phone}}</p>
-                                <p class="stat-label">Mon - Fri: 9:00 AM - 6:00 PM</p>
+                                <!-- <p class="stat-label">Mon - Fri: 9:00 AM - 6:00 PM</p> -->
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-md-4">
+					<div class="col-md-3">
                         <div class="card h-100 border-0 shadow-sm text-center">
                             <div class="card-body p-4">
                                 <div class="service-icon d-inline-flex align-items-center justify-content-center mb-4"
@@ -43,12 +43,12 @@
                                 <h4 class="promo-title mb-3">Email Us</h4>
                                 <p class="promo-description mb-3">Send us your questions anytime</p>
                                 <p class="stat-number fs-6">{{$general_settings->contact_email}}</p>
-                                <p class="stat-label">We respond within 24 hours</p>
+                                <!-- <p class="stat-label">We respond within 24 hours</p> -->
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-md-4">
+					<div class="col-md-3">
                         <div class="card h-100 border-0 shadow-sm text-center">
                             <div class="card-body p-4">
                                 <div class="service-icon d-inline-flex align-items-center justify-content-center mb-4"
@@ -58,10 +58,26 @@
                                 <h4 class="promo-title mb-3">Visit Us</h4>
                                 <p class="promo-description mb-3">Come to our showroom</p>
                                 <p class="stat-number fs-6">{{$general_settings->contact_address}}</p>
-                                <p class="stat-label">Open 7 days a week</p>
+                                <!-- <p class="stat-label">Open 7 days a week</p> -->
                             </div>
                         </div>
                     </div>
+
+					<!-- Head Office -->
+					<div class="col-md-3">
+						<div class="card h-100 border-0 shadow-sm text-center">
+							<div class="card-body p-4">
+								<div class="service-icon d-inline-flex align-items-center justify-content-center mb-4"
+									style="width: 80px; height: 80px;">
+									<i class="fas fa-building"></i>
+								</div>
+								<h4 class="promo-title mb-3">Head Office & Factory</h4>
+								<p class="promo-description mb-3">office location</p>
+								<!-- <p class="stat-number fs-6">{{ $general_settings->head_office_address ?? ($general_settings->contact_address_2 ?? 'Add head office address in settings.') }}</p> -->
+                                 <p class="stat-number fs-6" >Purbahati, Natunpara, Hemayetpur, Savar, Dhaka-1340</p>
+							</div>
+						</div>
+					</div>
                 </div>
             </div>
         </div>
