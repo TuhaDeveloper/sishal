@@ -54,7 +54,7 @@ class Banner extends Model
     public function getImageUrlAttribute()
     {
         if ($this->image) {
-            return \Illuminate\Support\Facades\Storage::url($this->image);
+            return asset($this->image);
         }
         return null;
     }

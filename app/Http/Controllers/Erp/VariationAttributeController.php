@@ -74,7 +74,7 @@ class VariationAttributeController extends Controller
             if (isset($valueData['image']) && $valueData['image']) {
                 $image = $valueData['image'];
                 $imageName = time() . '_attr_' . $attribute->id . '_' . $index . '_' . $image->getClientOriginalName();
-                $image->storeAs('public/uploads/attributes', $imageName);
+                $image->move(public_path('uploads/attributes'), $imageName);
                 $value['image'] = 'uploads/attributes/' . $imageName;
             }
 
@@ -151,12 +151,15 @@ class VariationAttributeController extends Controller
             if (isset($valueData['image']) && $valueData['image']) {
                 // Delete old image if exists
                 if ($valueId && $existingValues->has($valueId) && $existingValues[$valueId]->image) {
-                    Storage::delete('public/' . $existingValues[$valueId]->image);
+                    $oldPath = public_path($existingValues[$valueId]->image);
+                    if (is_file($oldPath)) {
+                        @unlink($oldPath);
+                    }
                 }
                 
                 $image = $valueData['image'];
                 $imageName = time() . '_attr_' . $attribute->id . '_' . $index . '_' . $image->getClientOriginalName();
-                $image->storeAs('public/uploads/attributes', $imageName);
+                $image->move(public_path('uploads/attributes'), $imageName);
                 $value['image'] = 'uploads/attributes/' . $imageName;
             }
 
@@ -171,7 +174,10 @@ class VariationAttributeController extends Controller
         // Delete removed values
         foreach ($existingValues as $value) {
             if ($value->image) {
-                Storage::delete('public/' . $value->image);
+                $oldPath = public_path($value->image);
+                if (is_file($oldPath)) {
+                    @unlink($oldPath);
+                }
             }
             $value->delete();
         }
@@ -193,7 +199,10 @@ class VariationAttributeController extends Controller
         // Delete images
         foreach ($attribute->values as $value) {
             if ($value->image) {
-                Storage::delete('public/' . $value->image);
+                $oldPath = public_path($value->image);
+                if (is_file($oldPath)) {
+                    @unlink($oldPath);
+                }
             }
         }
         

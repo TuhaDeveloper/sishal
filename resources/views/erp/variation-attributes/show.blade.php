@@ -136,7 +136,7 @@
                                                             <div class="d-flex justify-content-between align-items-start">
                                                                 <div class="d-flex align-items-center gap-3">
                                                                     @if($attribute->is_color && $value->image)
-                                                                        <img src="{{ asset('storage/' . $value->image) }}" 
+                                                                        <img src="{{ asset($value->image) }}" 
                                                                              alt="{{ $value->value }}" 
                                                                              style="width:40px;height:40px;object-fit:cover;border-radius:8px;border:2px solid #e2e8f0"/>
                                                                     @elseif($attribute->is_color && $value->color_code)

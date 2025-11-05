@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Banner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -71,8 +72,10 @@ class BannerController extends Controller
 
         // Handle image upload
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('banners', 'public');
-            $validated['image'] = $imagePath;
+            $image = $request->file('image');
+            $imageName = time() . '_' . Str::random(8) . '_' . $image->getClientOriginalName();
+            $image->move(public_path('uploads/banners'), $imageName);
+            $validated['image'] = 'uploads/banners/' . $imageName;
         }
 
         // Normalize date-times: treat input as business timezone and store as UTC
@@ -128,10 +131,15 @@ class BannerController extends Controller
         if ($request->hasFile('image')) {
             // Delete old image if exists
             if ($banner->image) {
-                Storage::disk('public')->delete($banner->image);
+                $oldPath = public_path($banner->image);
+                if (is_file($oldPath)) {
+                    @unlink($oldPath);
+                }
             }
-            $imagePath = $request->file('image')->store('banners', 'public');
-            $validated['image'] = $imagePath;
+            $image = $request->file('image');
+            $imageName = time() . '_' . Str::random(8) . '_' . $image->getClientOriginalName();
+            $image->move(public_path('uploads/banners'), $imageName);
+            $validated['image'] = 'uploads/banners/' . $imageName;
         }
         // Normalize date-times: treat input as business timezone and store as UTC
         $inputTimezone = env('APP_INPUT_TZ', config('app.timezone', 'UTC'));
@@ -155,7 +163,10 @@ class BannerController extends Controller
     {
         // Delete image if exists
         if ($banner->image) {
-            Storage::disk('public')->delete($banner->image);
+            $oldPath = public_path($banner->image);
+            if (is_file($oldPath)) {
+                @unlink($oldPath);
+            }
         }
 
         $banner->delete();

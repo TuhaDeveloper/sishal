@@ -77,7 +77,7 @@
                                                     @foreach($attribute->values->take(3) as $value)
                                                         <span class="badge bg-light text-dark d-flex align-items-center" style="gap:6px;">
                                                             @if($attribute->is_color && $value->image)
-                                                                <img src="{{ asset('storage/' . $value->image) }}" alt="{{ $value->value }}" style="width:18px;height:18px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0"/>
+                                                                <img src="{{ asset($value->image) }}" alt="{{ $value->value }}" style="width:18px;height:18px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0"/>
                                                             @elseif($attribute->is_color && $value->color_code)
                                                                 <span class="color-indicator" 
                                                                       style="background-color: {{ $value->color_code }}; 
