@@ -4,15 +4,11 @@
             <button class="btn btn-link d-md-none me-3 p-0" id="sidebarToggle">
                 <i class="fas fa-bars fs-5"></i>
             </button>
-            <div>
-                <h2 class="mb-1">
-                    @if(Auth::user()->employee && Auth::user()->employee->branch)
-                        {{ Auth::user()->employee->branch->name }} Branch
-                    @else
-                        No Branch
-                    @endif
-                </h2>
-            </div>
+            @if(Auth::user()->employee && Auth::user()->employee->branch)
+                <div>
+                    <h2 class="mb-1">{{ Auth::user()->employee->branch->name }} Branch</h2>
+                </div>
+            @endif
         </div>
         <div class="d-flex align-items-center position-relative">
             <button class="btn btn-link position-relative me-3 p-2">

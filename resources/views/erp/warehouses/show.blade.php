@@ -141,8 +141,8 @@
                                                                 @endif
                                                             </div>
                                                             <div>
-                                                                <h6 class="mb-0 fw-semibold">{{ $product->name ?? 'Unknown Product' }}</h6>
-                                                                <small class="text-muted">ID: #{{ $product->id ?? 'N/A' }}</small>
+                                                                <h6 class="mb-0 fw-semibold">{{ $product ? ($product->name ?? 'Unknown Product') : 'Unknown Product' }}</h6>
+                                                                <small class="text-muted">ID: #{{ $product ? ($product->id ?? 'N/A') : 'N/A' }}</small>
                                                                 @if($stockType === 'variation')
                                                                     <br><small class="text-info"><i class="fas fa-layer-group"></i> Variation Product</small>
                                                                 @endif
@@ -150,17 +150,17 @@
                                                         </div>
                                                     </td>
                                                     <td class="border-0 py-3">
-                                                        <code class="bg-light px-2 py-1 rounded">{{ $product->sku ?? 'N/A' }}</code>
+                                                        <code class="bg-light px-2 py-1 rounded">{{ $product ? ($product->sku ?? 'N/A') : 'N/A' }}</code>
                                                     </td>
                                                     <td class="border-0 py-3">
-                                                        <span class="fw-semibold text-success">৳{{ number_format(($product->discount && $product->discount > 0) ? $product->discount : ($product->price ?? 0), 2) }}</span>
+                                                        <span class="fw-semibold text-success">৳{{ number_format(($product && $product->discount && $product->discount > 0) ? $product->discount : ($product ? ($product->price ?? 0) : 0), 2) }}</span>
                                                     </td>
                                                     <td class="border-0 py-3">
-                                                        <span class="fw-semibold">৳{{ number_format($product->cost ?? 0, 2) }}</span>
+                                                        <span class="fw-semibold">৳{{ number_format($product ? ($product->cost ?? 0) : 0, 2) }}</span>
                                                     </td>
                                                     <td class="border-0 py-3">
                                                         <span class="badge bg-info bg-opacity-25 text-info">
-                                                            {{ $product->category->name ?? 'No Category' }}
+                                                            {{ $product && $product->category ? $product->category->name : 'No Category' }}
                                                         </span>
                                                     </td>
                                                     <td class="border-0 py-3">
@@ -180,9 +180,9 @@
                                                     </td>
                                                     <td class="border-0 py-3">
                                                         @if($quantity < 0)
-                                                            <span class="fw-semibold text-danger">৳{{ number_format($quantity * (($product->cost ?? null) !== null ? $product->cost : ($product->price ?? 0)), 2) }}</span>
+                                                            <span class="fw-semibold text-danger">৳{{ number_format($quantity * ($product ? (($product->cost ?? null) !== null ? $product->cost : ($product->price ?? 0)) : 0), 2) }}</span>
                                                         @else
-                                                            <span class="fw-semibold text-primary">৳{{ number_format($quantity * (($product->cost ?? null) !== null ? $product->cost : ($product->price ?? 0)), 2) }}</span>
+                                                            <span class="fw-semibold text-primary">৳{{ number_format($quantity * ($product ? (($product->cost ?? null) !== null ? $product->cost : ($product->price ?? 0)) : 0), 2) }}</span>
                                                         @endif
                                                     </td>
                                                 </tr>
