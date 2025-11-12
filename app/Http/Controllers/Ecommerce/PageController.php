@@ -89,15 +89,21 @@ class PageController extends Controller
         // Get the highest price of all products
         $maxProductPrice = Product::max('price') ?? 0;
 
-        // Category filter
+        // Category filter - include child categories
         if ($request->has('categories') && is_array($request->categories) && count($request->categories)) {
-            $categoryIds = ProductServiceCategory::whereIn('slug', $request->categories)->pluck('id');
-            $query->whereIn('category_id', $categoryIds);
+            $categoryIds = ProductServiceCategory::whereIn('slug', $request->categories)->pluck('id')->toArray();
+            // Get all child category IDs recursively
+            $allCategoryIds = ProductServiceCategory::getAllChildIdsForCategories($categoryIds);
+            $query->whereIn('category_id', $allCategoryIds);
         } elseif ($request->has('category') && $request->category) {
             // Single category filter (from category page links)
-            $categoryId = ProductServiceCategory::where('slug', $request->category)->value('id');
-            if ($categoryId) {
-                $query->where('category_id', $categoryId);
+            $category = ProductServiceCategory::with('children')->where('slug', $request->category)->first();
+            if ($category) {
+                // Load all nested children recursively
+                $category->loadNestedChildren();
+                // Get all child category IDs recursively
+                $allCategoryIds = $category->getAllChildIds();
+                $query->whereIn('category_id', $allCategoryIds);
             }
         }
 
@@ -585,13 +591,12 @@ class PageController extends Controller
             ->where('status', 'active')
             ->where('type', 'product');
 
-        // Category filter
+        // Category filter - include child categories
         if ($request->filled('categories') && !in_array('all', $request->categories)) {
-            $query->whereIn('category_id', function($q) use ($request) {
-                $q->select('id')
-                  ->from('product_service_categories')
-                  ->whereIn('slug', $request->categories);
-            });
+            $categoryIds = ProductServiceCategory::whereIn('slug', $request->categories)->pluck('id')->toArray();
+            // Get all child category IDs recursively
+            $allCategoryIds = ProductServiceCategory::getAllChildIdsForCategories($categoryIds);
+            $query->whereIn('category_id', $allCategoryIds);
         }
 
         // Price range filter

@@ -2043,6 +2043,7 @@
             right: -30px;
         }
 
+
         .related-swiper .swiper-button-prev {
             left: -30px;
         }
@@ -5600,6 +5601,7 @@
 
     </script>
 @endpush
+
 
 
 
