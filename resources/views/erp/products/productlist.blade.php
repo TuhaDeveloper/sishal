@@ -26,7 +26,14 @@
                 @forelse ($products as $product)
                 <div class="col-12 col-sm-6 col-md-4 col-lg-3">
                     <div class="card h-100 shadow-sm border-0">
-                        <img src="{{ asset($product->image) }}" class="card-img-top" alt="Product " style="height: 200px; object-fit: cover;">
+                        <div class="position-relative">
+                            <img src="{{ asset($product->image) }}" class="card-img-top" alt="Product " style="height: 200px; object-fit: cover;">
+                            @if($product->free_delivery)
+                            <div class="position-absolute top-0 end-0 m-2">
+                                <span class="badge bg-info"><i class="fas fa-truck me-1"></i>Free Delivery</span>
+                            </div>
+                            @endif
+                        </div>
                         <div class="card-body d-flex flex-column">
                             <h6 class="card-title fw-bold mb-1">{{ $product->name ?? 'N/A' }} </h6>
                             <div class="mb-2 text-muted small">Category: {{ $product->category->name ?? 'N/A' }}</div>

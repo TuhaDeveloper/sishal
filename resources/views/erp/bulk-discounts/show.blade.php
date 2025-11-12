@@ -65,8 +65,13 @@
                                 @endphp
                                 <dt class="col-sm-3">Type:</dt>
                                 <dd class="col-sm-9">
-                                    <span class="badge bg-primary">{{ ucfirst($discountType) }}</span>
+                                    @if($discountType === 'free_delivery')
+                                        <span class="badge bg-primary"><i class="fas fa-truck me-1"></i>Free Delivery</span>
+                                    @else
+                                        <span class="badge bg-primary">{{ ucfirst(str_replace('_', ' ', $discountType)) }}</span>
+                                    @endif
                                 </dd>
+                                @if($discountType !== 'free_delivery')
                                 <dt class="col-sm-3">Value:</dt>
                                 <dd class="col-sm-9">
                                     @if($discountType === 'percentage')
@@ -75,6 +80,7 @@
                                         <span class="badge bg-info fs-6">{{ number_format($discountValue, 2) }}৳</span>
                                     @endif
                                 </dd>
+                                @endif
                             </dl>
                         </div>
                     </div>

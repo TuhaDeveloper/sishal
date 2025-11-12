@@ -17,7 +17,7 @@
                         </ol>
                     </nav>
                     <h2 class="fw-bold mb-0">Bulk Discount Management</h2>
-                    <p class="text-muted mb-0">Apply percentage discounts to all products or specific products.</p>
+                    <p class="text-muted mb-0">Apply percentage discounts, fixed amount discounts, or free delivery to all products or specific products.</p>
                 </div>
                 <div class="col-md-4 text-end">
                     <a href="{{ route('bulk-discounts.create') }}" class="btn btn-primary">
@@ -76,7 +76,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Name</th>
-                                        <th>Percentage</th>
+                                        <th>Discount Type</th>
                                         <th>Scope</th>
                                         <th>Status</th>
                                         <th>Valid Period</th>
@@ -97,7 +97,9 @@
                                                     $discountType = $discount->type ?? 'percentage';
                                                     $discountValue = $discount->value ?? $discount->percentage ?? 0;
                                                 @endphp
-                                                @if($discountType === 'percentage')
+                                                @if($discountType === 'free_delivery')
+                                                    <span class="badge bg-primary"><i class="fas fa-truck me-1"></i>Free Delivery</span>
+                                                @elseif($discountType === 'percentage')
                                                     <span class="badge bg-success">{{ number_format($discountValue, 2) }}%</span>
                                                 @else
                                                     <span class="badge bg-info">{{ number_format($discountValue, 2) }}৳</span>

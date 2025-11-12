@@ -39,12 +39,18 @@ class OrderController extends Controller
             ->get();
         $cartTotal = 0;
 
+        $hasProductFreeDelivery = false;
         foreach ($carts as $cart) {
             $product = $cart->product;
             if (!$product)
                 continue;
             $price = $product->discount && $product->discount > 0 ? $product->discount : $product->price;
             $cartTotal += $price * $cart->qty;
+            
+            // Check if product has free delivery
+            if ($product->free_delivery) {
+                $hasProductFreeDelivery = true;
+            }
         }
 
         // Get tax rate from general settings
@@ -53,9 +59,12 @@ class OrderController extends Controller
 
         // Get shipping methods
         $shippingMethods = \App\Models\ShippingMethod::active()->ordered()->get();
+        
+        // Calculate initial shipping cost (0 if free delivery, otherwise first method cost)
+        $initialShippingCost = $hasProductFreeDelivery ? 0 : ($shippingMethods->first() ? $shippingMethods->first()->cost : 0);
 
         $pageTitle = 'Checkout';
-        return view('ecommerce.checkout', compact('carts', 'cartTotal', 'taxRate', 'shippingMethods', 'pageTitle'));
+        return view('ecommerce.checkout', compact('carts', 'cartTotal', 'taxRate', 'shippingMethods', 'pageTitle', 'hasProductFreeDelivery', 'initialShippingCost'));
     }
 
     public function makeOrder(Request $request)
@@ -215,6 +224,21 @@ class OrderController extends Controller
             : \App\Models\ShippingMethod::where('name', $request->shipping_method)->first();
         $shipping = $shippingMethod ? $shippingMethod->cost : 0;
         
+        // Check if any product in cart has free delivery enabled
+        $hasProductFreeDelivery = false;
+        foreach ($carts as $cart) {
+            $product = $cart->product;
+            if ($product && $product->free_delivery) {
+                $hasProductFreeDelivery = true;
+                break;
+            }
+        }
+        
+        // Apply free delivery if any product has free_delivery enabled
+        if ($hasProductFreeDelivery) {
+            $shipping = 0;
+        }
+        
         // Handle coupon validation and discount calculation
         $coupon = null;
         $couponDiscount = 0;
@@ -238,7 +262,7 @@ class OrderController extends Controller
             $couponDiscount = $couponValidation['discount'];
             $couponId = $coupon->id;
             
-            // Apply free delivery if coupon has free_delivery enabled
+            // Apply free delivery if coupon has free_delivery enabled (overrides product free delivery if coupon is used)
             if ($coupon->free_delivery) {
                 $shipping = 0;
             }
@@ -701,8 +725,18 @@ class OrderController extends Controller
             // Get shipping cost (if available in request)
             $shippingCost = $request->input('shipping_cost', 0);
             
-            // Apply free delivery if coupon has free_delivery enabled
-            if ($validation['free_delivery'] ?? false) {
+            // Check if any product in cart has free delivery enabled
+            $hasProductFreeDelivery = false;
+            foreach ($carts as $cart) {
+                $product = $cart->product;
+                if ($product && $product->free_delivery) {
+                    $hasProductFreeDelivery = true;
+                    break;
+                }
+            }
+            
+            // Apply free delivery if any product has free_delivery enabled or coupon has free_delivery
+            if ($hasProductFreeDelivery || ($validation['free_delivery'] ?? false)) {
                 $shippingCost = 0;
             }
             
@@ -721,7 +755,7 @@ class OrderController extends Controller
                 'message' => $validation['message'],
                 'discount' => $validation['discount'],
                 'formatted_discount' => number_format($validation['discount'], 2),
-                'free_delivery' => $validation['free_delivery'] ?? false,
+                'free_delivery' => $hasProductFreeDelivery || ($validation['free_delivery'] ?? false),
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'shipping' => $shippingCost,
@@ -852,13 +886,30 @@ class OrderController extends Controller
             ];
         });
 
+        // Check if any product in cart has free delivery enabled
+        $hasProductFreeDelivery = false;
+        foreach ($carts as $cart) {
+            $product = $cart->product;
+            if ($product && $product->free_delivery) {
+                $hasProductFreeDelivery = true;
+                break;
+            }
+        }
+        
         $tax = round($cartTotal * $taxRate, 2);
         $selectedShipping = $shippingMethods->first();
         $shippingCost = $selectedShipping ? $selectedShipping['cost'] : 0;
+        
+        // Apply free delivery if any product has free_delivery enabled
+        if ($hasProductFreeDelivery) {
+            $shippingCost = 0;
+        }
+        
         $total = $cartTotal + $tax + $shippingCost;
 
         return response()->json([
             'shipping_methods' => $shippingMethods,
+            'has_product_free_delivery' => $hasProductFreeDelivery,
             'summary' => [
                 'subtotal' => $cartTotal,
                 'tax' => $tax,

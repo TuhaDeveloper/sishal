@@ -54,8 +54,8 @@ class BulkDiscountController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:percentage,fixed',
-            'value' => 'required|numeric|min:0',
+            'type' => 'required|in:percentage,fixed,free_delivery',
+            'value' => 'nullable|numeric|min:0',
             'scope_type' => 'required|in:all,products',
             'applicable_products' => 'nullable|array',
             'applicable_products.*' => 'exists:products,id',
@@ -65,9 +65,18 @@ class BulkDiscountController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        // Validate value based on type
-        if ($validated['type'] === 'percentage' && $validated['value'] > 100) {
+        // Validate value based on type (required for percentage and fixed, optional for free_delivery)
+        if ($validated['type'] !== 'free_delivery' && empty($validated['value'])) {
+            return back()->withErrors(['value' => 'Discount value is required for this discount type'])->withInput();
+        }
+
+        if ($validated['type'] === 'percentage' && isset($validated['value']) && $validated['value'] > 100) {
             return back()->withErrors(['value' => 'Percentage discount cannot exceed 100%'])->withInput();
+        }
+
+        // Set value to 0 or null for free_delivery
+        if ($validated['type'] === 'free_delivery') {
+            $validated['value'] = 0;
         }
 
         // Handle date conversion
@@ -87,7 +96,12 @@ class BulkDiscountController extends Controller
         // Handle checkbox - if not present in request, it's unchecked (false)
         $validated['is_active'] = $request->has('is_active') && $request->input('is_active') == '1';
 
-        BulkDiscount::create($validated);
+        $bulkDiscount = BulkDiscount::create($validated);
+
+        // Apply free delivery to products if active and type is free_delivery
+        if ($validated['is_active'] && $validated['type'] === 'free_delivery') {
+            $this->applyFreeDeliveryToProducts($bulkDiscount);
+        }
 
         return redirect()->route('bulk-discounts.index')
                         ->with('success', 'Bulk discount created successfully!');
@@ -118,8 +132,8 @@ class BulkDiscountController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:percentage,fixed',
-            'value' => 'required|numeric|min:0',
+            'type' => 'required|in:percentage,fixed,free_delivery',
+            'value' => 'nullable|numeric|min:0',
             'scope_type' => 'required|in:all,products',
             'applicable_products' => 'nullable|array',
             'applicable_products.*' => 'exists:products,id',
@@ -129,9 +143,22 @@ class BulkDiscountController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        // Validate value based on type
-        if ($validated['type'] === 'percentage' && $validated['value'] > 100) {
+        // Validate value based on type (required for percentage and fixed, optional for free_delivery)
+        if ($validated['type'] !== 'free_delivery' && empty($validated['value'])) {
+            return back()->withErrors(['value' => 'Discount value is required for this discount type'])->withInput();
+        }
+
+        if ($validated['type'] === 'percentage' && isset($validated['value']) && $validated['value'] > 100) {
             return back()->withErrors(['value' => 'Percentage discount cannot exceed 100%'])->withInput();
+        }
+
+        // Store old state to check if we need to remove free delivery
+        $wasFreeDelivery = $bulkDiscount->type === 'free_delivery';
+        $wasActive = $bulkDiscount->is_active;
+
+        // Set value to 0 or null for free_delivery
+        if ($validated['type'] === 'free_delivery') {
+            $validated['value'] = 0;
         }
 
         // Handle date conversion
@@ -155,7 +182,17 @@ class BulkDiscountController extends Controller
         // Handle checkbox - if not present in request, it's unchecked (false)
         $validated['is_active'] = $request->has('is_active') && $request->input('is_active') == '1';
 
+        // Remove free delivery from products if it was active and now it's not
+        if ($wasFreeDelivery && $wasActive && (!$validated['is_active'] || $validated['type'] !== 'free_delivery')) {
+            $this->removeFreeDeliveryFromProducts($bulkDiscount);
+        }
+
         $bulkDiscount->update($validated);
+
+        // Apply free delivery to products if active and type is free_delivery
+        if ($validated['is_active'] && $validated['type'] === 'free_delivery') {
+            $this->applyFreeDeliveryToProducts($bulkDiscount);
+        }
 
         return redirect()->route('bulk-discounts.index')
                         ->with('success', 'Bulk discount updated successfully!');
@@ -166,6 +203,11 @@ class BulkDiscountController extends Controller
      */
     public function destroy(BulkDiscount $bulkDiscount)
     {
+        // Remove free delivery from products if it was active
+        if ($bulkDiscount->type === 'free_delivery' && $bulkDiscount->is_active) {
+            $this->removeFreeDeliveryFromProducts($bulkDiscount);
+        }
+
         $bulkDiscount->delete();
 
         return redirect()->route('bulk-discounts.index')
@@ -177,13 +219,107 @@ class BulkDiscountController extends Controller
      */
     public function toggleStatus(BulkDiscount $bulkDiscount)
     {
+        $wasActive = $bulkDiscount->is_active;
         $bulkDiscount->is_active = !$bulkDiscount->is_active;
         $bulkDiscount->save();
+
+        // Handle free delivery based on status change
+        if ($bulkDiscount->type === 'free_delivery') {
+            if ($bulkDiscount->is_active) {
+                // Apply free delivery when activated
+                $this->applyFreeDeliveryToProducts($bulkDiscount);
+            } else {
+                // Remove free delivery when deactivated
+                $this->removeFreeDeliveryFromProducts($bulkDiscount);
+            }
+        }
 
         return response()->json([
             'success' => true,
             'is_active' => $bulkDiscount->is_active,
             'message' => 'Bulk discount status updated successfully!'
         ]);
+    }
+
+    /**
+     * Apply free delivery to products based on bulk discount
+     */
+    private function applyFreeDeliveryToProducts(BulkDiscount $bulkDiscount)
+    {
+        if ($bulkDiscount->scope_type === 'all') {
+            // Apply to all active products
+            Product::where('status', 'active')->update(['free_delivery' => true]);
+        } else {
+            // Apply to selected products
+            if ($bulkDiscount->applicable_products && is_array($bulkDiscount->applicable_products)) {
+                Product::whereIn('id', $bulkDiscount->applicable_products)
+                    ->where('status', 'active')
+                    ->update(['free_delivery' => true]);
+            }
+        }
+    }
+
+    /**
+     * Remove free delivery from products based on bulk discount
+     */
+    private function removeFreeDeliveryFromProducts(BulkDiscount $bulkDiscount)
+    {
+        if ($bulkDiscount->scope_type === 'all') {
+            // Check if there are other active free delivery discounts
+            $otherActiveFreeDelivery = BulkDiscount::where('id', '!=', $bulkDiscount->id)
+                ->where('type', 'free_delivery')
+                ->where('is_active', true)
+                ->where(function($query) {
+                    $query->whereNull('start_date')
+                        ->orWhere('start_date', '<=', Carbon::now());
+                })
+                ->where(function($query) {
+                    $query->whereNull('end_date')
+                        ->orWhere('end_date', '>=', Carbon::now());
+                })
+                ->exists();
+
+            // Only remove if no other active free delivery discounts exist
+            if (!$otherActiveFreeDelivery) {
+                Product::where('status', 'active')->update(['free_delivery' => false]);
+            }
+        } else {
+            // Remove from selected products
+            if ($bulkDiscount->applicable_products && is_array($bulkDiscount->applicable_products)) {
+                // Check if products are covered by other active free delivery discounts
+                $otherActiveFreeDelivery = BulkDiscount::where('id', '!=', $bulkDiscount->id)
+                    ->where('type', 'free_delivery')
+                    ->where('is_active', true)
+                    ->where(function($query) {
+                        $query->whereNull('start_date')
+                            ->orWhere('start_date', '<=', Carbon::now());
+                    })
+                    ->where(function($query) {
+                        $query->whereNull('end_date')
+                            ->orWhere('end_date', '>=', Carbon::now());
+                    })
+                    ->get();
+
+                $productIdsToUpdate = $bulkDiscount->applicable_products;
+                
+                // Remove products that are covered by other discounts
+                foreach ($otherActiveFreeDelivery as $otherDiscount) {
+                    if ($otherDiscount->scope_type === 'all') {
+                        // All products are covered, don't remove any
+                        $productIdsToUpdate = [];
+                        break;
+                    } elseif ($otherDiscount->applicable_products) {
+                        // Remove products that are in other discounts
+                        $productIdsToUpdate = array_diff($productIdsToUpdate, $otherDiscount->applicable_products);
+                    }
+                }
+
+                if (!empty($productIdsToUpdate)) {
+                    Product::whereIn('id', $productIdsToUpdate)
+                        ->where('status', 'active')
+                        ->update(['free_delivery' => false]);
+                }
+            }
+        }
     }
 }

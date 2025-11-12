@@ -85,19 +85,20 @@
                                     <select class="form-select @error('type') is-invalid @enderror" id="type" name="type" required>
                                         <option value="percentage" {{ old('type', $bulkDiscount->type ?? 'percentage') == 'percentage' ? 'selected' : '' }}>Percentage</option>
                                         <option value="fixed" {{ old('type', $bulkDiscount->type ?? '') == 'fixed' ? 'selected' : '' }}>Fixed Amount</option>
+                                        <option value="free_delivery" {{ old('type', $bulkDiscount->type ?? '') == 'free_delivery' ? 'selected' : '' }}>Free Delivery</option>
                                     </select>
-                                    <div class="form-text">Choose between percentage or fixed amount discount</div>
+                                    <div class="form-text">Choose between percentage, fixed amount discount, or free delivery</div>
                                     @error('type')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
 
-                                <div class="mb-3">
-                                    <label for="value" class="form-label">Discount Value <span class="text-danger">*</span></label>
+                                <div class="mb-3" id="discountValueField">
+                                    <label for="value" class="form-label">Discount Value <span class="text-danger" id="valueRequired">*</span></label>
                                     <div class="input-group">
                                         <input type="number" class="form-control @error('value') is-invalid @enderror" 
                                                id="value" name="value" value="{{ old('value', $bulkDiscount->value ?? $bulkDiscount->percentage ?? '') }}" 
-                                               required min="0" step="0.01" placeholder="0.00">
+                                               min="0" step="0.01" placeholder="0.00">
                                         <span class="input-group-text" id="valueSuffix">%</span>
                                     </div>
                                     <div class="form-text" id="valueHelp">Enter percentage (0-100) or fixed amount in ৳</div>
@@ -242,10 +243,23 @@
             const valueField = document.getElementById('value');
             const valueSuffix = document.getElementById('valueSuffix');
             const valueHelp = document.getElementById('valueHelp');
+            const discountValueField = document.getElementById('discountValueField');
+            const valueRequired = document.getElementById('valueRequired');
             
-            if (typeField) {
-                typeField.addEventListener('change', function() {
-                    if (this.value === 'percentage') {
+            function toggleDiscountFields() {
+                if (!typeField) return;
+                
+                if (typeField.value === 'free_delivery') {
+                    // Hide discount value field for free delivery
+                    discountValueField.style.display = 'none';
+                    valueField.removeAttribute('required');
+                    valueField.value = '';
+                } else {
+                    // Show discount value field
+                    discountValueField.style.display = 'block';
+                    valueField.setAttribute('required', 'required');
+                    
+                    if (typeField.value === 'percentage') {
                         valueSuffix.textContent = '%';
                         valueField.setAttribute('max', '100');
                         valueHelp.textContent = 'Enter percentage (0-100)';
@@ -254,10 +268,14 @@
                         valueField.removeAttribute('max');
                         valueHelp.textContent = 'Enter fixed amount in ৳';
                     }
-                });
+                }
+            }
+            
+            if (typeField) {
+                typeField.addEventListener('change', toggleDiscountFields);
 
                 // Trigger on page load
-                typeField.dispatchEvent(new Event('change'));
+                toggleDiscountFields();
             }
 
             // Toggle scope fields based on scope type
@@ -339,16 +357,19 @@
                     const type = document.getElementById('type')?.value;
                     const value = parseFloat(document.getElementById('value')?.value || 0);
                     
-                    if (type === 'percentage' && value > 100) {
-                        e.preventDefault();
-                        alert('Percentage discount cannot exceed 100%.');
-                        return false;
-                    }
-                    
-                    if (value <= 0) {
-                        e.preventDefault();
-                        alert('Discount value must be greater than 0.');
-                        return false;
+                    // Skip value validation for free delivery
+                    if (type !== 'free_delivery') {
+                        if (type === 'percentage' && value > 100) {
+                            e.preventDefault();
+                            alert('Percentage discount cannot exceed 100%.');
+                            return false;
+                        }
+                        
+                        if (value <= 0) {
+                            e.preventDefault();
+                            alert('Discount value must be greater than 0.');
+                            return false;
+                        }
                     }
 
                     const scopeType = document.getElementById('scope_type')?.value;

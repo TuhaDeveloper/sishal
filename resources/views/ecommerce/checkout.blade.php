@@ -161,6 +161,11 @@
                                     <p class="text-muted">Choose your preferred delivery option</p>
                                 </div>
                                 <div class="section-body">
+                                    @if($hasProductFreeDelivery)
+                                    <div class="alert alert-info mb-3">
+                                        <i class="fas fa-truck me-2"></i><strong>Free Delivery!</strong> Your order qualifies for free delivery.
+                                    </div>
+                                    @endif
                                     <div class="shipping-options">
                                         @foreach($shippingMethods as $index => $method)
                                         <div class="shipping-option">
@@ -170,7 +175,13 @@
                                                     <div class="shipping-name">{{ $method->name }}</div>
                                                     <div class="shipping-desc">{{ $method->delivery_time ?? $method->description }}</div>
                                                 </div>
-                                                <div class="shipping-price">{{ number_format($method->cost, 2) }}৳</div>
+                                                <div class="shipping-price">
+                                                    @if($hasProductFreeDelivery)
+                                                        <span class="text-success"><i class="fas fa-truck me-1"></i>Free</span>
+                                                    @else
+                                                        {{ number_format($method->cost, 2) }}৳
+                                                    @endif
+                                                </div>
                                             </label>
                                         </div>
                                         @endforeach
@@ -277,7 +288,13 @@
                                         </div>
                                         <div class="price-row">
                                             <span>Shipping</span>
-                                            <span>{{ $shippingMethods->first() ? number_format($shippingMethods->first()->cost, 2) : '0.00' }}৳</span>
+                                            <span id="shippingDisplay" class="{{ $hasProductFreeDelivery ? 'text-success' : '' }}">
+                                                @if($hasProductFreeDelivery)
+                                                    <i class="fas fa-truck me-1"></i>Free Delivery
+                                                @else
+                                                    {{ number_format($initialShippingCost, 2) }}৳
+                                                @endif
+                                            </span>
                                         </div>
                                         <div class="price-row">
                                             <span>Tax</span>
@@ -289,14 +306,14 @@
                                         </div>
                                         <div class="price-row total-row">
                                             <span>Total</span>
-                                            <span>{{$cartTotal + ($cartTotal * $taxRate) + ($shippingMethods->first() ? $shippingMethods->first()->cost : 0)}}৳</span>
+                                            <span id="totalDisplay">{{ number_format($cartTotal + ($cartTotal * $taxRate) + $initialShippingCost, 2) }}৳</span>
                                         </div>
                                     </div>
 
                                     <!-- Place Order Button -->
                                     <button type="submit" class="btn btn-place-order w-100" style="background-color: var(--primary-blue); color: #fff;">
                                         <i class="fas fa-credit-card me-2"></i>
-                                        Place Order - {{$cartTotal + ($cartTotal * $taxRate) + ($shippingMethods->first() ? $shippingMethods->first()->cost : 0)}}৳
+                                        <span id="placeOrderText">Place Order - {{ number_format($cartTotal + ($cartTotal * $taxRate) + $initialShippingCost, 2) }}৳</span>
                                     </button>
                                 </div>
                             </div>
@@ -918,6 +935,9 @@
                 initCitySearch('billing_city_search', 'billing_city_dropdown', 'billing_city_id', 'billing_city', true);
                 initCitySearch('shipping_city_search', 'shipping_city_dropdown', 'shipping_city_id', 'shipping_city', false);
 
+                // Check if products have free delivery
+                const hasProductFreeDelivery = {{ $hasProductFreeDelivery ? 'true' : 'false' }};
+                
                 // Update shipping methods based on city
                 function updateShippingMethods(cityId) {
                     const url = cityId 
@@ -927,6 +947,11 @@
                     fetch(url)
                         .then(response => response.json())
                         .then(data => {
+                            // Use API response free delivery flag if available, otherwise use page-level flag
+                            const isFreeDelivery = data.has_product_free_delivery !== undefined 
+                                ? data.has_product_free_delivery 
+                                : hasProductFreeDelivery;
+                            
                             if (data.shipping_methods && data.shipping_methods.length > 0) {
                                 // Update shipping options
                                 const shippingOptionsContainer = document.querySelector('.shipping-options');
@@ -939,7 +964,11 @@
                                                     <div class="shipping-name">${method.name}</div>
                                                     <div class="shipping-desc">${method.delivery_time || method.description || ''}</div>
                                                 </div>
-                                                <div class="shipping-price">${method.formatted_cost}৳</div>
+                                                <div class="shipping-price">
+                                                    ${isFreeDelivery 
+                                                        ? '<span class="text-success"><i class="fas fa-truck me-1"></i>Free</span>' 
+                                                        : method.formatted_cost + '৳'}
+                                                </div>
                                             </label>
                                         </div>
                                     `).join('');
@@ -952,8 +981,16 @@
                                     });
                                 }
 
+                                // Update order summary (force free delivery if products have it)
+                                if (isFreeDelivery && data.summary) {
+                                    data.summary.shipping = 0;
+                                    data.summary.formatted_shipping = '0.00';
+                                    data.summary.total = data.summary.subtotal + data.summary.tax;
+                                    data.summary.formatted_total = (data.summary.subtotal + data.summary.tax).toFixed(2);
+                                }
+                                
                                 // Update order summary
-                                updateOrderSummary(data.summary);
+                                updateOrderSummary(data.summary, isFreeDelivery);
                             }
                         })
                         .catch(error => {
@@ -964,17 +1001,23 @@
                 // Update shipping method price
                 function updateShippingPrice(methodId, summary = null) {
                     if (summary) {
-                        updateOrderSummary(summary);
+                        // Force free delivery if products have it
+                        if (hasProductFreeDelivery) {
+                            summary.shipping = 0;
+                            summary.formatted_shipping = '0.00';
+                            summary.total = summary.subtotal + summary.tax;
+                            summary.formatted_total = (summary.subtotal + summary.tax).toFixed(2);
+                        }
+                        updateOrderSummary(summary, hasProductFreeDelivery);
                         return;
                     }
 
                     // Fallback: get from current shipping methods data
                     const selectedMethod = document.querySelector(`input[name="shipping_method"]:checked`);
                     if (selectedMethod) {
-                        const methodCost = parseFloat(selectedMethod.closest('.shipping-option').querySelector('.shipping-price').textContent.replace(/[৳,]/g, ''));
                         const subtotal = {{ $cartTotal }};
                         const tax = {{ $cartTotal * $taxRate }};
-                        const shipping = methodCost || 0;
+                        const shipping = hasProductFreeDelivery ? 0 : (parseFloat(selectedMethod.closest('.shipping-option').querySelector('.shipping-price').textContent.replace(/[৳,Free]/g, '')) || 0);
                         const total = subtotal + tax + shipping;
 
                         updateOrderSummary({
@@ -986,19 +1029,40 @@
                             formatted_tax: tax.toFixed(2),
                             formatted_shipping: shipping.toFixed(2),
                             formatted_total: total.toFixed(2)
-                        });
+                        }, hasProductFreeDelivery);
                     }
                 }
 
                 // Update order summary
-                function updateOrderSummary(summary) {
-                    const shippingElement = document.querySelector('.price-breakdown .price-row:nth-child(2) span:last-child');
-                    const totalElement = document.querySelector('.total-row span:last-child');
-                    const buttonElement = document.querySelector('.btn-place-order');
+                function updateOrderSummary(summary, isFreeDelivery = null) {
+                    const freeDelivery = isFreeDelivery !== null ? isFreeDelivery : hasProductFreeDelivery;
+                    const shippingElement = document.querySelector('#shippingDisplay') || document.querySelector('.price-breakdown .price-row:nth-child(2) span:last-child');
+                    const totalElement = document.querySelector('#totalDisplay') || document.querySelector('.total-row span:last-child');
+                    const buttonElement = document.querySelector('#placeOrderText') || document.querySelector('.btn-place-order');
                     
-                    if (shippingElement) shippingElement.textContent = `${summary.formatted_shipping}৳`;
-                    if (totalElement) totalElement.textContent = `${summary.formatted_total}৳`;
-                    if (buttonElement) buttonElement.innerHTML = `<i class="fas fa-credit-card me-2"></i>Place Order - ${summary.formatted_total}৳`;
+                    if (shippingElement) {
+                        if (freeDelivery) {
+                            shippingElement.innerHTML = '<i class="fas fa-truck me-1"></i>Free Delivery';
+                            shippingElement.classList.add('text-success');
+                        } else {
+                            shippingElement.textContent = `${summary.formatted_shipping}৳`;
+                            shippingElement.classList.remove('text-success');
+                        }
+                    }
+                    
+                    if (totalElement) {
+                        if (typeof totalElement === 'object' && totalElement.tagName) {
+                            totalElement.textContent = `${summary.formatted_total}৳`;
+                        }
+                    }
+                    
+                    if (buttonElement) {
+                        if (typeof buttonElement === 'object' && buttonElement.tagName === 'SPAN') {
+                            buttonElement.textContent = `Place Order - ${summary.formatted_total}৳`;
+                        } else if (buttonElement) {
+                            buttonElement.innerHTML = `<i class="fas fa-credit-card me-2"></i>Place Order - ${summary.formatted_total}৳`;
+                        }
+                    }
                 }
 
                 // Shipping method price update (original - keep for compatibility)
