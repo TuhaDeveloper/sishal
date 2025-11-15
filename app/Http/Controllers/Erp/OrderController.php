@@ -480,20 +480,56 @@ class OrderController extends Controller
             $order->save();
         }
 
-        if($request->payment_method == 'cash' && $order->customer_id)
+        // Get customer ID from order or invoice
+        $customerId = $order->customer_id ?? $invoice->customer_id ?? null;
+        
+        if($request->payment_method == 'cash' && $customerId)
         {
-            $balance = Balance::where('source_type', 'customer')->where('source_id', $order->customer_id)->first();
+            // For COD orders, calculate COD discount and adjust payment amount
+            $codDiscount = 0;
+            if ($order->payment_method === 'cash') {
+                $generalSetting = \App\Models\GeneralSetting::first();
+                $codPercentage = $generalSetting ? ($generalSetting->cod_percentage / 100) : 0.00;
+                if ($codPercentage > 0) {
+                    // Calculate COD discount on invoice total
+                    $codDiscount = round($invoice->total_amount * $codPercentage, 2);
+                }
+            }
+            
+            // For COD payments: balance was created with (invoice_total - cod_discount)
+            // When payment is received, customer pays full invoice_total, but we only expected (invoice_total - cod_discount)
+            // So we should subtract the net amount we expected to receive (payment - COD discount)
+            $netPaymentAmount = $request->amount - $codDiscount;
+            
+            $balance = Balance::where('source_type', 'customer')->where('source_id', $customerId)->first();
             if($balance)
             {
-                $balance->balance -= $request->amount;
+                // Subtract the net amount (after COD discount) from balance
+                $balanceBefore = $balance->balance;
+                $balance->balance -= $netPaymentAmount;
                 $balance->save();
+                
+                \Log::info('COD Payment Processed', [
+                    'order_number' => $order->order_number,
+                    'customer_id' => $customerId,
+                    'payment_amount' => $request->amount,
+                    'cod_discount' => $codDiscount,
+                    'net_payment_amount' => $netPaymentAmount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balance->balance,
+                ]);
             }
             else
             {
+                // If balance doesn't exist, create it with remaining due amount (after COD discount if applicable)
+                $remainingDue = $invoice->due_amount;
+                if ($codDiscount > 0) {
+                    $remainingDue = $remainingDue - $codDiscount;
+                }
                 Balance::create([
                     'source_type' => 'customer',
-                    'source_id' => $order->customer_id,
-                    'balance' => $invoice->due_amount,
+                    'source_id' => $customerId,
+                    'balance' => max(0, $remainingDue),
                     'description' => 'Order Sale',
                     'reference' => $order->order_number,
                 ]);

@@ -270,11 +270,25 @@ class OrderController extends Controller
         
         $total = $subtotal + $tax + $shipping - $couponDiscount;
         
-        // Apply COD percentage reduction if payment method is cash (COD)
+        // Calculate COD percentage discount (for accounting only, not for invoice)
         $codDiscount = 0;
         if ($request->payment_method === 'cash' && $codPercentage > 0) {
+            // Calculate COD discount: invoice total × COD percentage
+            // Example: If invoice total is 1000 and COD percentage is 2%, discount = 20
             $codDiscount = round($total * $codPercentage, 2);
-            $total = $total - $codDiscount;
+            // Note: COD discount is NOT subtracted from invoice total
+            // It will only be applied to accounting (Balance) records
+        }
+        
+        // Debug: Log COD calculation details
+        if ($request->payment_method === 'cash') {
+            Log::info('COD Discount Calculation', [
+                'payment_method' => $request->payment_method,
+                'cod_percentage_from_db' => $generalSetting->cod_percentage ?? 'not set',
+                'cod_percentage_decimal' => $codPercentage,
+                'invoice_total_before_cod' => $total,
+                'cod_discount_calculated' => $codDiscount,
+            ]);
         }
 
         DB::beginTransaction();
@@ -463,11 +477,39 @@ class OrderController extends Controller
                 Cart::whereNull('user_id')->where('session_id', $sessionId)->delete();
             }
             
+            // Apply COD percentage discount on invoice total amount for accounting (Balance) records only
+            // Invoice total amount remains full (no COD discount), but accounting balance reflects COD charge
+            $invoiceTotalAmount = $invoice->total_amount; // Full invoice amount (e.g., 1000)
+            
+            // Calculate accounting balance with COD discount applied
+            if ($isInstantPaid) {
+                // Online payment: no balance due
+                $accountingBalance = 0;
+            } else {
+                // COD payment: apply COD percentage discount to invoice total
+                // Formula: Accounting Balance = Invoice Total - (Invoice Total × COD Percentage)
+                // Example: If invoice is 1000 and COD is 2%, balance = 1000 - 20 = 980
+                $accountingBalance = $invoiceTotalAmount - $codDiscount;
+            }
+            
+            // Log for debugging - this will help identify if COD discount is being applied
+            Log::info('Balance Creation with COD Discount', [
+                'order_number' => $order->order_number,
+                'payment_method' => $request->payment_method,
+                'cod_percentage_setting' => $generalSetting->cod_percentage ?? 0,
+                'cod_percentage_decimal' => $codPercentage,
+                'invoice_total_amount' => $invoiceTotalAmount,
+                'cod_discount_calculated' => $codDiscount,
+                'accounting_balance' => $accountingBalance,
+                'is_instant_paid' => $isInstantPaid,
+                'calculation_formula' => $isInstantPaid ? 'N/A (online payment)' : "{$invoiceTotalAmount} - {$codDiscount} = {$accountingBalance}",
+            ]);
+            
             Balance::create([
                 'source_type' => 'customer',
-                'source_id' => $order->user_id,
-                'balance' => $isInstantPaid ? 0 : $order->total,
-                'description' => 'Order Sale',
+                'source_id' => $customer->id, // Use customer ID instead of user_id for guest orders
+                'balance' => $accountingBalance,
+                'description' => 'Order Sale' . ($codDiscount > 0 ? ' (COD discount: ' . number_format($codDiscount, 2) . ')' : ''),
                 'reference' => $order->order_number,
             ]);
 
@@ -742,12 +784,13 @@ class OrderController extends Controller
             
             $total = $subtotal + $tax + $shippingCost - $validation['discount'];
             
-            // Apply COD percentage reduction if payment method is cash (COD)
+            // Calculate COD percentage discount (for display only, not subtracted from invoice total)
             $codDiscount = 0;
             $paymentMethod = $request->input('payment_method', 'cash'); // Default to cash if not provided
             if ($paymentMethod === 'cash' && $codPercentage > 0) {
                 $codDiscount = round($total * $codPercentage, 2);
-                $total = $total - $codDiscount;
+                // Note: COD discount is NOT subtracted from invoice total
+                // It will only be applied to accounting (Balance) records
             }
             
             return response()->json([

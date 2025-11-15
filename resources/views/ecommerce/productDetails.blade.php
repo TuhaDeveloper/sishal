@@ -4014,21 +4014,36 @@
                             </button>
                         </form>
                         <script>
+                            // Function to sync buy-now quantity with quantity input
+                            function syncBuyNowQuantity() {
+                                var qtyInput = document.getElementById('quantityInput');
+                                var buyNowQty = document.getElementById('buy-now-qty');
+                                if (qtyInput && buyNowQty) {
+                                    buyNowQty.value = qtyInput.value || 1;
+                                }
+                            }
+                            
                             // Update buy now quantity when quantity input changes
                             document.addEventListener('DOMContentLoaded', function() {
                                 var qtyInput = document.getElementById('quantityInput');
                                 var buyNowQty = document.getElementById('buy-now-qty');
                                 
                                 if (qtyInput && buyNowQty) {
-                                    qtyInput.addEventListener('change', function() {
-                                        buyNowQty.value = qtyInput.value || 1;
-                                    });
+                                    // Listen to both 'change' and 'input' events
+                                    qtyInput.addEventListener('change', syncBuyNowQuantity);
+                                    qtyInput.addEventListener('input', syncBuyNowQuantity);
+                                    
+                                    // Initial sync
+                                    syncBuyNowQuantity();
                                 }
                                 
                                 // Validate buy now form submission
                                 var buyNowForm = document.getElementById('buyNowForm');
                                 if (buyNowForm) {
                                     buyNowForm.addEventListener('submit', function(e) {
+                                        // Sync quantity one more time before submitting
+                                        syncBuyNowQuantity();
+                                        
                                         var hasVariations = {{ $product->has_variations ? 'true' : 'false' }};
                                         var buyNowVariationId = document.getElementById('buy-now-variation-id');
                                         var variationId = buyNowVariationId ? buyNowVariationId.value : '';
@@ -4364,6 +4379,17 @@
             if (value > 10) value = 10;
             input.value = value;
             console.log('[QTY] Quantity updated to:', value);
+            
+            // Update buy-now quantity hidden field
+            var buyNowQty = document.getElementById('buy-now-qty');
+            if (buyNowQty) {
+                buyNowQty.value = value;
+                console.log('[QTY] Buy-now quantity synced to:', value);
+            }
+            
+            // Trigger change event to ensure other listeners are notified
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         }
 
         // Quantity control is handled by inline onclick handlers on the buttons

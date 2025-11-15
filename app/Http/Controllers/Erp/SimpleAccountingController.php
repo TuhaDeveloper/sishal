@@ -131,9 +131,21 @@ class SimpleAccountingController extends Controller
             ->where('status', '!=', 'cancelled')
             ->get();
 
-        // Calculate revenue excluding delivery charges (only product prices)
-        $orderRevenue = $orders->sum(function($order) {
-            return $order->total - ($order->delivery ?? 0);
+        // Get COD percentage from settings
+        $generalSetting = \App\Models\GeneralSetting::first();
+        $codPercentage = $generalSetting ? ($generalSetting->cod_percentage / 100) : 0.00;
+
+        // Calculate revenue excluding delivery charges and applying COD discount for COD orders
+        $orderRevenue = $orders->sum(function($order) use ($codPercentage) {
+            $revenue = $order->total - ($order->delivery ?? 0);
+            
+            // Apply COD discount for COD orders (cash payment method)
+            if ($order->payment_method === 'cash' && $codPercentage > 0) {
+                $codDiscount = round($order->total * $codPercentage, 2);
+                $revenue = $revenue - $codDiscount;
+            }
+            
+            return $revenue;
         });
         $orderCount = $orders->count();
 
@@ -213,10 +225,15 @@ class SimpleAccountingController extends Controller
      */
     private function getProductProfits($startDate, $endDate)
     {
-        $orderItems = OrderItem::whereHas('order', function($query) use ($startDate, $endDate) {
-            $query->whereBetween('created_at', [$startDate, $endDate])
-                  ->where('status', '!=', 'cancelled');
-        })->with('product')->get();
+        // Get COD percentage from settings
+        $generalSetting = \App\Models\GeneralSetting::first();
+        $codPercentage = $generalSetting ? ($generalSetting->cod_percentage / 100) : 0.00;
+
+        // Get orders with their items
+        $orders = Order::whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', '!=', 'cancelled')
+            ->with('items.product')
+            ->get();
 
         $posItems = PosItem::whereHas('pos', function($query) use ($startDate, $endDate) {
             $query->whereBetween('sale_date', [$startDate, $endDate]);
@@ -224,31 +241,54 @@ class SimpleAccountingController extends Controller
 
         $productProfits = collect();
 
-        // Process order items
-        foreach ($orderItems as $item) {
-            $productId = $item->product_id;
-            $revenue = $item->unit_price * $item->quantity;
-            $cost = ($item->product->cost ?? 0) * $item->quantity;
-            $profit = $revenue - $cost;
-
-            if (!$productProfits->has($productId)) {
-                $productProfits->put($productId, [
-                    'product' => $item->product,
-                    'revenue' => 0,
-                    'cost' => 0,
-                    'profit' => 0,
-                    'quantity_sold' => 0
-                ]);
+        // Process order items with COD discount applied
+        foreach ($orders as $order) {
+            // Calculate COD discount for this order if it's COD
+            $orderCodDiscount = 0;
+            if ($order->payment_method === 'cash' && $codPercentage > 0) {
+                $orderCodDiscount = round($order->total * $codPercentage, 2);
             }
 
-            $current = $productProfits->get($productId);
-            $productProfits->put($productId, [
-                'product' => $current['product'],
-                'revenue' => $current['revenue'] + $revenue,
-                'cost' => $current['cost'] + $cost,
-                'profit' => $current['profit'] + $profit,
-                'quantity_sold' => $current['quantity_sold'] + $item->quantity
-            ]);
+            // Calculate total item revenue for this order (excluding delivery)
+            $orderItemsTotal = $order->items->sum(function($item) {
+                return $item->unit_price * $item->quantity;
+            });
+
+            // Process each item in the order
+            foreach ($order->items as $item) {
+                $productId = $item->product_id;
+                $itemRevenue = $item->unit_price * $item->quantity;
+                
+                // Apply COD discount proportionally to this item
+                $itemCodDiscount = 0;
+                if ($orderCodDiscount > 0 && $orderItemsTotal > 0) {
+                    // Distribute COD discount proportionally based on item's share of order
+                    $itemCodDiscount = round(($itemRevenue / $orderItemsTotal) * $orderCodDiscount, 2);
+                }
+                
+                $revenue = $itemRevenue - $itemCodDiscount;
+                $cost = ($item->product->cost ?? 0) * $item->quantity;
+                $profit = $revenue - $cost;
+
+                if (!$productProfits->has($productId)) {
+                    $productProfits->put($productId, [
+                        'product' => $item->product,
+                        'revenue' => 0,
+                        'cost' => 0,
+                        'profit' => 0,
+                        'quantity_sold' => 0
+                    ]);
+                }
+
+                $current = $productProfits->get($productId);
+                $productProfits->put($productId, [
+                    'product' => $current['product'],
+                    'revenue' => $current['revenue'] + $revenue,
+                    'cost' => $current['cost'] + $cost,
+                    'profit' => $current['profit'] + $profit,
+                    'quantity_sold' => $current['quantity_sold'] + $item->quantity
+                ]);
+            }
         }
 
         // Process POS items

@@ -120,9 +120,21 @@ class DashboardController extends Controller
         });
         $currentPosOrders = $currentPosData->count();
         
+        // Get COD percentage from settings
+        $generalSetting = \App\Models\GeneralSetting::first();
+        $codPercentage = $generalSetting ? ($generalSetting->cod_percentage / 100) : 0.00;
+        
         $currentOrderData = $currentOrderQuery->get();
-        $currentOrderSales = $currentOrderData->sum(function($order) {
-            return $order->total - ($order->delivery ?? 0);
+        $currentOrderSales = $currentOrderData->sum(function($order) use ($codPercentage) {
+            $revenue = $order->total - ($order->delivery ?? 0);
+            
+            // Apply COD discount for COD orders (cash payment method)
+            if ($order->payment_method === 'cash' && $codPercentage > 0) {
+                $codDiscount = round($order->total * $codPercentage, 2);
+                $revenue = $revenue - $codDiscount;
+            }
+            
+            return $revenue;
         });
         $currentOrderOrders = $currentOrderData->count();
         
@@ -139,8 +151,16 @@ class DashboardController extends Controller
         $previousPosOrders = $previousPosData->count();
         
         $previousOrderData = $previousOrderQuery->get();
-        $previousOrderSales = $previousOrderData->sum(function($order) {
-            return $order->total - ($order->delivery ?? 0);
+        $previousOrderSales = $previousOrderData->sum(function($order) use ($codPercentage) {
+            $revenue = $order->total - ($order->delivery ?? 0);
+            
+            // Apply COD discount for COD orders (cash payment method)
+            if ($order->payment_method === 'cash' && $codPercentage > 0) {
+                $codDiscount = round($order->total * $codPercentage, 2);
+                $revenue = $revenue - $codDiscount;
+            }
+            
+            return $revenue;
         });
         $previousOrderOrders = $previousOrderData->count();
         
