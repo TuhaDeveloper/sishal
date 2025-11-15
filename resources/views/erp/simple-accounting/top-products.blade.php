@@ -59,6 +59,7 @@
                                             </thead>
                                             <tbody>
                                                 @forelse($topByRevenue as $index => $data)
+                                                @if($data['product'])
                                                 <tr>
                                                     <td>
                                                         <span class="badge bg-primary">{{ $index + 1 }}</span>
@@ -86,6 +87,7 @@
                                                         {{ number_format($data['quantity_sold'] > 0 ? $data['revenue'] / $data['quantity_sold'] : 0, 2) }}৳
                                                     </td>
                                                 </tr>
+                                                @endif
                                                 @empty
                                                 <tr>
                                                     <td colspan="5" class="text-center text-muted">No sales data found for the selected period.</td>
@@ -123,6 +125,7 @@
                                             </thead>
                                             <tbody>
                                                 @forelse($topByProfit as $index => $data)
+                                                @if($data['product'])
                                                 <tr>
                                                     <td>
                                                         <span class="badge bg-success">{{ $index + 1 }}</span>
@@ -157,6 +160,7 @@
                                                         </span>
                                                     </td>
                                                 </tr>
+                                                @endif
                                                 @empty
                                                 <tr>
                                                     <td colspan="5" class="text-center text-muted">No profit data found for the selected period.</td>
@@ -194,6 +198,7 @@
                                             </thead>
                                             <tbody>
                                                 @forelse($topByQuantity as $index => $data)
+                                                @if($data['product'])
                                                 <tr>
                                                     <td>
                                                         <span class="badge bg-primary">{{ $index + 1 }}</span>
@@ -221,6 +226,7 @@
                                                         {{ number_format($data['quantity_sold'] > 0 ? $data['revenue'] / $data['quantity_sold'] : 0, 2) }}৳
                                                     </td>
                                                 </tr>
+                                                @endif
                                                 @empty
                                                 <tr>
                                                     <td colspan="5" class="text-center text-muted">No quantity data found for the selected period.</td>

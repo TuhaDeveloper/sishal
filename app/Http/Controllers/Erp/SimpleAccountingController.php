@@ -256,6 +256,11 @@ class SimpleAccountingController extends Controller
 
             // Process each item in the order
             foreach ($order->items as $item) {
+                // Skip if product is null (deleted product)
+                if (!$item->product) {
+                    continue;
+                }
+
                 $productId = $item->product_id;
                 $itemRevenue = $item->unit_price * $item->quantity;
                 
@@ -293,6 +298,11 @@ class SimpleAccountingController extends Controller
 
         // Process POS items
         foreach ($posItems as $item) {
+            // Skip if product is null (deleted product)
+            if (!$item->product) {
+                continue;
+            }
+
             $productId = $item->product_id;
             $revenue = $item->unit_price * $item->quantity;
             $cost = ($item->product->cost ?? 0) * $item->quantity;
@@ -331,6 +341,11 @@ class SimpleAccountingController extends Controller
         $categoryProfits = collect();
         
         foreach ($productProfits as $productId => $data) {
+            // Skip if product is null (deleted product)
+            if (!$data['product']) {
+                continue;
+            }
+
             $categoryId = $data['product']->category_id;
             $categoryName = $data['product']->category->name ?? 'Uncategorized';
             

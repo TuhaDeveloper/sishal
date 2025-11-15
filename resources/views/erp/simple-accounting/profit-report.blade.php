@@ -35,6 +35,7 @@
                                     </thead>
                                     <tbody>
                                         @forelse($productProfits as $productId => $data)
+                                        @if($data['product'])
                                         <tr>
                                             <td>
                                                 <div class="d-flex align-items-center">
@@ -68,6 +69,7 @@
                                                 </span>
                                             </td>
                                         </tr>
+                                        @endif
                                         @empty
                                         <tr>
                                             <td colspan="6" class="text-center text-muted">No sales data found for the selected period.</td>
