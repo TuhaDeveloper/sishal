@@ -300,10 +300,12 @@ class StockController extends Controller
                     }
                 }
                 foreach ($prod->stockTransfers as $m) {
-                    if ($m->status == 'delivered') {
+                    if (in_array($m->status, ['approved', 'shipped', 'delivered'])) {
                         $k_from = ($m->variation_id ?: 0) . '_' . $m->from_type . '_' . $m->from_id;
-                        $k_to = ($m->variation_id ?: 0) . '_' . $m->to_type . '_' . $m->to_id;
                         $agg['tf'][$k_from] = ($agg['tf'][$k_from] ?? 0) + $m->quantity;
+                    }
+                    if ($m->status == 'delivered') {
+                        $k_to = ($m->variation_id ?: 0) . '_' . $m->to_type . '_' . $m->to_id;
                         $agg['tt'][$k_to] = ($agg['tt'][$k_to] ?? 0) + $m->quantity;
                     }
                 }

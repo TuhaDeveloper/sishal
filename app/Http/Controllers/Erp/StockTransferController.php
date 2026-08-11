@@ -695,10 +695,11 @@ class StockTransferController extends Controller
             $transfers = collect([$primaryTransfer]);
         }
 
-        // Phase 1: Pre-validation (Crucial for atomic invoice approval)
-        if ($request->status == 'approved') {
+        // Phase 1: Pre-validation (Crucial for atomic invoice approval/delivery)
+        if (in_array($request->status, ['approved', 'delivered'])) {
             foreach ($transfers as $transfer) {
-                if ($transfer->status == 'approved') continue; // Already approved
+                // If already approved/delivered, stock was already validated and deducted
+                if (in_array($transfer->status, ['approved', 'delivered'])) continue;
 
                 if ($transfer->variation_id) {
                      // Check Variation Stock
@@ -755,11 +756,17 @@ class StockTransferController extends Controller
 
                     // Deduct Stock
                     $this->deductStock($transfer);
-                }elseif($request->status == 'delivered' && $transfer->status == 'approved'){
+                }elseif($request->status == 'delivered'){
+                    $prevStatus = $transfer->status;
                     $transfer->status = $request->status;
                     $transfer->delivered_by = auth()->id();
                     $transfer->delivered_at = now();
                     $transfer->save();
+
+                    // If stock wasn't deducted yet, deduct it from source now
+                    if ($prevStatus !== 'approved') {
+                        $this->deductStock($transfer);
+                    }
  
                     // Add Stock to Destination
                     $this->addStock($transfer);
@@ -869,6 +876,35 @@ class StockTransferController extends Controller
 
                 if ($delta == 0) {
                     continue;
+                }
+
+                // If delta is positive and status is approved/delivered, verify source location has enough stock before deducting
+                if ($delta > 0 && in_array($transfer->status, ['approved', 'delivered'])) {
+                    $availableStock = 0;
+                    if ($transfer->variation_id) {
+                        $vQuery = ProductVariationStock::where('variation_id', $transfer->variation_id);
+                        if ($transfer->from_type === 'branch') {
+                            $vQuery->where('branch_id', $transfer->from_id)->whereNull('warehouse_id');
+                        } else {
+                            $vQuery->where('warehouse_id', $transfer->from_id)->whereNull('branch_id');
+                        }
+                        $vStock = $vQuery->first();
+                        $availableStock = $vStock ? ($vStock->available_quantity ?? ($vStock->quantity - ($vStock->reserved_quantity ?? 0))) : 0;
+                    } else {
+                        if ($transfer->from_type === 'branch') {
+                            $bStock = BranchProductStock::where('product_id', $transfer->product_id)->where('branch_id', $transfer->from_id)->first();
+                            $availableStock = $bStock ? $bStock->quantity : 0;
+                        } else {
+                            $wStock = WarehouseProductStock::where('product_id', $transfer->product_id)->where('warehouse_id', $transfer->from_id)->first();
+                            $availableStock = $wStock ? $wStock->quantity : 0;
+                        }
+                    }
+
+                    if ($availableStock < $delta) {
+                        DB::rollBack();
+                        $pName = $transfer->product ? $transfer->product->name : "ID {$transfer->product_id}";
+                        return redirect()->back()->with('error', "That amount is not available in stock for '{$pName}'! Current Transfer Qty: {$oldQty}, Available Stock at Source: {$availableStock}. You need to purchase stock first.");
+                    }
                 }
 
                 // If transfer was delivered, adjust the stocks at source and destination locations

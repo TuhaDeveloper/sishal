@@ -37,6 +37,19 @@
         </div>
 
         <div class="container-fluid px-4 py-4">
+            @if(session('success'))
+                <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4 fw-bold" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4 fw-bold" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
             <div class="row justify-content-center">
                 <div class="col-lg-10">
                     <!-- Print-Ready Invoice -->
@@ -191,22 +204,16 @@
 
                         <!-- Signature Section -->
                         <div class="row mt-5 pt-4 border-top">
-                            <div class="col-4 text-center">
+                            <div class="col-6 text-center">
                                 <div class="border-top pt-2 mt-5 d-inline-block" style="min-width: 200px;">
                                     <p class="mb-0 small fw-bold">Prepared By</p>
                                     <p class="mb-0 small text-muted">{{ $transfer->requestedPerson->name ?? 'Admin' }}</p>
                                 </div>
                             </div>
-                            <div class="col-4 text-center">
-                                <div class="border-top pt-2 mt-5 d-inline-block" style="min-width: 200px;">
-                                    <p class="mb-0 small fw-bold">Approved By</p>
-                                    <p class="mb-0 small text-muted">{{ $transfer->approvedPerson->name ?? '___________' }}</p>
-                                </div>
-                            </div>
-                            <div class="col-4 text-center">
+                            <div class="col-6 text-center">
                                 <div class="border-top pt-2 mt-5 d-inline-block" style="min-width: 200px;">
                                     <p class="mb-0 small fw-bold">Received By</p>
-                                    <p class="mb-0 small text-muted">___________</p>
+                                    <p class="mb-0 small text-muted">{{ $transfer->deliveredPerson->name ?? '___________' }}</p>
                                 </div>
                             </div>
                         </div>
@@ -259,29 +266,30 @@
 
                             <div class="d-flex flex-wrap justify-content-center gap-3">
 
-                                {{-- APPROVE / REJECT: Sender or Admin only --}}
-                                @if($transfer->status == 'pending' && $canManageSending)
-                                    <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
-                                        @csrf @method('PATCH')
-                                        <input type="hidden" name="status" value="approved">
-                                        <button type="submit" class="btn btn-success px-5 fw-bold" onclick="return confirm('Approve this transfer invoice? Source stock will be deducted for all items.')">
-                                            <i class="fas fa-check-circle me-2"></i>APPROVE INVOICE
-                                        </button>
-                                    </form>
-                                    <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
-                                        @csrf @method('PATCH')
-                                        <input type="hidden" name="status" value="rejected">
-                                        <button type="submit" class="btn btn-warning px-4 fw-bold text-white" onclick="return confirm('Reject this transfer invoice?')">
-                                            <i class="fas fa-times-circle me-2"></i>REJECT
-                                        </button>
-                                    </form>
-                                @elseif($transfer->status == 'pending' && !$canManageSending)
-                                    <div class="alert alert-warning border-0 py-2 px-4 mb-0 small">
-                                        <i class="fas fa-lock me-2"></i>Awaiting approval by the <strong>sending side</strong>.
-                                    </div>
+                                {{-- PENDING STATUS ACTIONS --}}
+                                @if($transfer->status == 'pending')
+                                    @if($canConfirmDelivery || $canManageSending)
+                                        <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
+                                            @csrf @method('PATCH')
+                                            <input type="hidden" name="status" value="delivered">
+                                            <button type="submit" class="btn btn-success px-5 fw-bold" onclick="return confirm('Confirm and deliver this transfer? Source stock will be deducted and added to destination inventory.')">
+                                                <i class="fas fa-box-open me-2"></i>CONFIRM & DELIVER INVOICE
+                                            </button>
+                                        </form>
+                                    @endif
+
+                                    @if($canManageSending || $canConfirmDelivery)
+                                        <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
+                                            @csrf @method('PATCH')
+                                            <input type="hidden" name="status" value="rejected">
+                                            <button type="submit" class="btn btn-warning px-4 fw-bold text-white" onclick="return confirm('Reject this transfer invoice?')">
+                                                <i class="fas fa-times-circle me-2"></i>REJECT
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endif
 
-                                {{-- CONFIRM DELIVERY: Receiver or Admin only --}}
+                                {{-- CONFIRM DELIVERY: Receiver or Admin only (for legacy approved transfers) --}}
                                 @if($transfer->status == 'approved' && $canConfirmDelivery)
                                     <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
                                         @csrf @method('PATCH')
@@ -363,7 +371,7 @@
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form action="{{ route('stocktransfer.reconcile', $transfer->id) }}" method="POST">
+                <form id="reconcileForm" action="{{ route('stocktransfer.reconcile', $transfer->id) }}" method="POST">
                     @csrf
                     <div class="modal-body p-4">
                         <div class="alert alert-warning border-0 small mb-4 d-flex align-items-center gap-2" style="background-color: #fff9db; border-radius: 8px;">
@@ -386,12 +394,37 @@
                                     <tr>
                                         <th>Product Description</th>
                                         <th>Attributes</th>
-                                        <th class="text-center" style="width: 150px;">Current Qty</th>
-                                        <th class="text-center" style="width: 180px;">New Quantity</th>
+                                        <th class="text-center" style="width: 120px;">Current Qty</th>
+                                        <th class="text-center" style="width: 140px;">Source Stock</th>
+                                        <th class="text-center" style="width: 160px;">New Quantity</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($transfers as $item)
+                                        @php
+                                            $availStock = 0;
+                                            if ($item->variation_id) {
+                                                $vQuery = \App\Models\ProductVariationStock::where('variation_id', $item->variation_id);
+                                                if ($item->from_type === 'branch') {
+                                                    $vQuery->where('branch_id', $item->from_id)->whereNull('warehouse_id');
+                                                } else {
+                                                    $vQuery->where('warehouse_id', $item->from_id)->whereNull('branch_id');
+                                                }
+                                                $vStock = $vQuery->first();
+                                                $availStock = $vStock ? ($vStock->available_quantity ?? ($vStock->quantity - ($vStock->reserved_quantity ?? 0))) : 0;
+                                            } else {
+                                                if ($item->from_type === 'branch') {
+                                                    $bStock = \App\Models\BranchProductStock::where('product_id', $item->product_id)->where('branch_id', $item->from_id)->first();
+                                                    $availStock = $bStock ? $bStock->quantity : 0;
+                                                } else {
+                                                    $wStock = \App\Models\WarehouseProductStock::where('product_id', $item->product_id)->where('warehouse_id', $item->from_id)->first();
+                                                    $availStock = $wStock ? $wStock->quantity : 0;
+                                                }
+                                            }
+                                            $currentQty = intval($item->quantity);
+                                            $availStock = intval($availStock);
+                                            $maxAllowed = in_array($item->status, ['approved', 'delivered']) ? ($currentQty + $availStock) : 999999;
+                                        @endphp
                                         <tr>
                                             <td>
                                                 <div class="fw-bold text-dark">{{ $item->product->name ?? '-' }}</div>
@@ -415,10 +448,21 @@
                                                     <span class="text-muted small">Standard</span>
                                                 @endif
                                             </td>
-                                            <td class="text-center fw-bold text-muted">{{ number_format($item->quantity, 0) }}</td>
+                                            <td class="text-center fw-bold text-muted">{{ number_format($currentQty, 0) }}</td>
+                                            <td class="text-center">
+                                                <span class="badge {{ $availStock > 0 ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-danger bg-opacity-10 text-danger border border-danger' }} px-2 py-1">
+                                                    {{ $availStock }} Pcs
+                                                </span>
+                                            </td>
                                             <td>
                                                 <div class="input-group input-group-sm">
-                                                    <input type="number" name="quantities[{{ $item->id }}]" class="form-control text-center fw-bold form-control-sm" value="{{ intval($item->quantity) }}" min="0" required>
+                                                    <input type="number" name="quantities[{{ $item->id }}]" 
+                                                        class="form-control text-center fw-bold form-control-sm reconcile-qty-input" 
+                                                        value="{{ $currentQty }}" min="0" max="{{ $maxAllowed }}"
+                                                        data-item-name="{{ $item->product->name ?? 'Product' }}"
+                                                        data-old-qty="{{ $currentQty }}"
+                                                        data-avail-stock="{{ $availStock }}"
+                                                        data-max-allowed="{{ $maxAllowed }}" required>
                                                     <span class="input-group-text bg-light text-muted small">Pcs</span>
                                                 </div>
                                             </td>
@@ -430,7 +474,7 @@
                     </div>
                     <div class="modal-footer bg-light border-0 py-3 px-4 d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger fw-bold px-4 shadow-sm" onclick="return confirm('Are you sure you want to apply these reconciled stock changes? This will instantly adjust live inventory.')">
+                        <button type="submit" id="btnApplyReconcile" class="btn btn-danger fw-bold px-4 shadow-sm">
                             <i class="fas fa-save me-2"></i>Apply Changes
                         </button>
                     </div>
@@ -519,4 +563,91 @@
             }
         }
     </style>
+@endpush
+
+@push('js')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show SweetAlert popup if session error/success exists
+    @if(session('error'))
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Stock Validation Error',
+                html: "{!! addslashes(session('error')) !!}",
+                customClass: { popup: 'rounded-4' }
+            });
+        }
+    @endif
+    @if(session('success'))
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: "{{ session('success') }}",
+                timer: 3000,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-4' }
+            });
+        }
+    @endif
+
+    // Client-side validation for Reconcile modal form
+    const reconcileForm = document.getElementById('reconcileForm');
+    if (reconcileForm) {
+        reconcileForm.addEventListener('submit', function(e) {
+            let hasError = false;
+            let errorHtml = '';
+
+            const inputs = reconcileForm.querySelectorAll('.reconcile-qty-input');
+            inputs.forEach(function(input) {
+                if (hasError) return;
+
+                let newQty = parseInt(input.value) || 0;
+                let oldQty = parseInt(input.getAttribute('data-old-qty')) || 0;
+                let availStock = parseInt(input.getAttribute('data-avail-stock')) || 0;
+                let maxAllowed = parseInt(input.getAttribute('data-max-allowed')) || 0;
+                let itemName = input.getAttribute('data-item-name') || 'Product';
+
+                if (newQty > maxAllowed) {
+                    hasError = true;
+                    let additionalNeeded = newQty - oldQty;
+                    errorHtml = `<div class="text-start">` +
+                        `<p class="mb-2 fs-6">That amount is not available in stock for <strong>${itemName}</strong>!</p>` +
+                        `<ul class="list-unstyled mb-3 small bg-light p-3 rounded-3 border">` +
+                        `<li>• Current Transfer Qty: <strong>${oldQty} Pcs</strong></li>` +
+                        `<li>• Available Stock at Source: <strong>${availStock} Pcs</strong></li>` +
+                        `<li>• Requested Quantity: <strong>${newQty} Pcs</strong></li>` +
+                        `<li>• Additional Needed: <strong class="text-danger">${additionalNeeded} Pcs</strong></li>` +
+                        `</ul>` +
+                        `<div class="alert alert-warning border-0 small mb-0 fw-bold">` +
+                        `<i class="fas fa-shopping-cart me-2 text-warning"></i>You do not have enough stock available. You need to purchase stock first!</div>` +
+                        `</div>`;
+                }
+            });
+
+            if (hasError) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Insufficient Stock!',
+                        html: errorHtml,
+                        customClass: { popup: 'rounded-4' }
+                    });
+                } else {
+                    alert('That amount is not available in stock! You need to purchase stock first.');
+                }
+                return false;
+            }
+
+            if (!confirm('Are you sure you want to apply these reconciled stock changes? This will instantly adjust live inventory.')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+});
+</script>
 @endpush

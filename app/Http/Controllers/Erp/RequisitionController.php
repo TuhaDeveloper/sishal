@@ -507,6 +507,27 @@ class RequisitionController extends Controller
                 foreach ($transferItems as $itemData) {
                     $reqItem   = $itemData['req_item'];
                     $qty       = $itemData['qty'];
+                    $sourceId  = $requisition->warehouse_id;
+
+                    $availableStock = 0;
+                    if ($reqItem->variation_id) {
+                        $vStock = ProductVariationStock::where('variation_id', $reqItem->variation_id)
+                            ->where(function($q) use ($sourceId) {
+                                $q->where('branch_id', $sourceId)->orWhere('warehouse_id', $sourceId);
+                            })->first();
+                        $availableStock = $vStock ? ($vStock->available_quantity ?? ($vStock->quantity - ($vStock->reserved_quantity ?? 0))) : 0;
+                    } else {
+                        $bStock = BranchProductStock::where('product_id', $reqItem->product_id)->where('branch_id', $sourceId)->first();
+                        $wStock = WarehouseProductStock::where('product_id', $reqItem->product_id)->where('warehouse_id', $sourceId)->first();
+                        $availableStock = ($bStock ? $bStock->quantity : 0) + ($wStock ? $wStock->quantity : 0);
+                    }
+
+                    if ($availableStock < $qty) {
+                        DB::rollBack();
+                        $pName = $reqItem->product ? $reqItem->product->name : "Item #{$reqItem->product_id}";
+                        return redirect()->back()->with('error', "Cannot fulfill requisition for '{$pName}'. Requested transfer quantity: {$qty}, but only {$availableStock} available at source location.");
+                    }
+
                     $unitPrice = $reqItem->variation
                         ? ($reqItem->variation->cost ?: $reqItem->product->cost)
                         : $reqItem->product->cost;

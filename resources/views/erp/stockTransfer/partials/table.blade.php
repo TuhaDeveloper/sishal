@@ -125,6 +125,17 @@
                                 title="View Details">
                                 <i class="fas fa-eye text-primary"></i>
                             </a>
+                            @if($transfer->status === 'pending' && !$isReturn)
+                                @can('approve transfers')
+                                    <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
+                                        @csrf @method('PATCH')
+                                        <input type="hidden" name="status" value="delivered">
+                                        <button type="submit" class="action-circle border-0 bg-transparent" title="Confirm Receipt & Deliver" onclick="return confirm('Confirm receipt and deliver this stock transfer?')">
+                                            <i class="fas fa-check-circle text-success"></i>
+                                        </button>
+                                    </form>
+                                @endcan
+                            @endif
                             @if($transfer->status === 'delivered' && !$isReturn)
                                 @can('reconcile transfers')
                                     <a href="{{ route('stocktransfer.return', $transfer->id) }}" class="action-circle"

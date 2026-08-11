@@ -86,10 +86,12 @@
             }
         }
         foreach($product->stockTransfers as $m) {
-            if($m->status == 'delivered') {
+            if(in_array($m->status, ['approved', 'shipped', 'delivered'])) {
                 $k_from = ($m->variation_id ?: 0) . '_' . $m->from_type . '_' . $m->from_id;
-                $k_to = ($m->variation_id ?: 0) . '_' . $m->to_type . '_' . $m->to_id;
                 $agg['tf'][$k_from] = ($agg['tf'][$k_from] ?? 0) + $m->quantity;
+            }
+            if($m->status == 'delivered') {
+                $k_to = ($m->variation_id ?: 0) . '_' . $m->to_type . '_' . $m->to_id;
                 $agg['tt'][$k_to] = ($agg['tt'][$k_to] ?? 0) + $m->quantity;
             }
         }
@@ -126,30 +128,30 @@
 <!-- Table Registry -->
 <div class="premium-card shadow-sm border-0 rounded-4 overflow-hidden">
     <div class="card-body p-0">
-        <div class="table-responsive" style="max-width: 100%; overflow-x: auto; background: #fff; border-radius: 12px; border: 1px solid #eef0f2;">
-            <table class="table table-hover align-middle mb-0" style="min-width: 1800px; border-collapse: separate; border-spacing: 0;">
-                <thead>
+        <div class="table-responsive" style="max-width: 100%; max-height: calc(100vh - 260px); overflow: auto; background: #fff; border-radius: 12px; border: 1px solid #eef0f2;">
+            <table class="table table-hover align-middle mb-0" style="min-width: 2050px; border-collapse: separate; border-spacing: 0;">
+                <thead style="position: sticky; top: 0; z-index: 100;">
                     <tr style="background: #111827 !important;">
-                        <th class="ps-4 py-4 text-center" style="width: 60px; border-top-left-radius: 12px; background: #111827 !important; color: #ffffff !important; border: none;">No.</th>
-                        <th class="py-4" style="min-width: 250px; background: #111827 !important; color: #ffffff !important; border: none;">Product Details</th>
-                        <th class="py-4 text-center" style="width: 140px; background: #111827 !important; color: #ffffff !important; border: none;">Style #</th>
-                        <th class="py-4 text-center" style="width: 100px; background: #111827 !important; color: #ffffff !important; border: none;">Color</th>
-                        <th class="py-4 text-center" style="width: 80px; background: #111827 !important; color: #ffffff !important; border: none;">Size</th>
-                        <th class="py-4 text-center" style="min-width: 150px; background: #111827 !important; color: #ffffff !important; border: none;"> Outlet</th>
-                        <th class="py-4 text-center fw-bold" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Purchase Quantity">P-Qnt</th>
-                        <th class="py-4 text-center" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Purchase Return">PR-Qnt</th>
-                        <th class="py-4 text-center text-info" style="width: 90px; background: #111827 !important; color: #00e5ff !important; border: none;" title="Actual Purchase (P-Qnt - PR-Qnt)">Net-P</th>
-                        <th class="py-4 text-center fw-bold" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Sale Quantity">S-Qnt</th>
-                        <th class="py-4 text-center" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Sale Return">SR-Qnt</th>
-                        <th class="py-4 text-center text-info" style="width: 90px; background: #111827 !important; color: #00e5ff !important; border: none;" title="Actual Sale (S-Qnt - SR-Qnt)">Net-S</th>
-                        <th class="py-4 text-center" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Adjustment">Adjust</th>
-                        <th class="py-4 text-center" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Exchange To">Exc-To</th>
-                        <th class="py-4 text-center" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Exchange From">Exc-Fr</th>
-                        <th class="py-4 text-center" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Transfer From">Tr-Fr</th>
-                        <th class="py-4 text-center" style="width: 90px; background: #111827 !important; color: #ffffff !important; border: none;" title="Transfer To">Tr-To</th>
-                        <th class="py-4 text-center fw-bold" style="width: 110px; background: #111827 !important; color: #ffffff !important; border: none;" title="Total Current Stock">Current STOCK</th>
-                        <th class="py-4 text-end" style="width: 140px; background: #111827 !important; color: #ffffff !important; border: none;">Cost Value</th>
-                        <th class="py-4 text-end pe-4" style="width: 140px; border-top-right-radius: 12px; background: #111827 !important; color: #ffffff !important; border: none;">Sale Value</th>
+                        <th class="ps-4 py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 60px; border-top-left-radius: 12px; background: #111827 !important; color: #ffffff !important; border: none;">No.</th>
+                        <th class="py-4 text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 260px; background: #111827 !important; color: #ffffff !important; border: none;">Product Details</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 140px; background: #111827 !important; color: #ffffff !important; border: none;">Style #</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #ffffff !important; border: none;">Color</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 80px; background: #111827 !important; color: #ffffff !important; border: none;">Size</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 150px; background: #111827 !important; color: #ffffff !important; border: none;"> Outlet</th>
+                        <th class="py-4 text-center fw-bold text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #ffffff !important; border: none;" title="Purchase Quantity">P-Qnt</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 120px; background: #111827 !important; color: #ffffff !important; border: none;" title="Purchase Return">PR-Qnt</th>
+                        <th class="py-4 text-center text-info text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #00e5ff !important; border: none;" title="Actual Purchase (P-Qnt - PR-Qnt)">Net-P</th>
+                        <th class="py-4 text-center fw-bold text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #ffffff !important; border: none;" title="Sale Quantity">S-Qnt</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 120px; background: #111827 !important; color: #ffffff !important; border: none;" title="Sale Return">SR-Qnt</th>
+                        <th class="py-4 text-center text-info text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #00e5ff !important; border: none;" title="Actual Sale (S-Qnt - SR-Qnt)">Net-S</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #ffffff !important; border: none;" title="Adjustment">Adjust</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #ffffff !important; border: none;" title="Exchange To">Exc-To</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #ffffff !important; border: none;" title="Exchange From">Exc-Fr</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #ffffff !important; border: none;" title="Transfer From">Tr-Fr</th>
+                        <th class="py-4 text-center text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 100px; background: #111827 !important; color: #ffffff !important; border: none;" title="Transfer To">Tr-To</th>
+                        <th class="py-4 text-center fw-bold text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 155px; background: #111827 !important; color: #ffffff !important; border: none;" title="Total Current Stock">Current STOCK</th>
+                        <th class="py-4 text-end text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 140px; background: #111827 !important; color: #ffffff !important; border: none;">Cost Value</th>
+                        <th class="py-4 text-end pe-4 text-nowrap" style="position: sticky; top: 0; z-index: 100; min-width: 140px; border-top-right-radius: 12px; background: #111827 !important; color: #ffffff !important; border: none;">Sale Value</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -286,23 +288,23 @@
                     @endforelse
                 </tbody>
                 @if(count($items) > 0)
-                <tfoot style="background: #f8f9fa; border-top: 2px solid #111827;">
+                <tfoot style="position: sticky; bottom: 0; z-index: 90; background: #f8f9fa; border-top: 2px solid #111827;">
                     <tr>
-                        <td colspan="6" class="text-end fw-bold py-3">GRAND TOTAL (PAGE)</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_p }}</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_pr }}</td>
-                        <td class="text-center fw-bold text-info" style="font-size: 14px; background: rgba(0,229,255,0.05)">{{ $total_net_p }}</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_s }}</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_sr }}</td>
-                        <td class="text-center fw-bold text-info" style="font-size: 14px; background: rgba(0,229,255,0.05)">{{ $total_net_s }}</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_adj }}</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_exc_to }}</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_exc_fr }}</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_tr_fr }}</td>
-                        <td class="text-center fw-bold text-dark" style="font-size: 14px;">{{ $total_tr_to }}</td>
-                        <td class="text-center fw-bold text-dark fs-6 bg-primary bg-opacity-10">{{ $total_stock }}</td>
-                        <td class="text-end fw-bold text-dark">{{ number_format($total_cost_val, 2) }}</td>
-                        <td class="text-end pe-4 fw-bold text-dark">{{ number_format($total_sale_val, 2) }}</td>
+                        <td colspan="6" class="text-end fw-bold py-3" style="position: sticky; bottom: 0; background: #f8f9fa;">GRAND TOTAL (PAGE)</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_p }}</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_pr }}</td>
+                        <td class="text-center fw-bold text-info" style="position: sticky; bottom: 0; font-size: 14px; background: #e0f7fa;">{{ $total_net_p }}</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_s }}</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_sr }}</td>
+                        <td class="text-center fw-bold text-info" style="position: sticky; bottom: 0; font-size: 14px; background: #e0f7fa;">{{ $total_net_s }}</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_adj }}</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_exc_to }}</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_exc_fr }}</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_tr_fr }}</td>
+                        <td class="text-center fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa; font-size: 14px;">{{ $total_tr_to }}</td>
+                        <td class="text-center fw-bold text-dark fs-6" style="position: sticky; bottom: 0; background: #dbeafe;">{{ $total_stock }}</td>
+                        <td class="text-end fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa;">{{ number_format($total_cost_val, 2) }}</td>
+                        <td class="text-end pe-4 fw-bold text-dark" style="position: sticky; bottom: 0; background: #f8f9fa;">{{ number_format($total_sale_val, 2) }}</td>
                     </tr>
                 </tfoot>
                 @endif
