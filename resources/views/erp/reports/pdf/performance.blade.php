@@ -28,7 +28,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="report-title">Sales vs Purchase Performance</div>
+        <div class="report-title">Sales vs Purchase Performance ({{ ($groupBy ?? 'variation') === 'product' ? 'Style-Wise' : 'Size-Wise' }})</div>
         <div class="period">Period: {{ $startDate->format('d M Y') }} - {{ $endDate->format('d M Y') }}</div>
     </div>
 
@@ -52,7 +52,7 @@
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>
                         <div class="fw-bold">{{ $item->product_name }}</div>
-                        <div style="font-size: 8px; color: #666;">Style: {{ $item->style_number }} | Variation: {{ $item->variation_name }}</div>
+                        <div style="font-size: 8px; color: #666;">Style: {{ $item->style_number }} | {{ ($groupBy ?? 'variation') === 'product' ? 'Details' : 'Variation' }}: {{ $item->variation_name }}</div>
                     </td>
                     <td class="text-center">{{ $item->sold_qty }}</td>
                     <td class="text-center text-danger">{{ $item->returned_qty }}</td>

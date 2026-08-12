@@ -2683,6 +2683,7 @@ class ReportController extends Controller
         $startDate = $request->filled('start_date') ? Carbon::parse($request->start_date)->startOfDay() : Carbon::now()->startOfMonth();
         $endDate = $request->filled('end_date') ? Carbon::parse($request->end_date)->endOfDay() : Carbon::now()->endOfDay();
         $branchId = $request->get('branch_id');
+        $groupBy = $request->get('group_by', 'variation');
         $restrictedBranchId = $this->getRestrictedBranchId();
         if ($restrictedBranchId) $branchId = $restrictedBranchId;
 
@@ -2692,12 +2693,13 @@ class ReportController extends Controller
                 $endDate, 
                 $branchId, 
                 $request->get('product_id'), 
-                $request->get('category_id')
+                $request->get('category_id'),
+                $groupBy
             );
 
             if ($request->filled('export')) {
-                if ($request->export == 'excel') return $this->exportPerformanceExcel($finalData, $startDate, $endDate);
-                if ($request->export == 'pdf') return $this->exportPerformancePdf($finalData, $startDate, $endDate);
+                if ($request->export == 'excel') return $this->exportPerformanceExcel($finalData, $startDate, $endDate, $groupBy);
+                if ($request->export == 'pdf') return $this->exportPerformancePdf($finalData, $startDate, $endDate, $groupBy);
             }
 
             return response()->json([
@@ -2716,15 +2718,15 @@ class ReportController extends Controller
         return view('erp.reports.performance', compact('startDate', 'endDate', 'branches', 'branchId', 'categories'));
     }
 
-    private function exportPerformanceExcel($data, $startDate, $endDate)
+    private function exportPerformanceExcel($data, $startDate, $endDate, $groupBy = 'variation')
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         
-        $sheet->setCellValue('A1', 'Sales vs Purchase Performance Report');
+        $sheet->setCellValue('A1', 'Sales vs Purchase Performance Report (' . ($groupBy === 'product' ? 'Style-Wise' : 'Size-Wise') . ')');
         $sheet->setCellValue('A2', 'Period: ' . $startDate->format('d/m/Y') . ' to ' . $endDate->format('d/m/Y'));
         
-        $headers = ['Product', 'Style #', 'Variation', 'Sold Qty', 'Ret Qty', 'Net Qty', 'Net Sale', 'Net Cost', 'Profit', 'Margin %'];
+        $headers = ['Product', 'Style #', $groupBy === 'product' ? 'Details' : 'Variation', 'Sold Qty', 'Ret Qty', 'Net Qty', 'Net Sale', 'Net Cost', 'Profit', 'Margin %'];
         $col = 'A';
         foreach ($headers as $header) {
             $sheet->setCellValue($col . '4', $header);
@@ -2747,7 +2749,7 @@ class ReportController extends Controller
             $row++;
         }
 
-        $filename = "Performance_Report_" . date('Ymd_His') . ".xlsx";
+        $filename = "Performance_Report_" . ($groupBy === 'product' ? 'StyleWise_' : 'SizeWise_') . date('Ymd_His') . ".xlsx";
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $filename . '"');
         $writer = new Xlsx($spreadsheet);
@@ -2755,15 +2757,15 @@ class ReportController extends Controller
         exit;
     }
 
-    private function exportPerformancePdf($data, $startDate, $endDate)
+    private function exportPerformancePdf($data, $startDate, $endDate, $groupBy = 'variation')
     {
         $summary = [
             'total_sale' => $data->sum('net_sale_amount'),
             'total_cost' => $data->sum('net_purchase_cost'),
             'total_profit' => $data->sum('gross_profit'),
         ];
-        $pdf = Pdf::loadView('erp.reports.pdf.performance', compact('data', 'startDate', 'endDate', 'summary'))->setPaper('a4', 'landscape');
-        return $pdf->download('Performance_Report_' . date('Y-m-d') . '.pdf');
+        $pdf = Pdf::loadView('erp.reports.pdf.performance', compact('data', 'startDate', 'endDate', 'summary', 'groupBy'))->setPaper('a4', 'landscape');
+        return $pdf->download('Performance_Report_' . ($groupBy === 'product' ? 'StyleWise_' : 'SizeWise_') . date('Y-m-d') . '.pdf');
     }
 
     private function exportExpensePdf($data)

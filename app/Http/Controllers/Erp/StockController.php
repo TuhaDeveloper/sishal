@@ -22,11 +22,21 @@ class StockController extends Controller
         $restrictedBranchId = $this->getRestrictedBranchId();
         $branches = $restrictedBranchId ? Branch::where('id', $restrictedBranchId)->get() : Branch::all();
         $warehouses = Warehouse::where('status', 'active')->orderBy('name')->get();
-        $categories = \App\Models\ProductServiceCategory::where('status', 'active')->get()->sortBy('full_path_name');
+        $categories = \App\Models\ProductServiceCategory::whereNull('parent_id')->where('status', 'active')->orderBy('name')->get();
+        $subcategories = \App\Models\ProductServiceCategory::whereNotNull('parent_id')->where('status', 'active')->with('parent')->orderBy('name')->get();
         $brands = \App\Models\Brand::where('status', 'active')->orderBy('name')->get();
         $seasons = \App\Models\Season::where('status', 'active')->orderBy('name')->get();
         $genders = \App\Models\Gender::all();
         $variationValues = \App\Models\VariationAttributeValue::whereHas('variations')->orderBy('value')->get();
+        $styles = Product::whereNotNull('style_number')
+            ->where('style_number', '!=', '')
+            ->selectRaw('TRIM(style_number) as style_no')
+            ->distinct()
+            ->orderBy('style_no')
+            ->pluck('style_no')
+            ->unique()
+            ->filter()
+            ->values();
 
         $selectedBranchId = $restrictedBranchId ?: $request->branch_id;
         $selectedWarehouseId = $request->warehouse_id;
@@ -141,10 +151,12 @@ class StockController extends Controller
             'branches',
             'warehouses',
             'categories',
+            'subcategories',
             'brands',
             'seasons',
             'genders',
             'variationValues',
+            'styles',
             'totalStockQty',
             'totalStockValue',
             'totalStockRevenue',
@@ -312,58 +324,105 @@ class StockController extends Controller
                 $prod->agg = $agg;
             }
 
+            $isProductSummary = ($request->get('group_by') === 'product');
+
             foreach ($productLocations as $loc) {
                 $lid = $loc['id'];
                 $ltype = $loc['type'];
-                $vars = $prod->has_variations ? $prod->variations : [null];
+                $vars = ($prod->has_variations && !$isProductSummary) ? $prod->variations : [null];
 
                 foreach ($vars as $var) {
-                    $vid = $var ? $var->id : 0;
-                    $key = $vid . '_' . $ltype . '_' . $lid;
-                    $wh_key = $vid . '_warehouse_0';
+                    if ($isProductSummary && $prod->has_variations) {
+                        $p_qnt = 0; $pr_qnt = 0; $s_qnt = 0; $sr_qnt = 0; $adjust = 0;
+                        $exc_to = 0; $exc_from = 0; $tr_from = 0; $tr_to = 0;
+                        $stock_qty = 0; $cost_val = 0; $sale_val = 0; $actual_revenue = 0;
 
-                    $p_qnt = $prod->agg['p'][$key] ?? 0;
-                    $pr_qnt = $prod->agg['pr'][$key] ?? 0;
+                        foreach ($prod->variations as $v) {
+                            $vid = $v->id;
+                            $key = $vid . '_' . $ltype . '_' . $lid;
+                            $wh_key = $vid . '_warehouse_0';
 
-                    $s_qnt = $prod->agg['s'][$key] ?? 0;
-                    if ($ltype == 'warehouse')
-                        $s_qnt += $prod->agg['s'][$wh_key] ?? 0;
+                            $p_qnt += $prod->agg['p'][$key] ?? 0;
+                            $pr_qnt += $prod->agg['pr'][$key] ?? 0;
 
-                    $sr_qnt = $prod->agg['sr'][$key] ?? 0;
-                    $adjust = $prod->agg['adj'][$key] ?? 0;
-                    $exc_to = $prod->agg['et'][$key] ?? 0;
-                    $exc_from = $prod->agg['ef'][$key] ?? 0;
-                    $tr_from = $prod->agg['tf'][$key] ?? 0;
-                    $tr_to = $prod->agg['tt'][$key] ?? 0;
+                            $v_s = $prod->agg['s'][$key] ?? 0;
+                            if ($ltype == 'warehouse') $v_s += $prod->agg['s'][$wh_key] ?? 0;
+                            $s_qnt += $v_s;
 
-                    $stock_qty = 0;
-                    if ($prod->has_variations) {
-                        $stock_qty = $var->stocks->where($ltype == 'branch' ? 'branch_id' : 'warehouse_id', $lid)->sum('quantity');
-                    } else {
-                        $stock_qty = ($ltype == 'branch' ? $prod->branchStock->where('branch_id', $lid)->sum('quantity') : $prod->warehouseStock->where('warehouse_id', $lid)->sum('quantity'));
-                    }
+                            $sr_qnt += $prod->agg['sr'][$key] ?? 0;
+                            $adjust += $prod->agg['adj'][$key] ?? 0;
+                            $exc_to += $prod->agg['et'][$key] ?? 0;
+                            $exc_from += $prod->agg['ef'][$key] ?? 0;
+                            $tr_from += $prod->agg['tf'][$key] ?? 0;
+                            $tr_to += $prod->agg['tt'][$key] ?? 0;
 
-                    $inflows = $p_qnt + $sr_qnt + ($adjust > 0 ? $adjust : 0) + $tr_to + $exc_from;
-                    $outflows = $s_qnt + $pr_qnt + ($adjust < 0 ? abs($adjust) : 0) + $tr_from + $exc_to;
-                    $opening_stock = $stock_qty - ($inflows - $outflows);
+                            $v_stk = $v->stocks->where($ltype == 'branch' ? 'branch_id' : 'warehouse_id', $lid)->sum('quantity');
+                            $stock_qty += $v_stk;
+                            $v_cost = $v->cost ?: $prod->cost;
+                            $v_price = $v->price ?: $prod->price;
+                            $cost_val += ($v_stk * $v_cost);
+                            $sale_val += ($v_stk * $v_price);
 
-                    $color = '-';
-                    $size = '-';
-                    if ($var) {
-                        foreach ($var->attributeValues as $av) {
-                            $attr = strtolower($av->attribute->name ?? '');
-                            if (str_contains($attr, 'color'))
-                                $color = $av->value;
-                            elseif (str_contains($attr, 'size'))
-                                $size = $av->value;
+                            $v_rev = $prod->agg['rev'][$key] ?? 0;
+                            if ($ltype == 'warehouse') $v_rev += $prod->agg['rev'][$wh_key] ?? 0;
+                            $actual_revenue += $v_rev;
                         }
-                    }
-                    $cost = $var ? ($var->cost ?: $prod->cost) : $prod->cost;
-                    $price = $var ? ($var->price ?: $prod->price) : $prod->price;
 
-                    $actual_revenue = $prod->agg['rev'][$key] ?? 0;
-                    if ($ltype == 'warehouse')
-                        $actual_revenue += $prod->agg['rev'][$wh_key] ?? 0;
+                        $inflows = $p_qnt + $sr_qnt + ($adjust > 0 ? $adjust : 0) + $tr_to + $exc_from;
+                        $outflows = $s_qnt + $pr_qnt + ($adjust < 0 ? abs($adjust) : 0) + $tr_from + $exc_to;
+                        $opening_stock = $stock_qty - ($inflows - $outflows);
+                        $color = 'All';
+                        $size = 'All';
+                    } else {
+                        $vid = $var ? $var->id : 0;
+                        $key = $vid . '_' . $ltype . '_' . $lid;
+                        $wh_key = $vid . '_warehouse_0';
+
+                        $p_qnt = $prod->agg['p'][$key] ?? 0;
+                        $pr_qnt = $prod->agg['pr'][$key] ?? 0;
+
+                        $s_qnt = $prod->agg['s'][$key] ?? 0;
+                        if ($ltype == 'warehouse')
+                            $s_qnt += $prod->agg['s'][$wh_key] ?? 0;
+
+                        $sr_qnt = $prod->agg['sr'][$key] ?? 0;
+                        $adjust = $prod->agg['adj'][$key] ?? 0;
+                        $exc_to = $prod->agg['et'][$key] ?? 0;
+                        $exc_from = $prod->agg['ef'][$key] ?? 0;
+                        $tr_from = $prod->agg['tf'][$key] ?? 0;
+                        $tr_to = $prod->agg['tt'][$key] ?? 0;
+
+                        $stock_qty = 0;
+                        if ($prod->has_variations) {
+                            $stock_qty = $var->stocks->where($ltype == 'branch' ? 'branch_id' : 'warehouse_id', $lid)->sum('quantity');
+                        } else {
+                            $stock_qty = ($ltype == 'branch' ? $prod->branchStock->where('branch_id', $lid)->sum('quantity') : $prod->warehouseStock->where('warehouse_id', $lid)->sum('quantity'));
+                        }
+
+                        $inflows = $p_qnt + $sr_qnt + ($adjust > 0 ? $adjust : 0) + $tr_to + $exc_from;
+                        $outflows = $s_qnt + $pr_qnt + ($adjust < 0 ? abs($adjust) : 0) + $tr_from + $exc_to;
+                        $opening_stock = $stock_qty - ($inflows - $outflows);
+
+                        $color = '-';
+                        $size = '-';
+                        if ($var) {
+                            foreach ($var->attributeValues as $av) {
+                                $attr = strtolower($av->attribute->name ?? '');
+                                if (str_contains($attr, 'color'))
+                                    $color = $av->value;
+                                elseif (str_contains($attr, 'size'))
+                                    $size = $av->value;
+                            }
+                        }
+                        $cost = $var ? ($var->cost ?: $prod->cost) : $prod->cost;
+                        $price = $var ? ($var->price ?: $prod->price) : $prod->price;
+                        $cost_val = $stock_qty * $cost;
+                        $sale_val = $stock_qty * $price;
+
+                        $actual_revenue = $prod->agg['rev'][$key] ?? 0;
+                        if ($ltype == 'warehouse')
+                            $actual_revenue += $prod->agg['rev'][$wh_key] ?? 0;
+                    }
 
                     $sheet->setCellValue('A' . $row, $prod->name);
                     $sheet->setCellValue('B' . $row, $prod->style_number ?? $prod->sku);
@@ -383,8 +442,8 @@ class StockController extends Controller
                     $sheet->setCellValue('P' . $row, $tr_from);
                     $sheet->setCellValue('Q' . $row, $tr_to);
                     $sheet->setCellValue('R' . $row, $stock_qty);
-                    $sheet->setCellValue('S' . $row, $stock_qty * $cost);
-                    $sheet->setCellValue('T' . $row, $stock_qty * $price);
+                    $sheet->setCellValue('S' . $row, $cost_val);
+                    $sheet->setCellValue('T' . $row, $sale_val);
                     $sheet->setCellValue('U' . $row, $actual_revenue);
                     $t_op += $opening_stock;
                     $t_p += $p_qnt;
@@ -399,8 +458,8 @@ class StockController extends Controller
                     $t_tf += $tr_from;
                     $t_tt += $tr_to;
                     $t_stk += $stock_qty;
-                    $t_cost += ($stock_qty * $cost);
-                    $t_sale += ($stock_qty * $price);
+                    $t_cost += $cost_val;
+                    $t_sale += $sale_val;
                     $t_rev += $actual_revenue;
 
                     $row++;
@@ -731,8 +790,16 @@ class StockController extends Controller
             });
         }
 
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
+        if ($request->filled('subcategory_id')) {
+            $query->where('category_id', $request->subcategory_id);
+        } elseif ($request->filled('category_id')) {
+            $cat = \App\Models\ProductServiceCategory::find($request->category_id);
+            if ($cat) {
+                $catIds = $cat->getAllChildIds();
+                $query->whereIn('category_id', $catIds);
+            } else {
+                $query->where('category_id', $request->category_id);
+            }
         }
         if ($request->filled('brand_id')) {
             $query->where('brand_id', $request->brand_id);
@@ -742,6 +809,13 @@ class StockController extends Controller
         }
         if ($request->filled('gender_id')) {
             $query->where('gender_id', $request->gender_id);
+        }
+        if ($request->filled('style_number')) {
+            $styleNo = trim($request->style_number);
+            $query->where(function($q) use ($styleNo) {
+                $q->where('style_number', 'like', '%' . $styleNo . '%')
+                  ->orWhere('sku', 'like', '%' . $styleNo . '%');
+            });
         }
 
         // Order by last purchase date or product creation date (new first)

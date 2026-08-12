@@ -13,7 +13,7 @@ class PerformanceReportService
      * Get performance data for products and variations.
      * Calculated as: (Sales - Returns) with associated COGS.
      */
-    public function getPerformanceData($startDate, $endDate, $branchId = null, $productId = null, $categoryId = null)
+    public function getPerformanceData($startDate, $endDate, $branchId = null, $productId = null, $categoryId = null, $groupBy = 'variation')
     {
         // 1. Get Sales (POS + Online) grouped by product and variation
         $posSales = DB::table('pos_items')
@@ -78,7 +78,7 @@ class PerformanceReportService
         }
 
         // 3. Enrich with Product/Variation details and calculate COGS/Profit
-        return collect($merged)->map(function($item) {
+        $variationData = collect($merged)->map(function($item) {
             $product = Product::find($item['product_id']);
             $variation = $item['variation_id'] ? ProductVariation::with('attributeValues')->find($item['variation_id']) : null;
             
@@ -97,6 +97,42 @@ class PerformanceReportService
             
             return (object)$item;
         })->filter(fn($item) => $item->sold_qty > 0 || $item->returned_qty > 0)->values();
+
+        if ($groupBy === 'product') {
+            return $variationData->groupBy('product_id')->map(function($group) {
+                $first = $group->first();
+                $soldQty = $group->sum('sold_qty');
+                $soldAmount = $group->sum('sold_amount');
+                $returnedQty = $group->sum('returned_qty');
+                $returnedAmount = $group->sum('returned_amount');
+                $netQty = $group->sum('net_qty');
+                $netSaleAmount = $group->sum('net_sale_amount');
+                $netPurchaseCost = $group->sum('net_purchase_cost');
+                $grossProfit = $group->sum('gross_profit');
+                $profitMargin = $netSaleAmount > 0 ? ($grossProfit / $netSaleAmount) * 100 : 0;
+                $unitCost = $netQty > 0 ? ($netPurchaseCost / $netQty) : ($first->unit_cost ?? 0);
+
+                return (object)[
+                    'product_id' => $first->product_id,
+                    'variation_id' => null,
+                    'product_name' => $first->product_name,
+                    'style_number' => $first->style_number,
+                    'variation_name' => 'All Variations (Style Total)',
+                    'sold_qty' => $soldQty,
+                    'sold_amount' => $soldAmount,
+                    'returned_qty' => $returnedQty,
+                    'returned_amount' => $returnedAmount,
+                    'net_qty' => $netQty,
+                    'net_sale_amount' => $netSaleAmount,
+                    'unit_cost' => $unitCost,
+                    'net_purchase_cost' => $netPurchaseCost,
+                    'gross_profit' => $grossProfit,
+                    'profit_margin' => $profitMargin,
+                ];
+            })->values();
+        }
+
+        return $variationData;
     }
 
     private function emptyPerformanceRow($productId, $variationId)

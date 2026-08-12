@@ -71,7 +71,8 @@
                 @foreach ($productLocations as $location)
                     @php
                         $lid = $location['id']; $ltype = $location['type'];
-                        $vars = $product->has_variations ? $product->variations : [null];
+                        $isProductSummary = (request('group_by') === 'product');
+                        $vars = ($product->has_variations && !$isProductSummary) ? $product->variations : [null];
 
                         // PRE-AGGREGATE MOVEMENTS FOR O(1) LOOKUP PERFORMANCE
                         if (!isset($product->agg)) {
@@ -144,48 +145,88 @@
 
                     @foreach ($vars as $var)
                         @php
-                            $vid = $var ? $var->id : 0;
-                            $key = $vid . '_' . $ltype . '_' . $lid;
-                            $wh_key = $vid . '_warehouse_0';
+                            if ($isProductSummary && $product->has_variations) {
+                                $p_qnt = 0; $pr_qnt = 0; $s_qnt = 0; $sr_qnt = 0; $adjust = 0;
+                                $exc_to = 0; $exc_from = 0; $tr_from = 0; $tr_to = 0;
+                                $stock_qty = 0; $cost_val = 0; $actual_rev = 0;
 
-                            $p_qnt = $product->agg['p'][$key] ?? 0;
-                            $pr_qnt = $product->agg['pr'][$key] ?? 0;
-                            
-                            $s_qnt = $product->agg['s'][$key] ?? 0;
-                            if ($ltype == 'warehouse') $s_qnt += $product->agg['s'][$wh_key] ?? 0;
+                                foreach ($product->variations as $v) {
+                                    $vid = $v->id;
+                                    $key = $vid . '_' . $ltype . '_' . $lid;
+                                    $wh_key = $vid . '_warehouse_0';
 
-                            $sr_qnt = $product->agg['sr'][$key] ?? 0;
-                            $adjust = $product->agg['adj'][$key] ?? 0;
-                            $exc_to = $product->agg['et'][$key] ?? 0;
-                            $exc_from = $product->agg['ef'][$key] ?? 0;
-                            $tr_from = $product->agg['tf'][$key] ?? 0;
-                            $tr_to = $product->agg['tt'][$key] ?? 0;
+                                    $p_qnt += $product->agg['p'][$key] ?? 0;
+                                    $pr_qnt += $product->agg['pr'][$key] ?? 0;
 
-                            $stock_qty = 0;
-                            if ($product->has_variations) {
-                                $stock_qty = $var->stocks->where($ltype == 'branch' ? 'branch_id' : 'warehouse_id', $lid)->sum('quantity');
-                            } else {
-                                $stock_qty = ($ltype == 'branch' ? $product->branchStock->where('branch_id', $lid)->sum('quantity') : $product->warehouseStock->where('warehouse_id', $lid)->sum('quantity'));
-                            }
+                                    $v_s = $product->agg['s'][$key] ?? 0;
+                                    if ($ltype == 'warehouse') $v_s += $product->agg['s'][$wh_key] ?? 0;
+                                    $s_qnt += $v_s;
 
-                            $inflows = $p_qnt + $sr_qnt + ($adjust > 0 ? $adjust : 0) + $tr_to + $exc_from;
-                            $outflows = $s_qnt + $pr_qnt + ($adjust < 0 ? abs($adjust) : 0) + $tr_from + $exc_to;
-                            $opening_stock = $stock_qty - ($inflows - $outflows);
+                                    $sr_qnt += $product->agg['sr'][$key] ?? 0;
+                                    $adjust += $product->agg['adj'][$key] ?? 0;
+                                    $exc_to += $product->agg['et'][$key] ?? 0;
+                                    $exc_from += $product->agg['ef'][$key] ?? 0;
+                                    $tr_from += $product->agg['tf'][$key] ?? 0;
+                                    $tr_to += $product->agg['tt'][$key] ?? 0;
 
-                            $color = '-'; $size = '-';
-                            if ($var) {
-                                foreach($var->attributeValues as $av) {
-                                    $attr = strtolower($av->attribute->name ?? '');
-                                    if(str_contains($attr, 'color')) $color = $av->value;
-                                    elseif(str_contains($attr, 'size')) $size = $av->value;
+                                    $v_stk = $v->stocks->where($ltype == 'branch' ? 'branch_id' : 'warehouse_id', $lid)->sum('quantity');
+                                    $stock_qty += $v_stk;
+                                    $v_cost = $v->cost ?: $product->cost;
+                                    $cost_val += ($v_stk * $v_cost);
+
+                                    $v_rev = $product->agg['rev'][$key] ?? 0;
+                                    if ($ltype == 'warehouse') $v_rev += $product->agg['rev'][$wh_key] ?? 0;
+                                    $actual_rev += $v_rev;
                                 }
+
+                                $inflows = $p_qnt + $sr_qnt + ($adjust > 0 ? $adjust : 0) + $tr_to + $exc_from;
+                                $outflows = $s_qnt + $pr_qnt + ($adjust < 0 ? abs($adjust) : 0) + $tr_from + $exc_to;
+                                $opening_stock = $stock_qty - ($inflows - $outflows);
+                                $color = 'All'; $size = 'All';
+                            } else {
+                                $vid = $var ? $var->id : 0;
+                                $key = $vid . '_' . $ltype . '_' . $lid;
+                                $wh_key = $vid . '_warehouse_0';
+
+                                $p_qnt = $product->agg['p'][$key] ?? 0;
+                                $pr_qnt = $product->agg['pr'][$key] ?? 0;
+                                
+                                $s_qnt = $product->agg['s'][$key] ?? 0;
+                                if ($ltype == 'warehouse') $s_qnt += $product->agg['s'][$wh_key] ?? 0;
+
+                                $sr_qnt = $product->agg['sr'][$key] ?? 0;
+                                $adjust = $product->agg['adj'][$key] ?? 0;
+                                $exc_to = $product->agg['et'][$key] ?? 0;
+                                $exc_from = $product->agg['ef'][$key] ?? 0;
+                                $tr_from = $product->agg['tf'][$key] ?? 0;
+                                $tr_to = $product->agg['tt'][$key] ?? 0;
+
+                                $stock_qty = 0;
+                                if ($product->has_variations) {
+                                    $stock_qty = $var->stocks->where($ltype == 'branch' ? 'branch_id' : 'warehouse_id', $lid)->sum('quantity');
+                                } else {
+                                    $stock_qty = ($ltype == 'branch' ? $product->branchStock->where('branch_id', $lid)->sum('quantity') : $product->warehouseStock->where('warehouse_id', $lid)->sum('quantity'));
+                                }
+
+                                $inflows = $p_qnt + $sr_qnt + ($adjust > 0 ? $adjust : 0) + $tr_to + $exc_from;
+                                $outflows = $s_qnt + $pr_qnt + ($adjust < 0 ? abs($adjust) : 0) + $tr_from + $exc_to;
+                                $opening_stock = $stock_qty - ($inflows - $outflows);
+
+                                $color = '-'; $size = '-';
+                                if ($var) {
+                                    foreach($var->attributeValues as $av) {
+                                        $attr = strtolower($av->attribute->name ?? '');
+                                        if(str_contains($attr, 'color')) $color = $av->value;
+                                        elseif(str_contains($attr, 'size')) $size = $av->value;
+                                    }
+                                }
+                                $cost = $var ? ($var->cost ?: $product->cost) : $product->cost;
+                                $price = $var ? ($var->price ?: $product->price) : $product->price;
+                                $cost_val = $stock_qty * $cost;
+
+                                $actual_rev = $product->agg['rev'][$key] ?? 0;
+                                if ($ltype == 'warehouse') $actual_rev += $product->agg['rev'][$wh_key] ?? 0;
                             }
-                            $cost = $var ? ($var->cost ?: $product->cost) : $product->cost;
-                            $price = $var ? ($var->price ?: $product->price) : $product->price;
-                        @endphp
-                        @php
-                            $actual_rev = $product->agg['rev'][$key] ?? 0;
-                            if ($ltype == 'warehouse') $actual_rev += $product->agg['rev'][$wh_key] ?? 0;
                         @endphp
                         <tr>
                             <td>{{ $sl++ }}</td>

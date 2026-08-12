@@ -12,13 +12,13 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h3 class="fw-bold mb-1 text-dark">Top Products Performance</h3>
-                    <p class="text-muted mb-0">Best performing products and variations from <span class="badge bg-light text-primary border">{{ $startDate->format('d M, Y') }}</span> to <span class="badge bg-light text-primary border">{{ $endDate->format('d M, Y') }}</span></p>
+                    <p class="text-muted mb-0">Best performing products and variations <span id="date-range-badge">from <span class="badge bg-light text-primary border">{{ $startDate->format('d M, Y') }}</span> to <span class="badge bg-light text-primary border">{{ $endDate->format('d M, Y') }}</span></span></p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('simple-accounting.top-products-export-excel', request()->all()) }}" class="btn btn-success px-4 rounded-pill shadow-sm">
+                    <a href="{{ route('simple-accounting.top-products-export-excel', request()->all()) }}" id="exportExcelBtn" class="btn btn-success px-4 rounded-pill shadow-sm no-loader" target="_blank">
                         <i class="fas fa-file-excel me-2"></i>Export Excel
                     </a>
-                    <a href="{{ route('simple-accounting.top-products-export-pdf', request()->all()) }}" class="btn btn-outline-danger px-4 rounded-pill shadow-sm">
+                    <a href="{{ route('simple-accounting.top-products-export-pdf', request()->all()) }}" id="exportPdfBtn" class="btn btn-outline-danger px-4 rounded-pill shadow-sm no-loader" target="_blank">
                         <i class="fas fa-file-pdf me-2"></i>Download PDF
                     </a>
                 </div>
@@ -30,7 +30,7 @@
                     <form method="GET" action="{{ route('simple-accounting.top-products') }}" id="filterForm">
                         <!-- Row 1: Search & Basic Filters -->
                         <div class="row g-3 mb-4">
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-1">Global Search</label>
                                 <div class="input-group input-group-sm shadow-sm">
                                     <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
@@ -38,6 +38,13 @@
                                 </div>
                             </div>
                             <div class="col-md-3">
+                                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Report View</label>
+                                <select class="form-select form-select-sm fw-bold border-primary text-primary" name="group_by" id="groupBySelect">
+                                    <option value="product" {{ request('group_by', $groupBy ?? 'product') == 'product' ? 'selected' : '' }}>Style-Wise (Product Summary)</option>
+                                    <option value="variation" {{ request('group_by', $groupBy ?? 'product') == 'variation' ? 'selected' : '' }}>Size-Wise (Detailed Variation)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-1">Category</label>
                                 <select class="form-select form-select-sm select2-simple" name="category_id">
                                     <option value="">All Categories</option>
@@ -46,12 +53,12 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-1">Source</label>
                                 <select class="form-select form-select-sm" name="source">
-                                    <option value="all" {{ request('source') == 'all' ? 'selected' : '' }}>All Sources</option>
-                                    <option value="pos" {{ request('source') == 'pos' ? 'selected' : '' }}>POS Only</option>
-                                    <option value="online" {{ request('source') == 'online' ? 'selected' : '' }}>Online Only</option>
+                                    <option value="all" {{ request('source') == 'all' ? 'selected' : '' }}>All</option>
+                                    <option value="pos" {{ request('source') == 'pos' ? 'selected' : '' }}>POS</option>
+                                    <option value="online" {{ request('source') == 'online' ? 'selected' : '' }}>Online</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
@@ -155,7 +162,7 @@
                                 <label class="form-label opacity-0 d-block">Action</label>
                                 <div class="d-flex gap-2">
                                     <button type="submit" class="btn btn-primary btn-sm px-4 w-100 rounded-pill"><i class="fas fa-filter me-2"></i>Apply</button>
-                                    <a href="{{ route('simple-accounting.top-products') }}" class="btn btn-light btn-sm rounded-circle"><i class="fas fa-undo"></i></a>
+                                    <button type="button" id="resetFilters" class="btn btn-light btn-sm rounded-circle" title="Reset Filters"><i class="fas fa-undo"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -163,84 +170,8 @@
                 </div>
             </div>
 
-            <div class="row g-4">
-                <!-- Top by Revenue -->
-                <div class="col-lg-6">
-                    <div class="card border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-header bg-primary py-3 border-0">
-                            <h6 class="fw-bold mb-0 text-white"><i class="fas fa-chart-line me-2"></i>Top {{ $limit }} by Revenue</h6>
-                        </div>
-                        <div class="card-body p-0">
-                            <table class="table table-hover mb-0 align-middle">
-                                <thead>
-                                    <tr class="bg-light">
-                                        <th class="ps-3 small text-muted text-uppercase py-3">#</th>
-                                        <th class="small text-muted text-uppercase py-3">Product</th>
-                                        <th class="small text-muted text-uppercase py-3">Branch</th>
-                                        <th class="text-end pe-3 small text-muted text-uppercase py-3">Revenue</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach(collect($topByRevenue)->take($limit) as $index => $data)
-                                        <tr>
-                                            <td class="ps-3"><span class="badge bg-light text-primary border">{{ $loop->iteration }}</span></td>
-                                            <td>
-                                                <div class="fw-bold text-dark">{{ $data['product']->name }}</div>
-                                                <div class="extra-small text-muted">SKU: {{ $data['product']->sku }} | Sold: {{ $data['quantity_sold'] }}</div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3">{{ $data['branch_name'] }}</span>
-                                            </td>
-                                            <td class="text-end pe-3">
-                                                <span class="fw-bold text-success fs-6">৳{{ number_format($data['revenue'], 2) }}</span>
-                                                <div class="extra-small text-muted">Profit: ৳{{ number_format($data['profit'], 2) }}</div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Top by Quantity -->
-                <div class="col-lg-6">
-                    <div class="card border-0 shadow-sm rounded-4 h-100">
-                        <div class="card-header bg-warning py-3 border-0">
-                            <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-shopping-bag me-2"></i>Top {{ $limit }} by Quantity Sold</h6>
-                        </div>
-                        <div class="card-body p-0">
-                            <table class="table table-hover mb-0 align-middle">
-                                <thead>
-                                    <tr class="bg-light">
-                                        <th class="ps-3 small text-muted text-uppercase py-3">#</th>
-                                        <th class="small text-muted text-uppercase py-3">Product</th>
-                                        <th class="small text-muted text-uppercase py-3">Branch</th>
-                                        <th class="text-center small text-muted text-uppercase py-3">Sold Qty</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach(collect($topByQuantity)->take($limit) as $index => $data)
-                                        <tr>
-                                            <td class="ps-3"><span class="badge bg-light text-dark border">{{ $loop->iteration }}</span></td>
-                                            <td>
-                                                <div class="fw-bold text-dark">{{ $data['product']->name }}</div>
-                                                <div class="extra-small text-muted">Category: {{ $data['product']->category->name ?? '-' }}</div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3">{{ $data['branch_name'] }}</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-dark rounded-pill px-3">{{ $data['quantity_sold'] }} units</span>
-                                                <div class="extra-small text-muted mt-1">৳{{ number_format($data['revenue'], 2) }}</div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            <div id="top-products-container">
+                @include('erp.simple-accounting.partials.top-products-content')
             </div>
 
         </div>
@@ -257,22 +188,112 @@
         .select2-container--default .select2-selection--single { height: 31px !important; line-height: 31px !important; }
     </style>
 
-    <script>
-        $(document).ready(function() {
-            // Auto-submit on change for range
-            $('#quickRangeSelector').on('change', function() {
-                if($(this).val() != 'custom') {
-                    $('#filterForm').submit();
-                }
-            });
+    @push('scripts')
+        <script>
+            $(document).ready(function() {
+                $('.select2-simple').select2({
+                    width: '100%',
+                    dropdownParent: $('body')
+                });
 
-            // Month/Year sync
-            $('#filter_year, #filter_month').on('change', function() {
-                if ($('#filter_year').val()) {
-                    $('#quickRangeSelector').val('custom');
-                    $('#filterForm').submit();
+                function fetchTopProductsData() {
+                    const form = $('#filterForm');
+                    const targetUrl = form.attr('action');
+                    const data = form.serialize();
+
+                    $('#top-products-container').css('opacity', '0.5');
+
+                    $.ajax({
+                        url: targetUrl,
+                        data: data,
+                        dataType: 'json',
+                        success: function(response) {
+                            if (typeof response === 'object' && response.html) {
+                                $('#top-products-container').html(response.html);
+                                if (response.date_from) $('input[name="date_from"]').val(response.date_from);
+                                if (response.date_to) $('input[name="date_to"]').val(response.date_to);
+                                if (response.range) $('#quickRangeSelector').val(response.range);
+                                if (response.date_text) $('#date-range-badge').html(response.date_text);
+                            } else {
+                                $('#top-products-container').html(response);
+                            }
+                            $('#top-products-container').css('opacity', '1');
+                        },
+                        error: function() {
+                            $('#top-products-container').css('opacity', '1');
+                            alert('Error loading data. Please try again.');
+                        }
+                    });
                 }
+
+                // Auto-switch quick range selector to 'custom' when custom date inputs are modified
+                $('input[name="date_from"], input[name="date_to"]').on('change', function() {
+                    if ($(this).val()) {
+                        $('#quickRangeSelector').val('custom');
+                    }
+                });
+
+                // Intercept form submission
+                $('#filterForm').on('submit', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fetchTopProductsData();
+                    return false;
+                });
+
+                // Reset Filters via AJAX
+                $('#resetFilters').on('click', function(e) {
+                    e.preventDefault();
+                    const form = $('#filterForm');
+                    
+                    // Clear text & date inputs
+                    form.find('input[type="text"], input[type="date"]').val('');
+                    
+                    // Reset selects to defaults
+                    form.find('select').val('');
+                    form.find('select[name="source"]').val('all');
+                    form.find('select[name="limit"]').val('10');
+                    form.find('select[name="range"]').val('month');
+                    form.find('select[name="group_by"]').val('product');
+                    
+                    // Update Select2 dropdowns
+                    $('.select2-simple').val('').trigger('change.select2');
+                    
+                    fetchTopProductsData();
+                });
+
+                // Auto-submit via AJAX on range change
+                $('#quickRangeSelector').on('change', function() {
+                    if ($(this).val() !== 'custom') {
+                        $('input[name="date_from"], input[name="date_to"]').val('');
+                    }
+                    fetchTopProductsData();
+                });
+
+                // Month/Year sync via AJAX
+                $('#filter_year, #filter_month').on('change', function() {
+                    if ($('#filter_year').val()) {
+                        $('#quickRangeSelector').val('custom');
+                        fetchTopProductsData();
+                    }
+                });
+
+                // Dynamic Excel Export with current form parameters
+                $('#exportExcelBtn').on('click', function(e) {
+                    e.preventDefault();
+                    const baseUrl = "{{ route('simple-accounting.top-products-export-excel') }}";
+                    const params = $('#filterForm').serialize();
+                    window.open(baseUrl + '?' + params, '_blank');
+                });
+
+                // Dynamic PDF Export with current form parameters
+                $('#exportPdfBtn').on('click', function(e) {
+                    e.preventDefault();
+                    const baseUrl = "{{ route('simple-accounting.top-products-export-pdf') }}";
+                    const params = $('#filterForm').serialize();
+                    window.open(baseUrl + '?' + params, '_blank');
+                });
             });
-        });
-    </script>
+        </script>
+    @endpush
 @endsection

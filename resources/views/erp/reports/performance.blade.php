@@ -100,6 +100,13 @@
                                 <option value="">All Products</option>
                             </select>
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">REPORT VIEW</label>
+                            <select name="group_by" id="groupBySelect" class="form-select fw-bold border-primary text-primary">
+                                <option value="variation">Size-Wise (Detailed)</option>
+                                <option value="product">Style-Wise (Product Summary)</option>
+                            </select>
+                        </div>
                         <div class="col-md-3 d-flex gap-2">
                             <button type="submit" class="btn btn-primary fw-bold flex-grow-1">
                                 <i class="fas fa-filter me-2"></i>Apply Filters
@@ -147,6 +154,7 @@
         .bg-soft-primary { background-color: rgba(67, 97, 238, 0.1); }
         .bg-soft-success { background-color: rgba(76, 175, 80, 0.1); }
         .text-primary { color: #4361ee !important; }
+        .border-primary { border-color: #4361ee !important; }
         .premium-table thead th { background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding: 15px 10px; }
         .premium-table tbody td { padding: 15px 10px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
         .profit-badge { padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; }
@@ -190,6 +198,10 @@
                 fetchData();
             });
 
+            $('#groupBySelect').on('change', function() {
+                fetchData();
+            });
+
             $('#resetBtn').on('click', function() {
                 setTimeout(fetchData, 100);
             });
@@ -207,11 +219,13 @@
             `);
 
             const formData = $('#filterForm').serialize();
+            const groupBy = $('#groupBySelect').val();
+
             $.ajax({
                 url: "{{ route('reports.performance') }}",
                 data: formData,
                 success: function(response) {
-                    renderTable(response.data);
+                    renderTable(response.data, groupBy);
                     renderSummary(response.summary);
                 },
                 error: function() {
@@ -220,7 +234,7 @@
             });
         }
 
-        function renderTable(data) {
+        function renderTable(data, groupBy) {
             const tbody = $('#tableBody');
             if (data.length === 0) {
                 tbody.html('<tr><td colspan="9" class="text-center py-5">No performance data found for this period.</td></tr>');
@@ -231,12 +245,15 @@
             data.forEach(item => {
                 const avgSale = item.net_qty > 0 ? (item.net_sale_amount / item.net_qty) : 0;
                 const marginColor = item.gross_profit >= 0 ? 'success' : 'danger';
+                const variationTag = groupBy === 'product'
+                    ? `<span class="badge bg-soft-primary text-primary fw-bold">Style Summary (All Sizes)</span>`
+                    : `<span class="text-primary">${item.variation_name}</span>`;
                 
                 html += `
                     <tr>
                         <td class="ps-4">
                             <div class="fw-bold text-dark">${item.product_name}</div>
-                            <div class="text-muted small">Style: ${item.style_number} | <span class="text-primary">${item.variation_name}</span></div>
+                            <div class="text-muted small">Style: ${item.style_number} | ${variationTag}</div>
                         </td>
                         <td class="text-center fw-medium">${item.sold_qty}</td>
                         <td class="text-center text-danger">${item.returned_qty}</td>

@@ -96,30 +96,44 @@
             }
         }
 
-        foreach ($productLocations as $locKey => $location) {
-            if ($product->has_variations) {
-                foreach ($product->variations as $variation) {
-                    // Filter variation if specific variation selected
-                    if (request('variation_value_id')) {
-                        $matches = false;
-                        foreach($variation->attributeValues as $av) { if($av->id == request('variation_value_id')) $matches = true; }
-                        if(!$matches) continue;
-                    }
+        $isProductSummary = (request('group_by') === 'product');
 
-                    $items[] = [
-                        'product' => $product,
-                        'variation' => $variation,
-                        'location' => $location,
-                        'agg' => $agg
-                    ];
-                }
-            } else {
+        foreach ($productLocations as $locKey => $location) {
+            if ($isProductSummary) {
                 $items[] = [
                     'product' => $product,
+                    'is_summary' => true,
                     'variation' => null,
                     'location' => $location,
                     'agg' => $agg
                 ];
+            } else {
+                if ($product->has_variations) {
+                    foreach ($product->variations as $variation) {
+                        // Filter variation if specific variation selected
+                        if (request('variation_value_id')) {
+                            $matches = false;
+                            foreach($variation->attributeValues as $av) { if($av->id == request('variation_value_id')) $matches = true; }
+                            if(!$matches) continue;
+                        }
+
+                        $items[] = [
+                            'product' => $product,
+                            'is_summary' => false,
+                            'variation' => $variation,
+                            'location' => $location,
+                            'agg' => $agg
+                        ];
+                    }
+                } else {
+                    $items[] = [
+                        'product' => $product,
+                        'is_summary' => false,
+                        'variation' => null,
+                        'location' => $location,
+                        'agg' => $agg
+                    ];
+                }
             }
         }
     }
@@ -177,52 +191,92 @@
                             $prod = $item['product'];
                             $var = $item['variation'];
                             $loc = $item['location'];
+                            $isSummary = $item['is_summary'] ?? false;
                             
-                            $variationId = $var ? $var->id : null;
                             $locationId = $loc['id'];
                             $locationType = $loc['type'];
 
-                            $vid = $variationId ?: 0;
-                            $key = $vid . '_' . $locationType . '_' . $locationId;
-                            $wh_key = $vid . '_warehouse_0';
+                            if ($isSummary && $prod->has_variations) {
+                                $p_qnt = 0; $pr_qnt = 0; $s_qnt = 0; $sr_qnt = 0; $adjust = 0;
+                                $exc_to = 0; $exc_from = 0; $tr_from = 0; $tr_to = 0;
+                                $stock_qty = 0; $row_cost_val = 0; $row_sale_val = 0; $row_rev = 0;
 
-                            $p_qnt = $item['agg']['p'][$key] ?? 0;
-                            $pr_qnt = $item['agg']['pr'][$key] ?? 0;
-                            
-                            $s_qnt = $item['agg']['s'][$key] ?? 0;
-                            if ($locationType == 'warehouse') $s_qnt += $item['agg']['s'][$wh_key] ?? 0;
+                                foreach ($prod->variations as $v) {
+                                    $vid = $v->id;
+                                    $key = $vid . '_' . $locationType . '_' . $locationId;
+                                    $wh_key = $vid . '_warehouse_0';
 
-                            $sr_qnt = $item['agg']['sr'][$key] ?? 0;
-                            $adjust = $item['agg']['adj'][$key] ?? 0;
-                            $exc_to = $item['agg']['et'][$key] ?? 0;
-                            $exc_from = $item['agg']['ef'][$key] ?? 0;
-                            $tr_from = $item['agg']['tf'][$key] ?? 0;
-                            $tr_to = $item['agg']['tt'][$key] ?? 0;
+                                    $p_qnt += $item['agg']['p'][$key] ?? 0;
+                                    $pr_qnt += $item['agg']['pr'][$key] ?? 0;
 
-                            $stock_qty = 0;
-                            if ($prod->has_variations) {
-                                $stock_qty = $var->stocks->where($locationType == 'branch' ? 'branch_id' : 'warehouse_id', $locationId)->sum('quantity');
-                            } else {
-                                $stock_qty = ($locationType == 'branch' ? $prod->branchStock->where('branch_id', $locationId)->sum('quantity') : $prod->warehouseStock->where('warehouse_id', $locationId)->sum('quantity'));
-                            }
+                                    $v_s = $item['agg']['s'][$key] ?? 0;
+                                    if ($locationType == 'warehouse') $v_s += $item['agg']['s'][$wh_key] ?? 0;
+                                    $s_qnt += $v_s;
 
-                            $color = '-'; $size = '-';
-                            if ($var) {
-                                foreach($var->attributeValues as $av) {
-                                    $attr = strtolower($av->attribute?->name ?? '');
-                                    if(str_contains($attr, 'color')) $color = $av->value;
-                                    elseif(str_contains($attr, 'size')) $size = $av->value;
+                                    $sr_qnt += $item['agg']['sr'][$key] ?? 0;
+                                    $adjust += $item['agg']['adj'][$key] ?? 0;
+                                    $exc_to += $item['agg']['et'][$key] ?? 0;
+                                    $exc_from += $item['agg']['ef'][$key] ?? 0;
+                                    $tr_from += $item['agg']['tf'][$key] ?? 0;
+                                    $tr_to += $item['agg']['tt'][$key] ?? 0;
+
+                                    $v_stk = $v->stocks->where($locationType == 'branch' ? 'branch_id' : 'warehouse_id', $locationId)->sum('quantity');
+                                    $stock_qty += $v_stk;
+                                    $v_cost = $v->cost ?: $prod->cost;
+                                    $v_price = $v->price ?: $prod->price;
+                                    $row_cost_val += ($v_stk * $v_cost);
+                                    $row_sale_val += ($v_stk * $v_price);
+
+                                    $v_rev = $item['agg']['rev'][$key] ?? 0;
+                                    if ($locationType == 'warehouse') $v_rev += $item['agg']['rev'][$wh_key] ?? 0;
+                                    $row_rev += $v_rev;
                                 }
-                            }
+                                $color = 'All Colors';
+                                $size = 'All Sizes';
+                            } else {
+                                $variationId = $var ? $var->id : null;
+                                $vid = $variationId ?: 0;
+                                $key = $vid . '_' . $locationType . '_' . $locationId;
+                                $wh_key = $vid . '_warehouse_0';
 
-                            $cost = $var ? ($var->cost ?: $prod->cost) : $prod->cost;
-                            $price = $var ? ($var->price ?: $prod->price) : $prod->price;
-                            
-                            $row_cost_val = $stock_qty * $cost;
-                            $row_sale_val = $stock_qty * $price;
-                            
-                            $row_rev = $item['agg']['rev'][$key] ?? 0;
-                            if ($locationType == 'warehouse') $row_rev += $item['agg']['rev'][$wh_key] ?? 0;
+                                $p_qnt = $item['agg']['p'][$key] ?? 0;
+                                $pr_qnt = $item['agg']['pr'][$key] ?? 0;
+                                
+                                $s_qnt = $item['agg']['s'][$key] ?? 0;
+                                if ($locationType == 'warehouse') $s_qnt += $item['agg']['s'][$wh_key] ?? 0;
+
+                                $sr_qnt = $item['agg']['sr'][$key] ?? 0;
+                                $adjust = $item['agg']['adj'][$key] ?? 0;
+                                $exc_to = $item['agg']['et'][$key] ?? 0;
+                                $exc_from = $item['agg']['ef'][$key] ?? 0;
+                                $tr_from = $item['agg']['tf'][$key] ?? 0;
+                                $tr_to = $item['agg']['tt'][$key] ?? 0;
+
+                                $stock_qty = 0;
+                                if ($prod->has_variations && $var) {
+                                    $stock_qty = $var->stocks->where($locationType == 'branch' ? 'branch_id' : 'warehouse_id', $locationId)->sum('quantity');
+                                } else {
+                                    $stock_qty = ($locationType == 'branch' ? $prod->branchStock->where('branch_id', $locationId)->sum('quantity') : $prod->warehouseStock->where('warehouse_id', $locationId)->sum('quantity'));
+                                }
+
+                                $color = '-'; $size = '-';
+                                if ($var) {
+                                    foreach($var->attributeValues as $av) {
+                                        $attr = strtolower($av->attribute?->name ?? '');
+                                        if(str_contains($attr, 'color')) $color = $av->value;
+                                        elseif(str_contains($attr, 'size')) $size = $av->value;
+                                    }
+                                }
+
+                                $cost = $var ? ($var->cost ?: $prod->cost) : $prod->cost;
+                                $price = $var ? ($var->price ?: $prod->price) : $prod->price;
+                                
+                                $row_cost_val = $stock_qty * $cost;
+                                $row_sale_val = $stock_qty * $price;
+                                
+                                $row_rev = $item['agg']['rev'][$key] ?? 0;
+                                if ($locationType == 'warehouse') $row_rev += $item['agg']['rev'][$wh_key] ?? 0;
+                            }
 
                             // Accumulate Totals
                             $total_p += $p_qnt;

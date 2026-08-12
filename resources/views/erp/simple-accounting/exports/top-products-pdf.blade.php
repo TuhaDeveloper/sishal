@@ -37,7 +37,7 @@
             @foreach($topByRevenue as $index => $data)
                 <tr>
                     <td>{{ $index + 1 }}</td>
-                    <td>{{ $data['product']->name }}</td>
+                    <td>{{ $data['display_name'] ?? $data['product']->name }}</td>
                     <td>{{ $data['product']->style_number ?? $data['product']->sku ?? 'N/A' }}</td>
                     <td>{{ $data['product']->category->name ?? 'N/A' }}</td>
                     <td class="text-end">{{ $data['quantity_sold'] }}</td>
@@ -65,7 +65,7 @@
             @foreach($topByProfit as $index => $data)
                 <tr>
                     <td>{{ $index + 1 }}</td>
-                    <td>{{ $data['product']->name }}</td>
+                    <td>{{ $data['display_name'] ?? $data['product']->name }}</td>
                     <td>{{ $data['product']->style_number ?? $data['product']->sku ?? 'N/A' }}</td>
                     <td class="text-end">{{ number_format($data['cost'], 2) }}</td>
                     <td class="text-end">{{ number_format($data['revenue'], 2) }}</td>

@@ -51,7 +51,7 @@
                         <input type="hidden" name="page" id="currentPage" value="{{ $productStocks->currentPage() }}">
                         <!-- Row 1: Search & Settings -->
                         <div class="row g-3 align-items-end mb-4">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-2"><i
                                         class="fas fa-search me-1"></i> Global Search</label>
                                 <div class="input-group shadow-sm">
@@ -61,15 +61,14 @@
                                         value="{{ request('search') }}" placeholder="Search by Name, SKU, Style Number...">
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-5">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-2"><i
-                                        class="fas fa-sort me-1"></i> Sort By Stock</label>
-                                <select class="form-select shadow-sm" name="sort">
-                                    <option value="">Default (Latest)</option>
-                                    <option value="low_to_high" {{ request('sort') == 'low_to_high' ? 'selected' : '' }}>Low
-                                        to High</option>
-                                    <option value="high_to_low" {{ request('sort') == 'high_to_low' ? 'selected' : '' }}>High
-                                        to Low</option>
+                                        class="fas fa-layer-group me-1"></i> Report View</label>
+                                <select class="form-select shadow-sm fw-bold border-primary text-primary" name="group_by"
+                                    id="groupBySelect">
+                                    <option value="variation" {{ request('group_by', 'variation') == 'variation' ? 'selected' : '' }}>Size-Wise (Detailed)</option>
+                                    <option value="product" {{ request('group_by') == 'product' ? 'selected' : '' }}>
+                                        Style-Wise (Product Summary)</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -83,6 +82,17 @@
                                     </option>
                                 </select>
                             </div>
+                            <!-- <div class="col-md-2 d-none">
+                                    <label class="form-label small fw-bold text-muted text-uppercase mb-2"><i
+                                            class="fas fa-sort me-1"></i> Sort Stock</label>
+                                    <select class="form-select shadow-sm" name="sort">
+                                        <option value="">Default (Latest)</option>
+                                        <option value="low_to_high" {{ request('sort') == 'low_to_high' ? 'selected' : '' }}>Low
+                                            to High</option>
+                                        <option value="high_to_low" {{ request('sort') == 'high_to_low' ? 'selected' : '' }}>High
+                                            to Low</option>
+                                    </select>
+                                </div> -->
                         </div>
 
                         <!-- Row 2: Time & Date Filters -->
@@ -93,7 +103,8 @@
                                     <option value="">All Years</option>
                                     <option value="{{ date('Y') }}" {{ request('filter_year') == date('Y') ? 'selected' : '' }}>{{ date('Y') }} (Current)</option>
                                     @for($i = date('Y') + 1; $i <= date('Y') + 5; $i++)
-                                        <option value="{{ $i }}" {{ request('filter_year') == $i ? 'selected' : '' }}>{{ $i }}</option>
+                                        <option value="{{ $i }}" {{ request('filter_year') == $i ? 'selected' : '' }}>{{ $i }}
+                                        </option>
                                     @endfor
                                 </select>
                             </div>
@@ -147,11 +158,23 @@
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-1">Category</label>
-                                <select class="form-select form-select-sm select2-simple" name="category_id"
+                                <select class="form-select form-select-sm select2-simple" name="category_id" id="categoryFilter"
                                     data-placeholder="All Categories">
                                     <option value="">All Categories</option>
                                     @foreach($categories as $category)
                                         <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Subcategory</label>
+                                <select class="form-select form-select-sm select2-simple" name="subcategory_id" id="subcategoryFilter"
+                                    data-placeholder="All Subcategories">
+                                    <option value="">All Subcategories</option>
+                                    @foreach($subcategories as $subcat)
+                                        <option value="{{ $subcat->id }}" data-parent="{{ $subcat->parent_id }}" {{ request('subcategory_id') == $subcat->id ? 'selected' : '' }}>
+                                            {{ $subcat->name }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -186,6 +209,21 @@
                                 </select>
                             </div>
                             <div class="col-md-2">
+                                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Style #</label>
+                                <select class="form-select form-select-sm select2-tags" name="style_number"
+                                    id="styleNumberSelect" data-placeholder="Search or Select Style #">
+                                    <option value="">All Styles</option>
+                                    @if(request('style_number') && !$styles->contains(request('style_number')))
+                                        <option value="{{ request('style_number') }}" selected>{{ request('style_number') }}
+                                        </option>
+                                    @endif
+                                    @foreach ($styles as $style)
+                                        <option value="{{ $style }}" {{ request('style_number') == $style ? 'selected' : '' }}>
+                                            {{ $style }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-1">Specific
                                     Variation</label>
                                 <select class="form-select form-select-sm select2-simple" name="variation_value_id"
@@ -212,11 +250,6 @@
                                         class="btn btn-outline-danger btn-sm fw-bold px-3 shadow-sm no-loader"
                                         onclick="exportData('pdf')">
                                         <i class="fas fa-file-pdf me-2"></i>PDF
-                                    </button>
-                                    <button type="button"
-                                        class="btn btn-outline-primary btn-sm fw-bold px-3 shadow-sm no-loader"
-                                        onclick="window.print()">
-                                        <i class="fas fa-print me-2"></i>Print
                                     </button>
                                 </div>
                                 <div class="d-flex gap-2">
@@ -284,11 +317,40 @@
                     dropdownParent: $('body')
                 });
 
+                $('.select2-tags').select2({
+                    width: '100%',
+                    tags: true,
+                    allowClear: true,
+                    placeholder: "Search or Select Style #",
+                    dropdownParent: $('body')
+                });
+
+                // Filter Subcategories based on selected Parent Category
+                $('#categoryFilter').on('change', function() {
+                    const parentId = $(this).val();
+                    const subcatSelect = $('#subcategoryFilter');
+                    subcatSelect.val('');
+                    
+                    if (parentId) {
+                        subcatSelect.find('option').each(function() {
+                            const p = $(this).data('parent');
+                            if (!p || p == parentId) {
+                                $(this).prop('disabled', false);
+                            } else {
+                                $(this).prop('disabled', true);
+                            }
+                        });
+                    } else {
+                        subcatSelect.find('option').prop('disabled', false);
+                    }
+                    subcatSelect.select2({ width: '100%', dropdownParent: $('body') });
+                });
+
                 // AJAX Filtering Logic
                 function fetchStockData(url = null) {
                     const form = $('#filterForm');
                     const targetUrl = url || form.attr('action');
-                    const data = url ? null : form.serialize();
+                    const data = form.serialize();
 
                     $('#stock-container').css('opacity', '0.5');
 
@@ -312,12 +374,14 @@
                     const form = $('#filterForm');
                     form[0].reset();
                     $('.select2-simple').val('').trigger('change');
-                    fetchStockData("{{ route('productstock.list') }}");
+                    $('#currentPage').val(1);
+                    fetchStockData();
                 });
 
                 // Intercept Filter Form Submission
                 $('#filterForm').on('submit', function (e) {
                     e.preventDefault();
+                    $('#currentPage').val(1);
                     fetchStockData();
                 });
 
@@ -354,13 +418,13 @@
                             items.forEach((item, index) => {
                                 hasData = true;
                                 tbody.append(`
-                                        <tr>
-                                            <td class="ps-4">${index === 0 ? '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Branch</span>' : ''}</td>
-                                            <td class="fw-bold text-dark">${index === 0 ? locName : ''}</td>
-                                            <td><span class="badge bg-light text-muted border fw-normal">${item.size}</span></td>
-                                            <td class="text-end pe-4"><span class="fw-bold ${item.qty < 5 ? 'text-danger' : 'text-success'}">${item.qty}</span></td>
-                                        </tr>
-                                    `);
+                                                <tr>
+                                                    <td class="ps-4">${index === 0 ? '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Branch</span>' : ''}</td>
+                                                    <td class="fw-bold text-dark">${index === 0 ? locName : ''}</td>
+                                                    <td><span class="badge bg-light text-muted border fw-normal">${item.size}</span></td>
+                                                    <td class="text-end pe-4"><span class="fw-bold ${item.qty < 5 ? 'text-danger' : 'text-success'}">${item.qty}</span></td>
+                                                </tr>
+                                            `);
                             });
                         });
 
@@ -368,13 +432,13 @@
                             items.forEach((item, index) => {
                                 hasData = true;
                                 tbody.append(`
-                                        <tr>
-                                            <td class="ps-4">${index === 0 ? '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Warehouse</span>' : ''}</td>
-                                            <td class="fw-bold text-dark">${index === 0 ? locName : ''}</td>
-                                            <td><span class="badge bg-light text-muted border fw-normal">${item.size}</span></td>
-                                            <td class="text-end pe-4"><span class="fw-bold ${item.qty < 5 ? 'text-danger' : 'text-success'}">${item.qty}</span></td>
-                                        </tr>
-                                    `);
+                                                <tr>
+                                                    <td class="ps-4">${index === 0 ? '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Warehouse</span>' : ''}</td>
+                                                    <td class="fw-bold text-dark">${index === 0 ? locName : ''}</td>
+                                                    <td><span class="badge bg-light text-muted border fw-normal">${item.size}</span></td>
+                                                    <td class="text-end pe-4"><span class="fw-bold ${item.qty < 5 ? 'text-danger' : 'text-success'}">${item.qty}</span></td>
+                                                </tr>
+                                            `);
                             });
                         });
 
