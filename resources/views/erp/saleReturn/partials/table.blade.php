@@ -89,13 +89,9 @@
                                          <i class="fas fa-eye"></i>
                                      </a>
                                      @can('delete sale returns')
-                                     <form action="{{ route('saleReturn.delete', $return->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this return? All stock and accounting entries will be rolled back!')" style="display:inline;">
-                                         @csrf
-                                         @method('DELETE')
-                                         <button type="submit" class="btn btn-action btn-sm text-danger" title="Delete">
-                                             <i class="fas fa-trash"></i>
-                                         </button>
-                                     </form>
+                                     <button type="button" class="btn btn-action btn-sm text-danger delete-return-btn" data-url="{{ route('saleReturn.delete', $return->id) }}" title="Delete">
+                                         <i class="fas fa-trash"></i>
+                                     </button>
                                      @endcan
                                  </div>
                              </td>

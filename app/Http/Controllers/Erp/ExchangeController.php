@@ -977,9 +977,12 @@ class ExchangeController extends Controller
         return view('erp.exchange.print', compact('exchange', 'general_settings', 'action'));
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         if (!auth()->user()->hasPermissionTo('manage exchanges')) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+            }
             abort(403, 'Unauthorized action.');
         }
 
@@ -1039,10 +1042,19 @@ class ExchangeController extends Controller
             $posExchange->delete();
 
             DB::commit();
-            return redirect()->route('exchange.list')->with('success', 'Exchange deleted successfully and stock/accounting rolled back.');
+
+            $successMsg = 'Exchange deleted successfully and stock/accounting rolled back.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $successMsg]);
+            }
+            return redirect()->route('exchange.list')->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('exchange.list')->with('error', 'Failed to delete exchange: ' . $e->getMessage());
+            $errorMsg = 'Failed to delete exchange: ' . $e->getMessage();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMsg], 500);
+            }
+            return redirect()->route('exchange.list')->with('error', $errorMsg);
         }
     }
 }

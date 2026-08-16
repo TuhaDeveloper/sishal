@@ -626,9 +626,12 @@ class SaleReturnController extends Controller
         return redirect()->route('saleReturn.list')->with('success', 'Sale return updated successfully.');
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         if (!auth()->user()->hasPermissionTo('manage returns')) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+            }
             abort(403, 'Unauthorized action.');
         }
 
@@ -638,7 +641,11 @@ class SaleReturnController extends Controller
 
             // Block deletion of return records created by exchanges
             if ($saleReturn->reason && str_starts_with($saleReturn->reason, 'Exchange ')) {
-                return redirect()->route('saleReturn.list')->with('error', 'This return was created from an Exchange. Please delete the Exchange record instead to keep stock and accounting in sync.');
+                $errorMsg = 'This return was created from an Exchange. Please delete the Exchange record instead to keep stock and accounting in sync.';
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $errorMsg], 422);
+                }
+                return redirect()->route('saleReturn.list')->with('error', $errorMsg);
             }
 
             // Roll back stock if it was processed
@@ -726,10 +733,19 @@ class SaleReturnController extends Controller
             $saleReturn->delete();
 
             DB::commit();
-            return redirect()->route('saleReturn.list')->with('success', 'Sale return deleted successfully and stock rolled back.');
+
+            $successMsg = 'Sale return deleted successfully and stock rolled back.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $successMsg]);
+            }
+            return redirect()->route('saleReturn.list')->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('saleReturn.list')->with('error', 'Failed to delete sale return: ' . $e->getMessage());
+            $errorMsg = 'Failed to delete sale return: ' . $e->getMessage();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMsg], 500);
+            }
+            return redirect()->route('saleReturn.list')->with('error', $errorMsg);
         }
     }
 

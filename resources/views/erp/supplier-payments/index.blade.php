@@ -24,11 +24,14 @@
                     </div>
                 </div>
                 <div class="col-md-5 text-md-end mt-3 mt-md-0 d-flex flex-column flex-md-row justify-content-md-end gap-2 align-items-md-center">
-                   @can('create payments')
-                <a href="{{ route('supplier-payments.create') }}" class="btn btn-create-premium">
-                        <i class="fas fa-plus-circle me-2"></i>Record New Payment
-                    </a>
-                @endcan   
+                    @can('create payments')
+                        <a href="{{ route('supplier-payments.pay-on-sale') }}" class="btn btn-outline-success fw-bold me-2">
+                            <i class="fas fa-handshake me-2"></i>Pay-on-Sale Settlement
+                        </a>
+                        <a href="{{ route('supplier-payments.create') }}" class="btn btn-create-premium">
+                            <i class="fas fa-plus-circle me-2"></i>Record New Payment
+                        </a>
+                    @endcan   
                 </div>
             </div>
         </div>

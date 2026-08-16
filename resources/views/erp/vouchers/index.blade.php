@@ -382,6 +382,8 @@
                     });
                 }
 
+                window.fetchVouchersData = fetchData;
+
                 // Export handlers (inside ready so buttons are available)
                 function handleExport(route) {
                     const formData = $('#filterForm').serialize();
@@ -430,14 +432,15 @@
                                         title: 'Deleted!',
                                         text: response.message,
                                         icon: 'success',
-                                        timer: 2000,
+                                        timer: 1500,
                                         showConfirmButton: false,
                                         customClass: {
                                             popup: 'rounded-4 shadow-lg border-0'
                                         }
-                                    }).then(() => {
-                                        location.reload();
                                     });
+                                    if (typeof window.fetchVouchersData === 'function') {
+                                        window.fetchVouchersData();
+                                    }
                                 } else {
                                     Swal.fire({
                                         title: 'Error',

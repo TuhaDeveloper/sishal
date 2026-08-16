@@ -92,13 +92,9 @@
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     @can('manage exchanges')
-                                    <form action="{{ route('exchange.delete', $exchange->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this exchange? All transactions and inventory movements will be rolled back!')" style="display:inline;">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-action btn-sm text-danger" title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-action btn-sm text-danger delete-exchange-btn" data-url="{{ route('exchange.delete', $exchange->id) }}" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                     @endcan
                                 </div>
                             </td>

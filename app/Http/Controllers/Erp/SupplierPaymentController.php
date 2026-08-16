@@ -11,6 +11,7 @@ use App\Models\FinancialAccount;
 use App\Models\Journal;
 use App\Models\JournalEntry;
 use App\Models\ChartOfAccount;
+use App\Services\PayOnSaleSettlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -512,8 +513,11 @@ class SupplierPaymentController extends Controller
 
             // Delete related journal entries
             $voucherNo = 'PAY-' . str_pad($supplierPayment->id, 6, '0', STR_PAD_LEFT);
+            $posVoucherNo = 'POS-PAY-' . str_pad($supplierPayment->id, 6, '0', STR_PAD_LEFT);
             $journal = Journal::where('voucher_no', $voucherNo)
                 ->orWhere('voucher_no', 'like', $voucherNo . '-%')
+                ->orWhere('voucher_no', $posVoucherNo)
+                ->orWhere('voucher_no', 'like', $posVoucherNo . '-%')
                 ->first();
 
             if ($journal) {
@@ -530,6 +534,81 @@ class SupplierPaymentController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Error deleting payment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Display Pay-on-Sale Settlement View
+     */
+    public function payOnSale(Request $request, PayOnSaleSettlementService $service)
+    {
+        if (!auth()->user()->hasPermissionTo('view payments')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $supplierId = $request->get('supplier_id');
+        $startDate = $request->filled('start_date') ? \Carbon\Carbon::parse($request->start_date)->startOfDay() : null;
+        $endDate = $request->filled('end_date') ? \Carbon\Carbon::parse($request->end_date)->endOfDay() : null;
+
+        $suppliers = Supplier::orderBy('name')->get();
+        $accounts = FinancialAccount::orderBy('type')->orderBy('provider_name')->get();
+
+        $summary = $service->getSupplierPayOnSaleSummary($supplierId, $startDate, $endDate);
+
+        return view('erp.supplier-payments.pay-on-sale', compact(
+            'suppliers',
+            'accounts',
+            'supplierId',
+            'summary'
+        ));
+    }
+
+    /**
+     * AJAX endpoint for Pay-on-Sale summary
+     */
+    public function getPayOnSaleSummary(Request $request, PayOnSaleSettlementService $service)
+    {
+        $supplierId = $request->get('supplier_id');
+        $startDate = $request->filled('start_date') ? \Carbon\Carbon::parse($request->start_date)->startOfDay() : null;
+        $endDate = $request->filled('end_date') ? \Carbon\Carbon::parse($request->end_date)->endOfDay() : null;
+
+        $summary = $service->getSupplierPayOnSaleSummary($supplierId, $startDate, $endDate);
+        return response()->json($summary);
+    }
+
+    /**
+     * Store Pay-on-Sale Settlement Payment
+     */
+    public function storePayOnSale(Request $request, PayOnSaleSettlementService $service)
+    {
+        if (!auth()->user()->hasPermissionTo('create payments')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_date' => 'required|date',
+            'payment_method' => 'required|string',
+            'account_id' => 'required|exists:financial_accounts,id',
+        ]);
+
+        try {
+            $service->processPayOnSaleSettlement(
+                $request->supplier_id,
+                $request->amount,
+                $request->payment_date,
+                $request->payment_method,
+                $request->account_id,
+                $request->reference,
+                $request->note,
+                auth()->id()
+            );
+
+            return redirect()->route('supplier-payments.pay-on-sale', ['supplier_id' => $request->supplier_id])
+                ->with('success', 'Pay-on-Sale Settlement payment processed successfully!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error processing Pay-on-Sale settlement: ' . $e->getMessage())->withInput();
         }
     }
 }

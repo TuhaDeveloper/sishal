@@ -9,6 +9,7 @@ class SupplierPayment extends Model
     protected $fillable = [
         'supplier_id',
         'purchase_bill_id',
+        'payment_type',
         'payment_date',
         'amount',
         'payment_method',

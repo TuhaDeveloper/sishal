@@ -289,6 +289,64 @@
                 });
             }, 250);
         });
+
+        // AJAX Delete Exchange
+        $(document).on('click', '.delete-exchange-btn', function (e) {
+            e.preventDefault();
+            const deleteUrl = $(this).data('url');
+
+            const performDelete = function() {
+                $.ajax({
+                    url: deleteUrl,
+                    type: 'DELETE',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function (response) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Deleted!',
+                                text: response.message || 'Exchange deleted successfully.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            alert(response.message || 'Exchange deleted successfully.');
+                        }
+                        fetchExchangeData();
+                    },
+                    error: function (xhr) {
+                        const errMsg = xhr.responseJSON?.message || 'Failed to delete exchange.';
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Error', errMsg, 'error');
+                        } else {
+                            alert(errMsg);
+                        }
+                    }
+                });
+            };
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'All transactions and inventory movements will be rolled back!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performDelete();
+                    }
+                });
+            } else {
+                if (confirm('Are you sure you want to delete this exchange? All transactions and inventory movements will be rolled back!')) {
+                    performDelete();
+                }
+            }
+        });
     });
 </script>
 @endpush

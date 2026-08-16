@@ -297,6 +297,64 @@
                     });
                 }, 300);
             });
+
+            // AJAX Delete Sale Return
+            $(document).on('click', '.delete-return-btn', function (e) {
+                e.preventDefault();
+                const deleteUrl = $(this).data('url');
+
+                const performDelete = function() {
+                    $.ajax({
+                        url: deleteUrl,
+                        type: 'DELETE',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function (response) {
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: response.message || 'Sale return deleted successfully.',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                alert(response.message || 'Sale return deleted successfully.');
+                            }
+                            fetchReturnsData();
+                        },
+                        error: function (xhr) {
+                            const errMsg = xhr.responseJSON?.message || 'Failed to delete sale return.';
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire('Error', errMsg, 'error');
+                            } else {
+                                alert(errMsg);
+                            }
+                        }
+                    });
+                };
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: 'All stock and accounting entries will be rolled back!',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc3545',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            performDelete();
+                        }
+                    });
+                } else {
+                    if (confirm('Are you sure you want to delete this return? All stock and accounting entries will be rolled back!')) {
+                        performDelete();
+                    }
+                }
+            });
         });
 
         function exportData(format) {

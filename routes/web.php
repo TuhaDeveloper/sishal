@@ -46,6 +46,17 @@ Route::get('/test-review', function() {
     ]);
 });
 
+Route::get('/reset-financial-account-balances', function() {
+    if (!auth()->check()) {
+        return response('Unauthorized. Please login first.', 403);
+    }
+    \App\Models\FinancialAccount::query()->update(['balance' => 0]);
+    if (class_exists('\App\Http\Controllers\Erp\DashboardController')) {
+        \App\Http\Controllers\Erp\DashboardController::clearCache();
+    }
+    return response('All Financial Account Balances have been reset to 0 successfully!');
+});
+
 Route::get('/categories', [PageController::class, 'categories'])->name('categories');
 Route::get('/best-deal', [PageController::class, 'bestDeals'])->name('best.deal');
 // Removed service archive and details routes
@@ -221,6 +232,9 @@ Route::prefix('erp')->middleware(['auth', 'admin'])->group(function () {
     Route::get('supplier-payments/export-excel', [\App\Http\Controllers\Erp\SupplierPaymentController::class, 'exportExcel'])->name('supplier-payments.export.excel');
     Route::get('supplier-payments/export-pdf', [\App\Http\Controllers\Erp\SupplierPaymentController::class, 'exportPdf'])->name('supplier-payments.export.pdf');
     Route::get('supplier-payments/get-bills/{supplierId}', [\App\Http\Controllers\Erp\SupplierPaymentController::class, 'getSupplierBills'])->name('supplier-payments.get-bills');
+    Route::get('supplier-payments/pay-on-sale', [\App\Http\Controllers\Erp\SupplierPaymentController::class, 'payOnSale'])->name('supplier-payments.pay-on-sale');
+    Route::get('supplier-payments/pay-on-sale-summary', [\App\Http\Controllers\Erp\SupplierPaymentController::class, 'getPayOnSaleSummary'])->name('supplier-payments.pay-on-sale-summary');
+    Route::post('supplier-payments/pay-on-sale', [\App\Http\Controllers\Erp\SupplierPaymentController::class, 'storePayOnSale'])->name('supplier-payments.store-pay-on-sale');
     Route::resource('supplier-payments', \App\Http\Controllers\Erp\SupplierPaymentController::class);
 
     // Fund Transfers (Branch <-> Warehouse Cash/Bank Transfer)
