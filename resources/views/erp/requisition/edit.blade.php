@@ -7,6 +7,7 @@
     <div class="main-content" id="mainContent">
         @include('erp.components.header')
 
+        <!-- Premium Header -->
         <div class="glass-header">
             <div class="row align-items-center">
                 <div class="col-md-7">
@@ -14,20 +15,25 @@
                         <ol class="breadcrumb mb-1 breadcrumb-premium">
                             <li class="breadcrumb-item"><a href="{{ route('erp.dashboard') }}" class="text-decoration-none text-muted">Dashboard</a></li>
                             <li class="breadcrumb-item"><a href="{{ route('requisition.index') }}" class="text-decoration-none text-muted">Requisitions</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('requisition.show', $requisition->id) }}" class="text-decoration-none text-muted">{{ $requisition->requisition_number }}</a></li>
-                            <li class="breadcrumb-item active text-primary fw-600">Edit</li>
+                            <li class="breadcrumb-item active text-primary fw-600">Edit {{ $requisition->requisition_number }}</li>
                         </ol>
                     </nav>
                     <div class="d-flex align-items-center gap-3">
-                        <div class="avatar-sm bg-warning text-white d-flex align-items-center justify-content-center rounded-circle fw-bold">
+                        <div class="avatar-sm bg-warning text-dark d-flex align-items-center justify-content-center rounded-circle fw-bold">
                             <i class="fas fa-edit"></i>
                         </div>
-                        <h4 class="fw-bold mb-0 text-dark">Edit Requisition</h4>
+                        <div>
+                            <h4 class="fw-bold mb-0 text-dark">Edit Requisition {{ $requisition->requisition_number }}</h4>
+                            <div class="small text-muted">Created by {{ optional($requisition->creator)->name ?? '—' }} on {{ \Carbon\Carbon::parse($requisition->requisition_date)->format('M d, Y') }}</div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-5 text-md-end mt-3 mt-md-0">
-                    <a href="{{ route('requisition.show', $requisition->id) }}" class="btn btn-light fw-bold shadow-sm">
-                        <i class="fas fa-arrow-left me-2"></i>Back
+                    <a href="{{ route('requisition.show', $requisition->id) }}" class="btn btn-light fw-bold shadow-sm me-2">
+                        <i class="fas fa-eye me-1"></i>View Details
+                    </a>
+                    <a href="{{ route('requisition.index') }}" class="btn btn-light fw-bold shadow-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back
                     </a>
                 </div>
             </div>
@@ -40,16 +46,16 @@
                 </div>
             @endif
 
-            <form action="{{ route('requisition.update', $requisition->id) }}" method="POST" id="editRequisitionForm">
+            <form action="{{ route('requisition.update', $requisition->id) }}" method="POST" id="requisitionForm">
                 @csrf
                 @method('PUT')
 
                 <div class="row">
                     <div class="col-lg-12">
-                        <!-- General Info -->
+                        <!-- Info Card -->
                         <div class="premium-card mb-4">
                             <div class="card-header bg-white border-bottom p-4">
-                                <h6 class="fw-bold mb-0 text-uppercase text-muted small"><i class="fas fa-info-circle me-2 text-warning"></i>General Information</h6>
+                                <h6 class="fw-bold mb-0 text-uppercase text-muted small"><i class="fas fa-info-circle me-2 text-primary"></i>General Information</h6>
                             </div>
                             <div class="card-body p-4">
                                 <div class="row g-4">
@@ -59,7 +65,7 @@
                                     </div>
 
                                     <div class="col-md-4">
-                                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">Request From (Branch)</label>
+                                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">Request From (Branch) <span class="text-danger">*</span></label>
                                         @if($restrictedBranchId)
                                             @php $myBranch = $branches->firstWhere('id', $restrictedBranchId); @endphp
                                             <input type="text" class="form-control shadow-none bg-light fw-bold" value="{{ $myBranch->name ?? 'My Branch' }}" readonly>
@@ -78,8 +84,8 @@
                                         <label class="form-label small fw-bold text-muted text-uppercase mb-2">Request To (Warehouse) <span class="text-danger">*</span></label>
                                         <select name="warehouse_id" class="form-select shadow-none select2-basic" required>
                                             <option value="">Select Warehouse</option>
-                                            @foreach($warehouses as $warehouse)
-                                                <option value="{{ $warehouse->id }}" {{ $requisition->warehouse_id == $warehouse->id ? 'selected' : '' }}>{{ $warehouse->name }}</option>
+                                            @foreach($warehouses as $wh)
+                                                <option value="{{ $wh->id }}" {{ $requisition->warehouse_id == $wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -87,14 +93,14 @@
                                     <div class="col-md-12">
                                         <label class="form-label small fw-bold text-muted text-uppercase mb-2">Add More Products</label>
                                         <select id="product_search" class="form-select shadow-none">
-                                            <option value="">Search by style number or name...</option>
+                                            <option value="">Scan or search style number to add new items...</option>
                                         </select>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Items Table -->
+                        <!-- Items Card -->
                         <div class="premium-card mb-4">
                             <div class="card-header bg-white border-bottom p-4 d-flex align-items-center justify-content-between">
                                 <h6 class="fw-bold mb-0 text-uppercase text-muted small"><i class="fas fa-box-open me-2 text-warning"></i>Requested Items</h6>
@@ -109,6 +115,7 @@
                                                 <th>Product Details</th>
                                                 <th>Style No</th>
                                                 <th>Variant</th>
+                                                <th style="width: 140px;" class="text-center">Available Stock</th>
                                                 <th style="width: 150px;">Quantity</th>
                                                 <th class="text-center pe-3">Remove</th>
                                             </tr>
@@ -127,6 +134,7 @@
                                                     $varLabel = implode(' / ', $comboParts) ?: ($item->variation->name ?? null);
                                                     $img = ($item->variation && $item->variation->image) ? $item->variation->image : $item->product->image;
                                                     $rowId = 'existing_' . $item->id;
+                                                    $stock = $item->variation ? $item->variation->stocks->sum('quantity') : (($item->product->branchStock->sum('quantity') ?? 0) + ($item->product->warehouseStock->sum('quantity') ?? 0));
                                                 @endphp
                                                 <tr id="{{ $rowId }}">
                                                     <td class="ps-3">
@@ -147,6 +155,11 @@
                                                         @else
                                                             <span class="text-muted">—</span>
                                                         @endif
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span class="badge {{ $stock > 0 ? 'bg-info-subtle text-info border-info-subtle' : 'bg-warning-subtle text-warning border-warning-subtle' }} border px-2 py-1 fw-bold">
+                                                            <i class="fas fa-cubes me-1"></i>{{ (float)$stock }} pcs
+                                                        </span>
                                                     </td>
                                                     <td>
                                                         <input type="number" name="items[{{ $rowId }}][quantity]" class="form-control form-control-sm shadow-none border-primary" min="1" step="1" value="{{ (int) $item->quantity }}" required>
@@ -202,7 +215,7 @@
     <script>
         $(document).ready(function() {
             $('.select2-basic').select2();
-            let newItemIndex = 1000; // start high to avoid conflicts with existing row IDs
+            let newItemIndex = 1000;
 
             $('#product_search').select2({
                 placeholder: 'Scan or search style number...',
@@ -233,8 +246,17 @@
             });
 
             function loadVariations(product) {
+                const warehouseId = $('select[name="warehouse_id"]').val();
+                const branchId = $('select[name="branch_id"]').val();
+                let queryParams = '';
+                if (warehouseId) {
+                    queryParams = `?location_type=warehouse&location_id=${warehouseId}`;
+                } else if (branchId) {
+                    queryParams = `?location_type=branch&location_id=${branchId}`;
+                }
+
                 $.ajax({
-                    url: `/erp/products/${product.id}/variations-with-stock`,
+                    url: `/erp/products/${product.id}/variations-with-stock${queryParams}`,
                     type: 'GET',
                     success: function(variations) {
                         if (variations && variations.length > 0) {
@@ -256,6 +278,8 @@
                     : `<div class="bg-light rounded border d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;"><i class="fas fa-image text-muted opacity-50"></i></div>`;
 
                 const varLabel = variation?.name || (variation ? 'Variation' : '—');
+                const availStock = variation?.stock !== undefined ? variation.stock : (product.stock || 0);
+                const stockBadgeClass = availStock > 0 ? 'bg-info-subtle text-info border-info-subtle' : 'bg-warning-subtle text-warning border-warning-subtle';
 
                 const row = `
                     <tr id="${rowId}">
@@ -265,11 +289,14 @@
                             <div class="extra-small text-muted text-uppercase">${product.category?.name || 'General'}</div>
                         </td>
                         <td class="text-pink fw-bold">${product.style_number || product.sku || '-'}</td>
-                        <td>
-                            <span class="badge bg-light text-dark border px-2">${varLabel}</span>
+                        <td><span class="badge bg-light text-dark border px-2">${varLabel}</span></td>
+                        <td class="text-center">
+                            <span class="badge ${stockBadgeClass} border px-2 py-1 fw-bold">
+                                <i class="fas fa-cubes me-1"></i>${availStock} pcs
+                            </span>
                         </td>
                         <td>
-                            <input type="number" name="items[${rowId}][quantity]" class="form-control form-control-sm shadow-none border-warning" min="1" step="1" value="1" required>
+                            <input type="number" name="items[${rowId}][quantity]" class="form-control form-control-sm shadow-none border-primary" min="1" step="1" value="1" required>
                             <input type="hidden" name="items[${rowId}][product_id]" value="${product.id}">
                             <input type="hidden" name="items[${rowId}][variation_id]" value="${variation?.id || ''}">
                         </td>
@@ -284,14 +311,13 @@
             }
 
             $(document).on('click', '.remove-row', function() {
-                const rowId = $(this).data('id');
-                $(`#${rowId}`).remove();
+                $(`#${$(this).data('id')}`).remove();
             });
 
-            $('#editRequisitionForm').on('submit', function(e) {
+            $('#requisitionForm').on('submit', function(e) {
                 if ($('#itemTableBody tr').length === 0) {
                     e.preventDefault();
-                    alert('Please keep at least one product in the list.');
+                    alert('Please add at least one product.');
                 }
             });
         });

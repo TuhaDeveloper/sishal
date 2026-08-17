@@ -1066,11 +1066,10 @@ class ProductController extends Controller
 
         if (!$product->has_variations) {
             if ($locationType && $locationId) {
-                if ($locationType === 'branch') {
-                    $totalStock = $product->branchStock->where('branch_id', $locationId)->sum('quantity');
-                } else {
-                    $totalStock = $product->warehouseStock->where('warehouse_id', $locationId)->sum('quantity');
-                }
+                // Check both branch_id (for Branch-Warehouses) and warehouse_id (for standalone Warehouses)
+                $bsQty = $product->branchStock->where('branch_id', $locationId)->sum('quantity');
+                $wsQty = $product->warehouseStock->where('warehouse_id', $locationId)->sum('quantity');
+                $totalStock = $bsQty + $wsQty;
             } else {
                 $totalStock = $product->branchStock->sum('quantity') + $product->warehouseStock->sum('quantity');
             }
@@ -1088,13 +1087,12 @@ class ProductController extends Controller
         }
         
         $variations = $product->variations->map(function($variation) use ($locationType, $locationId, $product) {
-            // Calculate stock based on location filter if provided, otherwise sum all
+            // Calculate stock based on location filter if provided, checking both branch_id and warehouse_id
             if ($locationType && $locationId) {
-                if ($locationType === 'branch') {
-                    $totalStock = $variation->stocks->where('branch_id', $locationId)->sum('quantity');
-                } else {
-                    $totalStock = $variation->stocks->where('warehouse_id', $locationId)->sum('quantity');
-                }
+                $matchedStocks = $variation->stocks->filter(function($s) use ($locationId) {
+                    return (string)$s->branch_id === (string)$locationId || (string)$s->warehouse_id === (string)$locationId;
+                });
+                $totalStock = $matchedStocks->sum('quantity');
             } else {
                 $totalStock = $variation->stocks->sum('quantity');
             }

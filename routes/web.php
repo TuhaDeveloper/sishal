@@ -4,6 +4,7 @@ use App\Http\Controllers\Ecommerce\OrderController;
 use App\Http\Controllers\Ecommerce\PageController;
 use App\Http\Controllers\Ecommerce\ServiceController;
 use App\Http\Controllers\Erp\DashboardController;
+use App\Http\Controllers\Erp\SuperAdminDashboardController;
 use App\Http\Controllers\Erp\InvoiceController;
 use App\Http\Controllers\Erp\UserController;
 use App\Http\Controllers\Erp\ProductVariationController;
@@ -134,6 +135,8 @@ Route::withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken
 Route::prefix('erp')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('erp.dashboard');
     Route::get('/dashboard/data', [DashboardController::class, 'getDashboardData'])->name('erp.dashboard.data');
+    Route::get('/super-admin-dashboard', [SuperAdminDashboardController::class, 'index'])->name('erp.super_admin.dashboard');
+    Route::get('/super-admin-dashboard/data', [SuperAdminDashboardController::class, 'getData'])->name('erp.super_admin.dashboard.data');
     Route::get('/profile', [\App\Http\Controllers\Erp\ProfileController::class, 'show'])->name('erp.profile');
     Route::put('/profile', [\App\Http\Controllers\Erp\ProfileController::class, 'update'])->name('erp.profile.update');
     Route::put('/profile/password', [\App\Http\Controllers\Erp\ProfileController::class, 'updatePassword'])->name('erp.profile.password');

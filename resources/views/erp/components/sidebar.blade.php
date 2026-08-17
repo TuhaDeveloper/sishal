@@ -24,6 +24,15 @@
                     <span>Dashboard</span>
                 </a>
             </div>
+        @if(auth()->user()->hasRole('Super Admin'))
+            <div class="nav-item">
+                <a href="{{ route('erp.super_admin.dashboard') }}"
+                    class="nav-link {{ request()->is('erp/super-admin-dashboard*') ? ' active' : '' }}">
+                    <i class="fas fa-chart-pie nav-icon text-warning"></i>
+                    <span>Super Admin ERP</span>
+                </a>
+            </div>
+        @endif
         @endcan
 
         @can('view branches')

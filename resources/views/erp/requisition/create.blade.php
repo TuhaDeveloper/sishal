@@ -115,13 +115,14 @@
                                                 <th>Product Details</th>
                                                 <th>Style No</th>
                                                 <th>Variant</th>
+                                                <th style="width: 140px;" class="text-center">Available Stock</th>
                                                 <th style="width: 150px;">Requested Qty</th>
                                                 <th class="text-center pe-3">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="itemTableBody">
                                             <tr class="empty-placeholder">
-                                                <td colspan="6" class="text-center py-5 text-muted opacity-50">
+                                                <td colspan="7" class="text-center py-5 text-muted opacity-50">
                                                     <i class="fas fa-barcode fa-3x mb-3"></i>
                                                     <p class="fw-bold mb-0">Search products to add to your request list.</p>
                                                 </td>
@@ -200,8 +201,17 @@
             });
 
             function loadVariations(product) {
+                const warehouseId = $('select[name="warehouse_id"]').val();
+                const branchId = $('select[name="branch_id"]').val();
+                let queryParams = '';
+                if (warehouseId) {
+                    queryParams = `?location_type=warehouse&location_id=${warehouseId}`;
+                } else if (branchId) {
+                    queryParams = `?location_type=branch&location_id=${branchId}`;
+                }
+
                 $.ajax({
-                    url: `/erp/products/${product.id}/variations-with-stock`,
+                    url: `/erp/products/${product.id}/variations-with-stock${queryParams}`,
                     type: 'GET',
                     success: function(variations) {
                         if (variations && variations.length > 0) {
@@ -222,6 +232,9 @@
                     ? `<img src="/${displayImage}" class="rounded border shadow-sm" style="width: 35px; height: 35px; object-fit: cover;">`
                     : `<div class="bg-light rounded border d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;"><i class="fas fa-image text-muted opacity-50"></i></div>`;
 
+                const availStock = variation?.stock !== undefined ? variation.stock : (product.stock || 0);
+                const stockBadgeClass = availStock > 0 ? 'bg-info-subtle text-info border-info-subtle' : 'bg-warning-subtle text-warning border-warning-subtle';
+
                 const row = `
                     <tr id="${rowId}">
                         <td class="ps-3">${imgHtml}</td>
@@ -233,6 +246,11 @@
                         <td>
                             <span class="badge bg-light text-dark border me-1">${variation?.size || '-'}</span>
                             <span class="badge bg-light text-dark border">${variation?.color || '-'}</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge ${stockBadgeClass} border px-2 py-1 fw-bold">
+                                <i class="fas fa-cubes me-1"></i>${availStock} pcs
+                            </span>
                         </td>
                         <td>
                             <input type="number" name="items[${rowId}][quantity]" class="form-control form-control-sm shadow-none border-primary" min="1" step="1" value="1" required>

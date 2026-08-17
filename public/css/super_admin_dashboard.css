@@ -1,0 +1,249 @@
+/* Super Admin Executive Dashboard Dedicated Stylesheet */
+.sa-dashboard-header {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+}
+
+.sa-title {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1.65rem;
+    letter-spacing: -0.02em;
+}
+
+.sa-badge {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.sa-card {
+    position: relative;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    padding: 24px;
+    margin-bottom: 24px;
+    transition: all 0.25s ease;
+}
+
+.sa-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    border-color: #cbd5e1;
+}
+
+/* AJAX Card Loading Overlay */
+.sa-card-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(2px);
+    z-index: 20;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.sa-card-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sa-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.sa-card-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.sa-card-title i {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.sa-icon-sales { background: #eff6ff; color: #2563eb; }
+.sa-icon-chart { background: #f0fdf4; color: #16a34a; }
+.sa-icon-products { background: #fff7ed; color: #ea580c; }
+.sa-icon-statement { background: #faf5ff; color: #9333ea; }
+.sa-icon-gross { background: #ecfeff; color: #0891b2; }
+.sa-icon-expense { background: #fef2f2; color: #dc2626; }
+
+/* Scrollable Container with Sticky Headers */
+.table-container-scroll {
+    max-height: 380px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.table-container-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.table-container-scroll::-webkit-scrollbar-track {
+    background: #f8fafc;
+    border-radius: 4px;
+}
+
+.table-container-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.table-container-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Modern Financial Tables */
+.sa-table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.sa-table th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 12px 16px;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.sa-table td {
+    padding: 14px 16px;
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.sa-table tbody tr:hover td {
+    background-color: #f8fafc;
+}
+
+.sa-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: #f8fafc;
+    font-weight: 800;
+    color: #0f172a;
+    border-top: 2px solid #cbd5e1;
+    border-bottom: none;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* Rank Badges */
+.rank-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.8rem;
+}
+.rank-1 { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
+.rank-2 { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.rank-3 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+.rank-other { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+
+/* Graph Toggle Buttons */
+.btn-chart-toggle {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    transition: all 0.2s;
+}
+.btn-chart-toggle.active {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+/* Financial Color Indicators */
+.amount-positive { color: #059669; font-weight: 700; }
+.amount-negative { color: #dc2626; font-weight: 700; }
+.amount-neutral { color: #2563eb; font-weight: 700; }
+
+.profit-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.profit-pill-high { background: #dcfce7; color: #15803d; }
+.profit-pill-mid { background: #e0f2fe; color: #0369a1; }
+.profit-pill-low { background: #fee2e2; color: #b91c1c; }
+
+/* Custom Filter Controls */
+.sa-filter-select {
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #334155;
+    padding: 7px 14px;
+    background-color: #f8fafc;
+    transition: all 0.2s;
+}
+.sa-filter-select:focus {
+    border-color: #2563eb;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
