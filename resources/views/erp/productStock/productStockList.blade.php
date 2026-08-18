@@ -21,10 +21,6 @@
                     </nav>
                     <div class="d-flex align-items-center gap-2">
                         <h4 class="fw-bold mb-0 text-dark">Live Inventory</h4>
-                        <span
-                            class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-1">
-                            Live Tracking
-                        </span>
                     </div>
                 </div>
                 <div
@@ -51,7 +47,7 @@
                         <input type="hidden" name="page" id="currentPage" value="{{ $productStocks->currentPage() }}">
                         <!-- Row 1: Search & Settings -->
                         <div class="row g-3 align-items-end mb-4">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-2"><i
                                         class="fas fa-search me-1"></i> Global Search</label>
                                 <div class="input-group shadow-sm">
@@ -61,7 +57,7 @@
                                         value="{{ request('search') }}" placeholder="Search by Name, SKU, Style Number...">
                                 </div>
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-3">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-2"><i
                                         class="fas fa-layer-group me-1"></i> Report View</label>
                                 <select class="form-select shadow-sm fw-bold border-primary text-primary" name="group_by"
@@ -69,6 +65,17 @@
                                     <option value="variation" {{ request('group_by', 'variation') == 'variation' ? 'selected' : '' }}>Size-Wise (Detailed)</option>
                                     <option value="product" {{ request('group_by') == 'product' ? 'selected' : '' }}>
                                         Style-Wise (Product Summary)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold text-muted text-uppercase mb-2">
+                                    <i class="fas fa-exclamation-triangle me-1 text-warning"></i> Stock Status
+                                </label>
+                                <select class="form-select form-select-sm select2-simple shadow-sm fw-semibold" name="stock_status" data-placeholder="All Stock Status">
+                                    <option value="">All Stock Status</option>
+                                    <option value="low_stock" {{ (request('stock_status') == 'low_stock' || request('low_stock') == '1') ? 'selected' : '' }}>⚠️ Low Stock Only (&lt; 10 pcs)</option>
+                                    <option value="out_of_stock" {{ request('stock_status') == 'out_of_stock' ? 'selected' : '' }}>❌ Out of Stock (0 pcs)</option>
+                                    <option value="in_stock" {{ request('stock_status') == 'in_stock' ? 'selected' : '' }}>✅ In Stock Only (&gt; 0 pcs)</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -82,17 +89,6 @@
                                     </option>
                                 </select>
                             </div>
-                            <!-- <div class="col-md-2 d-none">
-                                    <label class="form-label small fw-bold text-muted text-uppercase mb-2"><i
-                                            class="fas fa-sort me-1"></i> Sort Stock</label>
-                                    <select class="form-select shadow-sm" name="sort">
-                                        <option value="">Default (Latest)</option>
-                                        <option value="low_to_high" {{ request('sort') == 'low_to_high' ? 'selected' : '' }}>Low
-                                            to High</option>
-                                        <option value="high_to_low" {{ request('sort') == 'high_to_low' ? 'selected' : '' }}>High
-                                            to Low</option>
-                                    </select>
-                                </div> -->
                         </div>
 
                         <!-- Row 2: Time & Date Filters -->

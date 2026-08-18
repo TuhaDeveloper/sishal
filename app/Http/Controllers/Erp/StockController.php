@@ -818,6 +818,46 @@ class StockController extends Controller
             });
         }
 
+        if ($request->filled('stock_status') || $request->filled('low_stock')) {
+            $stockStatus = $request->get('stock_status', $request->low_stock == '1' ? 'low_stock' : '');
+            $activeBranch = $selectedBranchId ?: $restrictedBranchId;
+
+            if ($stockStatus === 'low_stock') {
+                $query->where(function ($q) use ($activeBranch, $selectedWarehouseId) {
+                    $q->whereHas('variationStocks', function ($sq) use ($activeBranch, $selectedWarehouseId) {
+                        $sq->where('quantity', '<', 10);
+                        if ($activeBranch) $sq->where('branch_id', $activeBranch);
+                        elseif ($selectedWarehouseId) $sq->where('warehouse_id', $selectedWarehouseId);
+                    })->orWhereHas('branchStock', function ($sq) use ($activeBranch) {
+                        $sq->where('quantity', '<', 10);
+                        if ($activeBranch) $sq->where('branch_id', $activeBranch);
+                    });
+                });
+            } elseif ($stockStatus === 'out_of_stock') {
+                $query->where(function ($q) use ($activeBranch, $selectedWarehouseId) {
+                    $q->whereHas('variationStocks', function ($sq) use ($activeBranch, $selectedWarehouseId) {
+                        $sq->where('quantity', '<=', 0);
+                        if ($activeBranch) $sq->where('branch_id', $activeBranch);
+                        elseif ($selectedWarehouseId) $sq->where('warehouse_id', $selectedWarehouseId);
+                    })->orWhereHas('branchStock', function ($sq) use ($activeBranch) {
+                        $sq->where('quantity', '<=', 0);
+                        if ($activeBranch) $sq->where('branch_id', $activeBranch);
+                    });
+                });
+            } elseif ($stockStatus === 'in_stock') {
+                $query->where(function ($q) use ($activeBranch, $selectedWarehouseId) {
+                    $q->whereHas('variationStocks', function ($sq) use ($activeBranch, $selectedWarehouseId) {
+                        $sq->where('quantity', '>', 0);
+                        if ($activeBranch) $sq->where('branch_id', $activeBranch);
+                        elseif ($selectedWarehouseId) $sq->where('warehouse_id', $selectedWarehouseId);
+                    })->orWhereHas('branchStock', function ($sq) use ($activeBranch) {
+                        $sq->where('quantity', '>', 0);
+                        if ($activeBranch) $sq->where('branch_id', $activeBranch);
+                    });
+                });
+            }
+        }
+
         // Order by last purchase date or product creation date (new first)
         $query->addSelect([
             'last_purchase_date' => \App\Models\PurchaseItem::select('created_at')

@@ -25,7 +25,7 @@ class DashboardController extends Controller
         $branchId = $this->getRestrictedBranchId() ?? 0;
         
         // Cache dashboard for 5 minutes (300 seconds)
-        $cacheKey = "dash_v1_{$branchId}_{$dateRange}";
+        $cacheKey = "dash_v2_{$branchId}_{$dateRange}";
         
         $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function() use ($dateRange) {
             $startDate = $this->getStartDate($dateRange);
@@ -900,7 +900,7 @@ class DashboardController extends Controller
         $query = \App\Models\ProductVariationStock::with(['variation.product.category', 'variation.product.brand', 'variation.product.season', 'variation.product.gender', 'variation.combinations.attribute', 'variation.combinations.attributeValue', 'branch'])
             ->where('quantity', '<', 10)
             ->orderBy('quantity', 'asc')
-            ->take(8);
+            ->take(10);
 
         if ($branchId) {
             $query->where('branch_id', $branchId);

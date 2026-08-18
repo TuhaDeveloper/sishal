@@ -333,7 +333,7 @@
                     <h5>
                         <i class="fas fa-exclamation-triangle text-warning me-1"></i> Low Stock Alerts
                     </h5>
-                    <a href="{{ route('productstock.list') }}" class="btn btn-sm btn-link text-decoration-none fw-bold p-0 text-primary">
+                    <a href="{{ route('productstock.list', ['stock_status' => 'low_stock']) }}" class="btn btn-sm btn-link text-decoration-none fw-bold p-0 text-primary">
                         View Stock List <i class="fas fa-arrow-right ms-1"></i>
                     </a>
                 </div>

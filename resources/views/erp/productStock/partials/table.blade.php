@@ -233,6 +233,11 @@
                                 }
                                 $color = 'All Colors';
                                 $size = 'All Sizes';
+
+                                $statusFilter = request('stock_status');
+                                if ($statusFilter === 'out_of_stock' && $stock_qty > 0) continue;
+                                if ($statusFilter === 'low_stock' && $stock_qty >= 10) continue;
+                                if ($statusFilter === 'in_stock' && $stock_qty <= 0) continue;
                             } else {
                                 $variationId = $var ? $var->id : null;
                                 $vid = $variationId ?: 0;
@@ -258,6 +263,11 @@
                                 } else {
                                     $stock_qty = ($locationType == 'branch' ? $prod->branchStock->where('branch_id', $locationId)->sum('quantity') : $prod->warehouseStock->where('warehouse_id', $locationId)->sum('quantity'));
                                 }
+
+                                $statusFilter = request('stock_status');
+                                if ($statusFilter === 'out_of_stock' && $stock_qty > 0) continue;
+                                if ($statusFilter === 'low_stock' && $stock_qty >= 10) continue;
+                                if ($statusFilter === 'in_stock' && $stock_qty <= 0) continue;
 
                                 $color = '-'; $size = '-';
                                 if ($var) {
