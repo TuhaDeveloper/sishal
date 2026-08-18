@@ -254,24 +254,34 @@
             data.branchSalesStatement.months.forEach(m => {
                 mHead += `<th class="text-end">${m}</th>`;
             });
-            mHead += '<th class="text-end">Year Total</th>';
+            mHead += '<th class="text-end">Year Qty</th>';
+            mHead += '<th class="text-end">Total Value</th>';
+            mHead += '<th class="text-end">Total Profit</th>';
+            mHead += '<th class="text-end">Profit %</th>';
             document.getElementById('branchStatementHead').innerHTML = mHead;
 
             let mBody = '';
             data.branchSalesStatement.rows.forEach(r => {
                 mBody += `<tr><td class="fw-bold text-dark">${r.branch}</td>`;
                 r.months.forEach(mv => {
-                    mBody += `<td class="text-end">৳${formatNumber(mv)}</td>`;
+                    mBody += `<td class="text-end">${formatNumber(mv)} pcs</td>`;
                 });
-                mBody += `<td class="text-end fw-bold text-primary">৳${formatNumber(r.year_total)}</td></tr>`;
+                const pctClass = r.profit_pct >= 25 ? 'bg-success-subtle text-success border border-success-subtle' : (r.profit_pct >= 10 ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle');
+                mBody += `<td class="text-end fw-bold text-dark">${formatNumber(r.year_total)} pcs</td>`;
+                mBody += `<td class="text-end fw-bold text-primary">৳${formatNumber(r.total_value)}</td>`;
+                mBody += `<td class="text-end fw-bold text-success">৳${formatNumber(r.total_profit)}</td>`;
+                mBody += `<td class="text-end fw-bold"><span class="badge ${pctClass} px-2 py-1">${r.profit_pct}%</span></td></tr>`;
             });
             document.getElementById('branchStatementBody').innerHTML = mBody;
 
             let mFoot = '<tr><td>TOTAL</td>';
             data.branchSalesStatement.totals.months.forEach(tv => {
-                mFoot += `<td class="text-end text-dark">৳${formatNumber(tv)}</td>`;
+                mFoot += `<td class="text-end text-dark">${formatNumber(tv)} pcs</td>`;
             });
-            mFoot += `<td class="text-end text-success fs-6">৳${formatNumber(data.branchSalesStatement.totals.year_total)}</td></tr>`;
+            mFoot += `<td class="text-end text-dark fw-bold">${formatNumber(data.branchSalesStatement.totals.year_total)} pcs</td>`;
+            mFoot += `<td class="text-end text-primary fw-bold fs-6">৳${formatNumber(data.branchSalesStatement.totals.total_value)}</td>`;
+            mFoot += `<td class="text-end text-success fw-bold fs-6">৳${formatNumber(data.branchSalesStatement.totals.total_profit)}</td>`;
+            mFoot += `<td class="text-end fw-bold fs-6"><span class="badge bg-primary px-2 py-1">${data.branchSalesStatement.totals.profit_pct}%</span></td></tr>`;
             document.getElementById('branchStatementFoot').innerHTML = mFoot;
         }
 

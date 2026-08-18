@@ -819,31 +819,69 @@ class DashboardController extends Controller
         $monthEnd = Carbon::now()->endOfMonth();
 
         return $branches->map(function($branch) use ($today, $monthStart, $monthEnd) {
-            // Today's Sales
-            $todaySales = DB::table('pos')
+            // Today's Sales Amount
+            $grossTodaySales = DB::table('pos')
                 ->where('branch_id', $branch->id)
                 ->whereDate('sale_date', $today)
+                ->where('status', '!=', 'cancelled')
                 ->selectRaw('SUM(total_amount - COALESCE(delivery, 0)) as amount')
                 ->value('amount') ?? 0;
 
-            $todayQty = DB::table('pos_items')
+            $todayReturnSales = DB::table('sale_returns')
+                ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                ->where('sale_returns.return_to_id', $branch->id)
+                ->whereDate('sale_returns.return_date', $today)
+                ->sum('sale_return_items.total_price');
+
+            $todaySales = max(0, $grossTodaySales - $todayReturnSales);
+
+            // Today's Sales Qty
+            $grossTodayQty = DB::table('pos_items')
                 ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
                 ->where('pos.branch_id', $branch->id)
                 ->whereDate('pos.sale_date', $today)
+                ->where('pos.status', '!=', 'cancelled')
                 ->sum('pos_items.quantity');
 
-            // Monthly Sales
-            $monthSales = DB::table('pos')
+            $todayReturnQty = DB::table('sale_returns')
+                ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                ->where('sale_returns.return_to_id', $branch->id)
+                ->whereDate('sale_returns.return_date', $today)
+                ->sum('sale_return_items.returned_qty');
+
+            $todayQty = max(0, $grossTodayQty - $todayReturnQty);
+
+            // Monthly Sales Amount
+            $grossMonthSales = DB::table('pos')
                 ->where('branch_id', $branch->id)
                 ->whereBetween('sale_date', [$monthStart, $monthEnd])
+                ->where('status', '!=', 'cancelled')
                 ->selectRaw('SUM(total_amount - COALESCE(delivery, 0)) as amount')
                 ->value('amount') ?? 0;
 
-            $monthQty = DB::table('pos_items')
+            $monthReturnSales = DB::table('sale_returns')
+                ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                ->where('sale_returns.return_to_id', $branch->id)
+                ->whereBetween('sale_returns.return_date', [$monthStart, $monthEnd])
+                ->sum('sale_return_items.total_price');
+
+            $monthSales = max(0, $grossMonthSales - $monthReturnSales);
+
+            // Monthly Sales Qty
+            $grossMonthQty = DB::table('pos_items')
                 ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
                 ->where('pos.branch_id', $branch->id)
-                ->whereBetween('sale_date', [$monthStart, $monthEnd])
+                ->whereBetween('pos.sale_date', [$monthStart, $monthEnd])
+                ->where('pos.status', '!=', 'cancelled')
                 ->sum('pos_items.quantity');
+
+            $monthReturnQty = DB::table('sale_returns')
+                ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                ->where('sale_returns.return_to_id', $branch->id)
+                ->whereBetween('sale_returns.return_date', [$monthStart, $monthEnd])
+                ->sum('sale_return_items.returned_qty');
+
+            $monthQty = max(0, $grossMonthQty - $monthReturnQty);
 
             return [
                 'name' => $branch->name,

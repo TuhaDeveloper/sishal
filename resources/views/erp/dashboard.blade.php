@@ -327,7 +327,84 @@
                 </div>
             </div>
 
-
+            <!-- Low Stock Warning Section -->
+            <div class="dash-section-card mb-4">
+                <div class="dash-section-title-bar">
+                    <h5>
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i> Low Stock Alerts
+                    </h5>
+                    <a href="{{ route('productstock.list') }}" class="btn btn-sm btn-link text-decoration-none fw-bold p-0 text-primary">
+                        View Stock List <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="dash-scroll-container" style="max-height: 340px;">
+                    <table class="premium-table compact table-hover w-100 mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-center ps-3" style="width: 50px;">#</th>
+                                <th>Product Name & Details</th>
+                                <th>Branch</th>
+                                <th class="text-center">Variant (Size / Color)</th>
+                                <th class="text-center">Current Stock</th>
+                                <th class="text-center pe-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($lowStockDetailed as $index => $item)
+                            <tr>
+                                <td class="text-center ps-3 fw-semibold text-muted">{{ $index + 1 }}</td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ $item['product_name'] }}</div>
+                                    <div class="extra-small text-muted">
+                                        @if(!empty($item['style_number']) && $item['style_number'] !== 'N/A')
+                                            <span class="me-2">SKU: <strong>{{ $item['style_number'] }}</strong></span>
+                                        @endif
+                                        @if(!empty($item['category']) && $item['category'] !== 'N/A')
+                                            <span class="me-2">Cat: {{ $item['category'] }}</span>
+                                        @endif
+                                        @if(!empty($item['brand']) && $item['brand'] !== 'N/A')
+                                            <span>Brand: {{ $item['brand'] }}</span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold text-dark">
+                                        <i class="fas fa-building text-secondary me-1 opacity-50"></i>{{ $item['branch'] }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark border me-1">Size: {{ $item['size'] }}</span>
+                                    <span class="badge bg-light text-dark border">Color: {{ $item['color'] }}</span>
+                                </td>
+                                <td class="text-center fw-bold">
+                                    <span class="@if($item['current'] <= 3) text-danger @else text-warning @endif fs-6">
+                                        {{ $item['current'] }} pcs
+                                    </span>
+                                </td>
+                                <td class="text-center pe-3">
+                                    @if($item['current'] <= 0)
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                            <i class="fas fa-times-circle me-1"></i> Out of Stock
+                                        </span>
+                                    @else
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                                            <i class="fas fa-exclamation-circle me-1"></i> Low Stock
+                                        </span>
+                                    @endif
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="fas fa-check-circle fa-2x text-success mb-2 opacity-50"></i>
+                                    <p class="mb-0 fw-semibold text-success">All products have sufficient stock levels</p>
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             <!-- Recent Sales Section -->
             <div class="dash-section-card mb-4">
