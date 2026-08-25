@@ -1037,15 +1037,26 @@ class ProductController extends Controller
 
     public function searchByStyle(Request $request)
     {
-        $q = $request->q;
+        $q = trim($request->q ?? '');
         $query = Product::with(['category', 'brand', 'season', 'gender']);
         
-        if ($q) {
-            $query->where('style_number', 'like', "%$q%")
-                  ->orWhere('name', 'like', "%$q%");
+        if ($q !== '') {
+            $cleanQ = preg_replace('/[:\s\-]+/', '%', $q);
+            $query->where(function($subQ) use ($q, $cleanQ) {
+                $subQ->where('style_number', 'like', "%$q%")
+                     ->orWhere('style_number', 'like', "%$cleanQ%")
+                     ->orWhere('sku', 'like', "%$q%")
+                     ->orWhere('sku', 'like', "%$cleanQ%")
+                     ->orWhere('name', 'like', "%$q%")
+                     ->orWhereHas('variations', function($vq) use ($q, $cleanQ) {
+                         $vq->where('sku', 'like', "%$q%")
+                            ->orWhere('sku', 'like', "%$cleanQ%")
+                            ->orWhere('name', 'like', "%$q%");
+                     });
+            });
         }
         
-        $products = $query->orderBy('style_number')->limit(20)->get();
+        $products = $query->orderBy('style_number')->limit(30)->get();
         return response()->json($products);
     }
 
@@ -1064,7 +1075,7 @@ class ProductController extends Controller
         $locationType = $request->query('location_type');
         $locationId = $request->query('location_id');
 
-        if (!$product->has_variations) {
+        if (!$product->has_variations || $product->variations->isEmpty()) {
             if ($locationType && $locationId) {
                 // Check both branch_id (for Branch-Warehouses) and warehouse_id (for standalone Warehouses)
                 $bsQty = $product->branchStock->where('branch_id', $locationId)->sum('quantity');
@@ -1097,19 +1108,26 @@ class ProductController extends Controller
                 $totalStock = $variation->stocks->sum('quantity');
             }
             
-            // Extract size and color from combinations
+            // Extract size and color from combinations or variation name / sku
             $size = null;
             $color = null;
             
-            foreach ($variation->combinations as $combination) {
-                $attributeName = strtolower($combination->attribute->name ?? '');
-                $attributeValue = $combination->attributeValue->value ?? '';
-                
-                if (in_array($attributeName, ['size', 'sizes'])) {
-                    $size = $attributeValue;
-                } elseif (in_array($attributeName, ['color', 'colour', 'colors'])) {
-                    $color = $attributeValue;
+            if ($variation->combinations) {
+                foreach ($variation->combinations as $combination) {
+                    $attributeName = strtolower($combination->attribute->name ?? '');
+                    $attributeValue = $combination->attributeValue->value ?? '';
+                    
+                    if (in_array($attributeName, ['size', 'sizes'])) {
+                        $size = $attributeValue;
+                    } elseif (in_array($attributeName, ['color', 'colour', 'colors'])) {
+                        $color = $attributeValue;
+                    }
                 }
+            }
+
+            // Fallback for size/color if combination was detached
+            if (!$size && !$color && $variation->name) {
+                $size = $variation->name;
             }
             
             return [

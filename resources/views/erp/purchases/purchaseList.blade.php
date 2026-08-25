@@ -183,10 +183,9 @@
                             </div>
 
                             <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted text-uppercase mb-2">Challan / Inv
-                                    #</label>
+                                <label class="form-label small fw-bold text-muted text-uppercase mb-2">Search / Inv / Style</label>
                                 <input type="text" name="search" class="form-control shadow-none"
-                                    placeholder="Search procurement ID..." value="{{ request('search') }}">
+                                    placeholder="Search ID, Style, SKU..." value="{{ request('search') }}">
                             </div>
 
                             <div class="col-md-2">

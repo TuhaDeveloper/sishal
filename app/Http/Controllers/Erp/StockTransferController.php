@@ -164,14 +164,18 @@ class StockTransferController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->whereHas('product', function($pq) use ($search) {
+            $search = trim($request->search);
+            $cleanSearch = preg_replace('/[:\s\-]+/', '%', $search);
+            $query->where(function($q) use ($search, $cleanSearch) {
+                $q->whereHas('product', function($pq) use ($search, $cleanSearch) {
                     $pq->where('name', 'like', "%$search%")
-                      ->orWhere('style_number', 'like', "%$search%");
-                })->orWhereHas('variation', function($vq) use ($search) {
-                    $vq->where('name', 'like', "%$search%")
+                      ->orWhere('style_number', 'like', "%$search%")
+                      ->orWhere('style_number', 'like', "%$cleanSearch%")
                       ->orWhere('sku', 'like', "%$search%");
+                })->orWhereHas('variation', function($vq) use ($search, $cleanSearch) {
+                    $vq->where('name', 'like', "%$search%")
+                      ->orWhere('sku', 'like', "%$search%")
+                      ->orWhere('sku', 'like', "%$cleanSearch%");
                 })->orWhere('invoice_number', 'like', "%$search%")
                   ->orWhere('id', 'like', "%$search%");
             });
@@ -190,8 +194,17 @@ class StockTransferController extends Controller
         }
         
         if ($request->filled('style_number')) {
-            $query->whereHas('product', function($q) use ($request) {
-                $q->where('style_number', $request->style_number);
+            $styleSearch = trim($request->style_number);
+            $cleanStyle = preg_replace('/[:\s\-]+/', '%', $styleSearch);
+            $query->where(function($q) use ($styleSearch, $cleanStyle) {
+                $q->whereHas('product', function($pq) use ($styleSearch, $cleanStyle) {
+                    $pq->where('style_number', 'like', "%$styleSearch%")
+                      ->orWhere('style_number', 'like', "%$cleanStyle%")
+                      ->orWhere('sku', 'like', "%$styleSearch%");
+                })->orWhereHas('variation', function($vq) use ($styleSearch, $cleanStyle) {
+                    $vq->where('sku', 'like', "%$styleSearch%")
+                      ->orWhere('sku', 'like', "%$cleanStyle%");
+                });
             });
         }
         

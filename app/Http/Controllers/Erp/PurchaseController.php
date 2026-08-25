@@ -446,14 +446,26 @@ class PurchaseController extends Controller
             });
         }
 
-        // Search by purchase id / invoice
+        // Search by purchase id / invoice / product name / style number / SKU
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->whereHas('purchase', function($q) use ($search) {
-                $q->where('id', 'LIKE', "%$search%")
-                  ->orWhereHas('bill', function($bq) use ($search) {
-                      $bq->where('bill_number', 'LIKE', "%$search%");
-                  });
+            $search = trim($request->search);
+            $cleanSearch = preg_replace('/[:\s\-]+/', '%', $search);
+            $query->where(function($q) use ($search, $cleanSearch) {
+                $q->whereHas('purchase', function($pq) use ($search) {
+                    $pq->where('id', 'LIKE', "%$search%")
+                      ->orWhereHas('bill', function($bq) use ($search) {
+                          $bq->where('bill_number', 'LIKE', "%$search%");
+                      });
+                })->orWhereHas('product', function($prq) use ($search, $cleanSearch) {
+                    $prq->where('style_number', 'LIKE', "%$search%")
+                        ->orWhere('style_number', 'LIKE', "%$cleanSearch%")
+                        ->orWhere('name', 'LIKE', "%$search%")
+                        ->orWhere('sku', 'LIKE', "%$search%");
+                })->orWhereHas('variation', function($vq) use ($search, $cleanSearch) {
+                    $vq->where('sku', 'LIKE', "%$search%")
+                       ->orWhere('sku', 'LIKE', "%$cleanSearch%")
+                       ->orWhere('name', 'LIKE', "%$search%");
+                });
             });
         }
 
@@ -488,11 +500,25 @@ class PurchaseController extends Controller
         // Filter by Product/Style/Category/Brand/Season/Gender
         if ($request->filled('product_id')) $query->where('product_id', $request->product_id);
 
-        if ($request->filled('style_number') || $request->filled('category_id') || 
-            $request->filled('brand_id') || $request->filled('season_id') || $request->filled('gender_id')) {
+        if ($request->filled('style_number')) {
+            $styleSearch = trim($request->style_number);
+            $cleanStyle = preg_replace('/[:\s\-]+/', '%', $styleSearch);
+            $query->where(function($q) use ($styleSearch, $cleanStyle) {
+                $q->whereHas('product', function($prq) use ($styleSearch, $cleanStyle) {
+                    $prq->where('style_number', 'LIKE', "%$styleSearch%")
+                        ->orWhere('style_number', 'LIKE', "%$cleanStyle%")
+                        ->orWhere('sku', 'LIKE', "%$styleSearch%");
+                })->orWhereHas('variation', function($vq) use ($styleSearch, $cleanStyle) {
+                    $vq->where('sku', 'LIKE', "%$styleSearch%")
+                       ->orWhere('sku', 'LIKE', "%$cleanStyle%");
+                });
+            });
+        }
+
+        if ($request->filled('category_id') || $request->filled('brand_id') || 
+            $request->filled('season_id') || $request->filled('gender_id')) {
             
             $query->whereHas('product', function($q) use ($request) {
-                if ($request->filled('style_number')) $q->where('style_number', 'like', '%' . $request->style_number . '%');
                 if ($request->filled('category_id')) $q->where('category_id', $request->category_id);
                 if ($request->filled('brand_id')) $q->where('brand_id', $request->brand_id);
                 if ($request->filled('season_id')) $q->where('season_id', $request->season_id);

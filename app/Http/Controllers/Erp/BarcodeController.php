@@ -30,14 +30,18 @@ class BarcodeController extends Controller
         if (!auth()->user()->hasPermissionTo('view products')) {
             abort(403, 'Unauthorized action.');
         }
-        $styleNo = $request->query('style_no');
+        $styleNo = trim($request->query('style_no') ?? '');
         
         if (!$styleNo) {
             return response()->json(['success' => false, 'message' => 'Style number is required']);
         }
 
+        $cleanStyleNo = preg_replace('/[:\s\-]+/', '%', $styleNo);
+
         $product = Product::where('sku', $styleNo)
+            ->orWhere('sku', 'LIKE', "%$cleanStyleNo%")
             ->orWhere('style_number', $styleNo)
+            ->orWhere('style_number', 'LIKE', "%$cleanStyleNo%")
             ->with(['variations'])
             ->first();
 
