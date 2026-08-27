@@ -17,6 +17,10 @@ use App\Models\ProductServiceCategory;
 use App\Models\Brand;
 use App\Models\Season;
 use App\Models\Gender;
+use App\Models\SaleReturn;
+use App\Models\SaleReturnItem;
+use App\Models\OrderReturn;
+use App\Models\OrderReturnItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -850,7 +854,8 @@ class SimpleAccountingController extends Controller
         $posItems = collect();
         if ($source === 'all' || $source === 'pos') {
             $posItemsQuery = PosItem::whereHas('pos', function($query) use ($startDate, $endDate, $branchId) {
-                $query->whereBetween('sale_date', [$startDate, $endDate]);
+                $query->whereBetween('sale_date', [$startDate, $endDate])
+                      ->where('status', '!=', 'cancelled');
                 if ($branchId) {
                     $query->where('branch_id', $branchId);
                 }
@@ -1027,6 +1032,146 @@ class SimpleAccountingController extends Controller
                 'quantity_sold' => $current['quantity_sold'] + $item->quantity
             ]);
         }
+
+        // Deduct POS Sale Returns
+        if ($source === 'all' || $source === 'pos') {
+            $posReturnsQuery = SaleReturnItem::whereHas('saleReturn', function($query) use ($startDate, $endDate, $branchId) {
+                $query->whereBetween('return_date', [$startDate, $endDate])
+                      ->where('status', '!=', 'rejected');
+                if ($branchId) {
+                    $query->where('return_to_id', $branchId);
+                }
+            })->with(['product', 'variation.attributeValues', 'saleReturn']);
+
+            if ($categoryId) {
+                $posReturnsQuery->whereHas('product', fn($q) => $q->where('category_id', $categoryId));
+            }
+            if ($search) {
+                $posReturnsQuery->whereHas('product', fn($q) => $q->where('name', 'like', "%{$search}%")->orWhere('style_number', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"));
+            }
+            if ($brandId) {
+                $posReturnsQuery->whereHas('product', fn($q) => $q->where('brand_id', $brandId));
+            }
+            if ($seasonId) {
+                $posReturnsQuery->whereHas('product', fn($q) => $q->where('season_id', $seasonId));
+            }
+            if ($genderId) {
+                $posReturnsQuery->whereHas('product', fn($q) => $q->where('gender_id', $genderId));
+            }
+            if ($variationValueId) {
+                $posReturnsQuery->whereHas('variation.attributeValues', fn($q) => $q->where('variation_attribute_values.id', $variationValueId));
+            }
+
+            $posReturns = $posReturnsQuery->get();
+
+            foreach ($posReturns as $retItem) {
+                if (!$retItem->product) continue;
+
+                $branchIdVal = $retItem->saleReturn->return_to_id ?? 0;
+                $productId = $retItem->product_id;
+                $varId = $retItem->variation_id ?? 0;
+
+                if ($groupBy === 'variation') {
+                    $key = $productId . '_' . $varId . '_' . $branchIdVal;
+                } else {
+                    $key = $productId . '_' . $branchIdVal;
+                }
+
+                $retQty = (float) $retItem->returned_qty;
+                $retRevenue = (float) $retItem->total_price;
+                $retCost = ((float) ($retItem->product->cost ?? 0)) * $retQty;
+
+                if ($productProfits->has($key)) {
+                    $current = $productProfits->get($key);
+                    $newQty = max(0, $current['quantity_sold'] - $retQty);
+                    $newRev = max(0, $current['revenue'] - $retRevenue);
+                    $newCost = max(0, $current['cost'] - $retCost);
+                    $newProfit = $newRev - $newCost;
+
+                    $productProfits->put($key, [
+                        'product' => $current['product'],
+                        'display_name' => $current['display_name'],
+                        'variation_name' => $current['variation_name'],
+                        'branch_name' => $current['branch_name'],
+                        'revenue' => $newRev,
+                        'cost' => $newCost,
+                        'profit' => $newProfit,
+                        'quantity_sold' => $newQty
+                    ]);
+                }
+            }
+        }
+
+        // Deduct Online Order Returns
+        if (($source === 'all' || $source === 'online') && !$branchId) {
+            $orderReturnsQuery = OrderReturnItem::whereHas('orderReturn', function($query) use ($startDate, $endDate) {
+                $query->whereBetween('created_at', [$startDate, $endDate])
+                      ->where('status', '!=', 'rejected');
+            })->with(['product', 'variation.attributeValues', 'orderReturn']);
+
+            if ($categoryId) {
+                $orderReturnsQuery->whereHas('product', fn($q) => $q->where('category_id', $categoryId));
+            }
+            if ($search) {
+                $orderReturnsQuery->whereHas('product', fn($q) => $q->where('name', 'like', "%{$search}%")->orWhere('style_number', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"));
+            }
+            if ($brandId) {
+                $orderReturnsQuery->whereHas('product', fn($q) => $q->where('brand_id', $brandId));
+            }
+            if ($seasonId) {
+                $orderReturnsQuery->whereHas('product', fn($q) => $q->where('season_id', $seasonId));
+            }
+            if ($genderId) {
+                $orderReturnsQuery->whereHas('product', fn($q) => $q->where('gender_id', $genderId));
+            }
+            if ($variationValueId) {
+                $orderReturnsQuery->whereHas('variation.attributeValues', fn($q) => $q->where('variation_attribute_values.id', $variationValueId));
+            }
+
+            $orderReturns = $orderReturnsQuery->get();
+
+            foreach ($orderReturns as $retItem) {
+                if (!$retItem->product) continue;
+
+                $branchIdVal = 0; // Online
+                $productId = $retItem->product_id;
+                $varId = $retItem->variation_id ?? 0;
+
+                if ($groupBy === 'variation') {
+                    $key = $productId . '_' . $varId . '_' . $branchIdVal;
+                } else {
+                    $key = $productId . '_' . $branchIdVal;
+                }
+
+                $retQty = (float) $retItem->returned_qty;
+                $retRevenue = (float) $retItem->total_price;
+                $retCost = ((float) ($retItem->product->cost ?? 0)) * $retQty;
+
+                if ($productProfits->has($key)) {
+                    $current = $productProfits->get($key);
+                    $newQty = max(0, $current['quantity_sold'] - $retQty);
+                    $newRev = max(0, $current['revenue'] - $retRevenue);
+                    $newCost = max(0, $current['cost'] - $retCost);
+                    $newProfit = $newRev - $newCost;
+
+                    $productProfits->put($key, [
+                        'product' => $current['product'],
+                        'display_name' => $current['display_name'],
+                        'variation_name' => $current['variation_name'],
+                        'branch_name' => $current['branch_name'],
+                        'revenue' => $newRev,
+                        'cost' => $newCost,
+                        'profit' => $newProfit,
+                        'quantity_sold' => $newQty
+                    ]);
+                }
+            }
+        }
+
+        // Filter out products with 0 sold quantity
+        $productProfits = $productProfits->filter(function($item) {
+            return $item['quantity_sold'] > 0 || $item['revenue'] > 0;
+        });
 
         return $productProfits->sortByDesc('profit');
     }
