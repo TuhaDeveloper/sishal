@@ -111,10 +111,10 @@ class BonusCalculationService
 
     public function calculateBranchSales($branchId, $month, $year)
     {
-        $monthNum = date('m', strtotime($month));
+        $monthNum = is_numeric($month) ? str_pad($month, 2, '0', STR_PAD_LEFT) : date('m', strtotime($month));
 
-        // Sum the quantities of items sold in the branch for the specified period
-        $branchSalesQty = DB::table('pos_items')
+        // 1. Gross POS Sales quantity for the branch in this period
+        $grossSalesQty = (float) DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
             ->where('pos.branch_id', $branchId)
             ->whereMonth('pos.sale_date', '=', $monthNum)
@@ -122,7 +122,26 @@ class BonusCalculationService
             ->where('pos.status', '!=', 'cancelled')
             ->sum('pos_items.quantity');
 
-        return $branchSalesQty;
+        // 2. Total POS Sale Returns quantity for the branch in this period
+        $returnQty = (float) DB::table('sale_returns')
+            ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->where(function ($q) use ($branchId) {
+                $q->where(function ($b) use ($branchId) {
+                    $b->where('sale_returns.return_to_type', 'branch')
+                      ->where('sale_returns.return_to_id', $branchId);
+                })->orWhereExists(function ($sub) use ($branchId) {
+                    $sub->select(DB::raw(1))
+                        ->from('pos')
+                        ->whereColumn('pos.id', 'sale_returns.pos_sale_id')
+                        ->where('pos.branch_id', $branchId);
+                });
+            })
+            ->whereMonth('sale_returns.return_date', '=', $monthNum)
+            ->whereYear('sale_returns.return_date', '=', $year)
+            ->where('sale_returns.status', '!=', 'rejected')
+            ->sum('sale_return_items.returned_qty');
+
+        return max(0, $grossSalesQty - $returnQty);
     }
 
     public function calculateEmployeeSales($employeeId, $month, $year)

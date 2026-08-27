@@ -25,7 +25,7 @@ class DashboardController extends Controller
         $branchId = $this->getRestrictedBranchId() ?? 0;
         
         // Cache dashboard for 5 minutes (300 seconds)
-        $cacheKey = "dash_v2_{$branchId}_{$dateRange}";
+        $cacheKey = "dash_v3_{$branchId}_{$dateRange}";
         
         $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function() use ($dateRange) {
             $startDate = $this->getStartDate($dateRange);
@@ -393,29 +393,48 @@ class DashboardController extends Controller
         try {
             // Get POS sales aggregates per product
             $posQuery = DB::table('pos_items')
-                ->whereBetween('created_at', [$startDate, $endDate]);
+                ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
+                ->where('pos.sale_date', '>=', $startDate)
+                ->where('pos.sale_date', '<=', $endDate)
+                ->where('pos.status', '!=', 'cancelled');
             
             if ($branchId) {
-                $posQuery->whereHas('pos', function($q) use ($branchId) {
-                    $q->where('branch_id', $branchId);
-                });
+                $posQuery->where('pos.branch_id', $branchId);
             }
 
-            $posSales = $posQuery->select('product_id', DB::raw('SUM(quantity) as pos_qty, SUM(total_price) as pos_rev'))
-                ->groupBy('product_id');
+            $posSales = $posQuery->select('pos_items.product_id', DB::raw('SUM(pos_items.quantity) as pos_qty, SUM(pos_items.total_price) as pos_rev'))
+                ->groupBy('pos_items.product_id');
+
+            // Get POS sale returns per product
+            $posReturnQuery = DB::table('sale_return_items')
+                ->join('sale_returns', 'sale_return_items.sale_return_id', '=', 'sale_returns.id')
+                ->where('sale_returns.return_date', '>=', $startDate)
+                ->where('sale_returns.return_date', '<=', $endDate)
+                ->where('sale_returns.status', '!=', 'rejected');
+
+            if ($branchId) {
+                $posReturnQuery->where('sale_returns.return_to_id', $branchId);
+            }
+
+            $posReturns = $posReturnQuery->select('sale_return_items.product_id', DB::raw('SUM(sale_return_items.returned_qty) as ret_qty, SUM(sale_return_items.total_price) as ret_rev'))
+                ->groupBy('sale_return_items.product_id');
 
             // Get Online sales (only if not restricted to a branch)
             $orderSales = null;
             if (!$branchId) {
                 $orderSales = DB::table('order_items')
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->select('product_id', DB::raw('SUM(quantity) as order_qty, SUM(total_price) as order_rev'))
-                    ->groupBy('product_id');
+                    ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                    ->where('orders.created_at', '>=', $startDate)
+                    ->where('orders.created_at', '<=', $endDate)
+                    ->where('orders.status', '!=', 'cancelled')
+                    ->select('order_items.product_id', DB::raw('SUM(order_items.quantity) as order_qty, SUM(order_items.total_price) as order_rev'))
+                    ->groupBy('order_items.product_id');
             }
 
             // Combine using Products table as base
             $query = DB::table('products')
-                ->leftJoinSub($posSales, 'pos_summary', 'products.id', '=', 'pos_summary.product_id');
+                ->leftJoinSub($posSales, 'pos_summary', 'products.id', '=', 'pos_summary.product_id')
+                ->leftJoinSub($posReturns, 'return_summary', 'products.id', '=', 'return_summary.product_id');
                 
             if ($orderSales) {
                 $query->leftJoinSub($orderSales, 'order_summary', 'products.id', '=', 'order_summary.product_id');
@@ -424,8 +443,8 @@ class DashboardController extends Controller
             $topItems = $query->leftJoinSub(DB::table('product_service_categories'), 'cats', 'products.category_id', '=', 'cats.id')
                 ->selectRaw('products.name, 
                     cats.name as category_name,
-                    (COALESCE(pos_summary.pos_qty, 0) + ' . ($orderSales ? 'COALESCE(order_summary.order_qty, 0)' : '0') . ') as total_sold,
-                    (COALESCE(pos_summary.pos_rev, 0) + ' . ($orderSales ? 'COALESCE(order_summary.order_rev, 0)' : '0') . ') as total_revenue')
+                    GREATEST(0, (COALESCE(pos_summary.pos_qty, 0) - COALESCE(return_summary.ret_qty, 0)) + ' . ($orderSales ? 'COALESCE(order_summary.order_qty, 0)' : '0') . ') as total_sold,
+                    GREATEST(0, (COALESCE(pos_summary.pos_rev, 0) - COALESCE(return_summary.ret_rev, 0)) + ' . ($orderSales ? 'COALESCE(order_summary.order_rev, 0)' : '0') . ') as total_revenue')
                 ->where('products.type', 'product')
                 ->where('products.status', 'active')
                 ->where(function($q) {
@@ -820,65 +839,69 @@ class DashboardController extends Controller
 
         return $branches->map(function($branch) use ($today, $monthStart, $monthEnd) {
             // Today's Sales Amount
-            $grossTodaySales = DB::table('pos')
+            $grossTodaySales = (float) (DB::table('pos')
                 ->where('branch_id', $branch->id)
                 ->whereDate('sale_date', $today)
                 ->where('status', '!=', 'cancelled')
                 ->selectRaw('SUM(total_amount - COALESCE(delivery, 0)) as amount')
-                ->value('amount') ?? 0;
+                ->value('amount') ?? 0);
 
-            $todayReturnSales = DB::table('sale_returns')
+            $todayReturnSales = (float) DB::table('sale_returns')
                 ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
                 ->where('sale_returns.return_to_id', $branch->id)
                 ->whereDate('sale_returns.return_date', $today)
+                ->where('sale_returns.status', '!=', 'rejected')
                 ->sum('sale_return_items.total_price');
 
             $todaySales = max(0, $grossTodaySales - $todayReturnSales);
 
             // Today's Sales Qty
-            $grossTodayQty = DB::table('pos_items')
+            $grossTodayQty = (float) DB::table('pos_items')
                 ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
                 ->where('pos.branch_id', $branch->id)
                 ->whereDate('pos.sale_date', $today)
                 ->where('pos.status', '!=', 'cancelled')
                 ->sum('pos_items.quantity');
 
-            $todayReturnQty = DB::table('sale_returns')
+            $todayReturnQty = (float) DB::table('sale_returns')
                 ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
                 ->where('sale_returns.return_to_id', $branch->id)
                 ->whereDate('sale_returns.return_date', $today)
+                ->where('sale_returns.status', '!=', 'rejected')
                 ->sum('sale_return_items.returned_qty');
 
             $todayQty = max(0, $grossTodayQty - $todayReturnQty);
 
             // Monthly Sales Amount
-            $grossMonthSales = DB::table('pos')
+            $grossMonthSales = (float) (DB::table('pos')
                 ->where('branch_id', $branch->id)
                 ->whereBetween('sale_date', [$monthStart, $monthEnd])
                 ->where('status', '!=', 'cancelled')
                 ->selectRaw('SUM(total_amount - COALESCE(delivery, 0)) as amount')
-                ->value('amount') ?? 0;
+                ->value('amount') ?? 0);
 
-            $monthReturnSales = DB::table('sale_returns')
+            $monthReturnSales = (float) DB::table('sale_returns')
                 ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
                 ->where('sale_returns.return_to_id', $branch->id)
                 ->whereBetween('sale_returns.return_date', [$monthStart, $monthEnd])
+                ->where('sale_returns.status', '!=', 'rejected')
                 ->sum('sale_return_items.total_price');
 
             $monthSales = max(0, $grossMonthSales - $monthReturnSales);
 
             // Monthly Sales Qty
-            $grossMonthQty = DB::table('pos_items')
+            $grossMonthQty = (float) DB::table('pos_items')
                 ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
                 ->where('pos.branch_id', $branch->id)
                 ->whereBetween('pos.sale_date', [$monthStart, $monthEnd])
                 ->where('pos.status', '!=', 'cancelled')
                 ->sum('pos_items.quantity');
 
-            $monthReturnQty = DB::table('sale_returns')
+            $monthReturnQty = (float) DB::table('sale_returns')
                 ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
                 ->where('sale_returns.return_to_id', $branch->id)
                 ->whereBetween('sale_returns.return_date', [$monthStart, $monthEnd])
+                ->where('sale_returns.status', '!=', 'rejected')
                 ->sum('sale_return_items.returned_qty');
 
             $monthQty = max(0, $grossMonthQty - $monthReturnQty);
@@ -944,7 +967,8 @@ class DashboardController extends Controller
             foreach ($branchIds as $bId) {
                 $b = $bId ?? 0;
                 foreach ($ranges as $r) {
-                    \Illuminate\Support\Facades\Cache::forget("dash_v1_{$b}_{$r}");
+                    \Illuminate\Support\Facades\Cache::forget("dash_v2_{$b}_{$r}");
+                    \Illuminate\Support\Facades\Cache::forget("dash_v3_{$b}_{$r}");
                 }
             }
         } catch (\Exception $e) {
@@ -992,19 +1016,32 @@ class DashboardController extends Controller
     private function getRecentSalesQtyChart()
     {
         $branchId = $this->getRestrictedBranchId();
-        $startDate = Carbon::today()->subDays(6);
+        $startDate = Carbon::today()->subDays(6)->startOfDay();
+        $endDate = Carbon::today()->endOfDay();
         
-        $query = DB::table('pos_items')
+        // Daily gross sales
+        $grossResults = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-            ->whereDate('pos.sale_date', '>=', $startDate)
+            ->where('pos.sale_date', '>=', $startDate)
+            ->where('pos.sale_date', '<=', $endDate)
+            ->where('pos.status', '!=', 'cancelled')
+            ->when($branchId, fn($q) => $q->where('pos.branch_id', $branchId))
             ->selectRaw('DATE(pos.sale_date) as date, SUM(pos_items.quantity) as total_qty, SUM(pos_items.total_price) as total_rev')
-            ->groupBy('date');
-        
-        if ($branchId) {
-            $query->where('pos.branch_id', $branchId);
-        }
-        
-        $results = $query->get()->keyBy('date');
+            ->groupBy(DB::raw('DATE(pos.sale_date)'))
+            ->get()
+            ->keyBy('date');
+
+        // Daily sale returns
+        $returnResults = DB::table('sale_returns')
+            ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->where('sale_returns.return_date', '>=', $startDate)
+            ->where('sale_returns.return_date', '<=', $endDate)
+            ->where('sale_returns.status', '!=', 'rejected')
+            ->when($branchId, fn($q) => $q->where('sale_returns.return_to_id', $branchId))
+            ->selectRaw('DATE(sale_returns.return_date) as date, SUM(sale_return_items.returned_qty) as ret_qty, SUM(sale_return_items.total_price) as ret_rev')
+            ->groupBy(DB::raw('DATE(sale_returns.return_date)'))
+            ->get()
+            ->keyBy('date');
         
         $labels = [];
         $qtyData = [];
@@ -1015,9 +1052,16 @@ class DashboardController extends Controller
             $dateStr = $date->toDateString();
             $labels[] = $date->format('D, M d');
             
-            $stats = $results->get($dateStr);
-            $qtyData[] = (int)($stats->total_qty ?? 0);
-            $revData[] = (float)($stats->total_rev ?? 0);
+            $gross = $grossResults->get($dateStr);
+            $ret = $returnResults->get($dateStr);
+
+            $gQty = (float)($gross->total_qty ?? 0);
+            $gRev = (float)($gross->total_rev ?? 0);
+            $rQty = (float)($ret->ret_qty ?? 0);
+            $rRev = (float)($ret->ret_rev ?? 0);
+
+            $qtyData[] = (int) max(0, $gQty - $rQty);
+            $revData[] = (float) max(0, $gRev - $rRev);
         }
 
         return [
@@ -1030,20 +1074,32 @@ class DashboardController extends Controller
     private function getFinancialKPIs()
     {
         $branchId = $this->getRestrictedBranchId();
-        $today = Carbon::today();
+        $today = Carbon::today()->toDateString();
 
-        // Today's Total Sales
-        $salesQuery = DB::table('pos')->whereDate('sale_date', $today);
-        if ($branchId) $salesQuery->where('branch_id', $branchId);
-        $posSales = $salesQuery->sum('total_amount');
+        // 1. Today's Net Sales (POS active sales minus POS returns + online non-cancelled orders)
+        $posSalesQuery = DB::table('pos')
+            ->whereDate('sale_date', $today)
+            ->where('status', '!=', 'cancelled');
+        if ($branchId) $posSalesQuery->where('branch_id', $branchId);
+        $posSales = (float) $posSalesQuery->sum('total_amount');
+
+        $posReturnQuery = DB::table('sale_returns')
+            ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->whereDate('sale_returns.return_date', $today)
+            ->where('sale_returns.status', '!=', 'rejected');
+        if ($branchId) $posReturnQuery->where('sale_returns.return_to_id', $branchId);
+        $posReturns = (float) $posReturnQuery->sum('sale_return_items.total_price');
 
         $onlineSales = 0;
         if (!$branchId) {
-            $onlineSales = DB::table('orders')->whereDate('created_at', $today)->sum('total');
+            $onlineSales = (float) DB::table('orders')
+                ->whereDate('created_at', $today)
+                ->where('status', '!=', 'cancelled')
+                ->sum('total');
         }
-        $totalSalesValue = $posSales + $onlineSales;
+        $totalSalesValue = max(0, ($posSales - $posReturns) + $onlineSales);
 
-        // Today's Total Collection (payments made today)
+        // 2. Today's Total Collection (Customer payments received today)
         $collectionQuery = DB::table('payments')->whereDate('payment_date', $today);
         if ($branchId) {
             $collectionQuery->where(function($q) use ($branchId) {
@@ -1064,27 +1120,21 @@ class DashboardController extends Controller
                 });
             });
         }
-        $totalCollection = $collectionQuery->sum('amount') ?? 0;
+        $totalCollection = (float) $collectionQuery->sum('amount');
 
-        // Today's Total Due (due remaining on today's POS sales)
-        $todayPosSales = DB::table('pos')->whereDate('sale_date', $today);
-        if ($branchId) $todayPosSales->where('branch_id', $branchId);
-        $posList = $todayPosSales->get(['id', 'invoice_id', 'total_amount']);
+        // 3. Today's Total Due (Optimized single-query due calculation on today's active POS sales)
+        $todayPosQuery = DB::table('pos')
+            ->leftJoin('payments', 'pos.id', '=', 'payments.pos_id')
+            ->whereDate('pos.sale_date', $today)
+            ->where('pos.status', '!=', 'cancelled')
+            ->when($branchId, fn($q) => $q->where('pos.branch_id', $branchId))
+            ->selectRaw('pos.id, pos.total_amount, COALESCE(SUM(payments.amount), 0) as total_paid')
+            ->groupBy('pos.id', 'pos.total_amount')
+            ->get();
 
-        $totalDue = 0;
-        foreach ($posList as $posItem) {
-            $paidForSale = DB::table('payments')
-                ->where(function($q) use ($posItem) {
-                    $q->where('pos_id', $posItem->id);
-                    if ($posItem->invoice_id) {
-                        $q->orWhere('invoice_id', $posItem->invoice_id);
-                    }
-                })
-                ->sum('amount');
-
-            $dueForSale = max(0, $posItem->total_amount - $paidForSale);
-            $totalDue += $dueForSale;
-        }
+        $totalDue = $todayPosQuery->sum(function($item) {
+            return max(0, (float)$item->total_amount - (float)$item->total_paid);
+        });
 
         return [
             'total_sales' => number_format($totalSalesValue, 2),

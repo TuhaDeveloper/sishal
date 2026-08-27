@@ -8,12 +8,12 @@ use App\Models\Employee;
 use App\Models\SalesTarget;
 use App\Models\User;
 use App\Services\BonusCalculationService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
 class BonusCalculationServiceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_under_target_gives_zero_bonus()
     {
@@ -199,5 +199,95 @@ class BonusCalculationServiceTest extends TestCase
         $freshTarget = SalesTarget::find($target->id);
         $this->assertEquals('achieved', $freshTarget->status);
         $this->assertEquals(7000.00, $freshTarget->total_achieved_bonus);
+    }
+
+    public function test_sales_returns_are_deducted_from_achievement()
+    {
+        $suffix = uniqid();
+
+        $branch = Branch::create([
+            'name' => 'Test Branch Gamma ' . $suffix,
+            'code' => 'TBG' . $suffix,
+            'location' => 'Test Location Gamma',
+            'contact_info' => '01700000010',
+            'status' => 'active'
+        ]);
+
+        $user = User::create([
+            'first_name' => 'Gamma',
+            'last_name' => 'Emp',
+            'email' => 'gamma_' . $suffix . '@test.com',
+            'password' => bcrypt('password'),
+        ]);
+        $employee = Employee::create([
+            'user_id' => $user->id,
+            'branch_id' => $branch->id,
+            'phone' => '017' . rand(10000000, 99999999),
+            'salary' => 15000.00,
+            'status' => 'active'
+        ]);
+
+        $target = SalesTarget::create([
+            'branch_id' => $branch->id,
+            'target_quantity' => 100.00,
+            'incentive_amount' => 5000.00,
+            'commission_per_extra_sale' => 50.00,
+            'period_type' => 'monthly',
+            'period_month' => 'May',
+            'period_year' => 2026,
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        // 110 units sold
+        $posSaleId = DB::table('pos')->insertGetId([
+            'sale_number' => 'POS-' . $suffix . '-3',
+            'branch_id' => $branch->id,
+            'sold_by' => $user->id,
+            'sale_date' => '2026-05-10',
+            'sub_total' => 11000,
+            'total_amount' => 11000,
+            'status' => 'delivered',
+        ]);
+
+        DB::table('pos_items')->insert([
+            'pos_sale_id' => $posSaleId,
+            'product_id' => 9999,
+            'quantity' => 110.00,
+            'unit_price' => 50,
+            'total_price' => 5500,
+        ]);
+
+        // 20 units returned by customer in the same month
+        $saleReturnId = DB::table('sale_returns')->insertGetId([
+            'pos_sale_id' => $posSaleId,
+            'return_to_type' => 'branch',
+            'return_to_id' => $branch->id,
+            'return_date' => '2026-05-15',
+            'status' => 'approved',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('sale_return_items')->insert([
+            'sale_return_id' => $saleReturnId,
+            'product_id' => 9999,
+            'returned_qty' => 20.00,
+            'unit_price' => 50,
+            'total_price' => 1000,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Calculate Achievement: 110 sold - 20 returned = 90 net sold (below target of 100)
+        $service = new BonusCalculationService();
+        $achievement = $service->calculateAchievementForEmployee($employee->id, 'May', 2026);
+
+        $this->assertEquals(90.00, $achievement['achieved_amount']);
+        $this->assertEquals(0, $achievement['bonus_amount']);
+
+        $freshTarget = SalesTarget::find($target->id);
+        $this->assertEquals('active', $freshTarget->status);
+        $this->assertEquals(0, $freshTarget->total_achieved_bonus);
     }
 }
