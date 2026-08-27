@@ -9,6 +9,8 @@ use App\Models\SupplierPayment;
 use App\Models\SupplierLedger;
 use App\Models\PosItem;
 use App\Models\OrderItem;
+use App\Models\SaleReturnItem;
+use App\Models\OrderReturnItem;
 use App\Models\PurchaseReturnItem;
 use App\Models\FinancialAccount;
 use App\Models\ChartOfAccount;
@@ -98,20 +100,34 @@ class PayOnSaleSettlementService
             $productId   = $data['product_id'];
             $variationId = $data['variation_id'];
 
-            // POS Sales
+            // POS Sales & Returns
             $posSoldQuery = PosItem::where('product_id', $productId);
             if ($variationId) {
                 $posSoldQuery->where('variation_id', $variationId);
             }
             $posSoldQty = (float) $posSoldQuery->sum('quantity');
 
-            // Online Sales (excluding cancelled)
+            $posReturnQuery = SaleReturnItem::where('product_id', $productId);
+            if ($variationId) {
+                $posReturnQuery->where('variation_id', $variationId);
+            }
+            $posReturnQty = (float) $posReturnQuery->sum('returned_qty');
+            $netPosSoldQty = max(0, $posSoldQty - $posReturnQty);
+
+            // Online Sales & Returns (excluding cancelled orders)
             $onlineSoldQuery = OrderItem::where('product_id', $productId)
                 ->whereHas('order', fn($q) => $q->where('status', '!=', 'cancelled'));
             if ($variationId) {
                 $onlineSoldQuery->where('variation_id', $variationId);
             }
             $onlineSoldQty = (float) $onlineSoldQuery->sum('quantity');
+
+            $orderReturnQuery = OrderReturnItem::where('product_id', $productId);
+            if ($variationId) {
+                $orderReturnQuery->where('variation_id', $variationId);
+            }
+            $orderReturnQty = (float) $orderReturnQuery->sum('returned_qty');
+            $netOnlineSoldQty = max(0, $onlineSoldQty - $orderReturnQty);
 
             // Deduct purchase returns for this product/variation
             $returnedQuery = PurchaseReturnItem::where('product_id', $productId);
@@ -122,7 +138,7 @@ class PayOnSaleSettlementService
 
             $netPurchasedQty = max(0, $data['purchased_qty'] - $returnedQty);
 
-            $soldQty = $posSoldQty + $onlineSoldQty;
+            $soldQty = $netPosSoldQty + $netOnlineSoldQty;
             // Cap sold quantity at net purchased quantity for consignment accounting accuracy
             $soldQty = min($soldQty, $netPurchasedQty);
             $inStockQty = max(0, $netPurchasedQty - $soldQty);
@@ -211,42 +227,80 @@ class PayOnSaleSettlementService
             $createdPayments = [];
             $hasPaymentTypeColumn = Schema::hasColumn('supplier_payments', 'payment_type');
 
-            // Build a bill → payable_amount map based on sold products per purchase
-            // For each purchase bill, calculate how much of the sold cost came from that bill
-            $billPayableMap = []; // bill_id => ['bill' => ..., 'payable' => float]
-
-            // Get all purchase items for this supplier with their purchase bills
+            // Group purchase items by product_id and variation_id (FIFO order)
             $purchaseItems = PurchaseItem::with(['purchase.bill', 'product', 'variation'])
                 ->whereHas('purchase', fn($q) => $q->where('supplier_id', $supplierId))
+                ->orderBy('id', 'asc')
                 ->get();
 
+            $productGroups = [];
             foreach ($purchaseItems as $pItem) {
-                $bill = $pItem->purchase?->bill ?? null;
-                if (!$bill || (float) $bill->due_amount <= 0) continue;
+                $key = $pItem->product_id . '_' . ($pItem->variation_id ?? '0');
+                if (!isset($productGroups[$key])) {
+                    $productGroups[$key] = [
+                        'product_id'   => $pItem->product_id,
+                        'variation_id' => $pItem->variation_id,
+                        'items'        => [],
+                    ];
+                }
+                $productGroups[$key]['items'][] = $pItem;
+            }
 
-                $productId   = $pItem->product_id;
-                $variationId = $pItem->variation_id;
+            foreach ($productGroups as $group) {
+                $productId   = $group['product_id'];
+                $variationId = $group['variation_id'];
 
-                // How many of this product/variation were sold?
-                $posSold = PosItem::where('product_id', $productId)
+                // POS Sales & Returns
+                $posSold = (float) PosItem::where('product_id', $productId)
                     ->when($variationId, fn($q) => $q->where('variation_id', $variationId))
                     ->sum('quantity');
-                $onlineSold = OrderItem::where('product_id', $productId)
+                $posReturn = (float) SaleReturnItem::where('product_id', $productId)
+                    ->when($variationId, fn($q) => $q->where('variation_id', $variationId))
+                    ->sum('returned_qty');
+                $netPos = max(0, $posSold - $posReturn);
+
+                // Online Sales & Returns
+                $onlineSold = (float) OrderItem::where('product_id', $productId)
                     ->when($variationId, fn($q) => $q->where('variation_id', $variationId))
                     ->whereHas('order', fn($q) => $q->where('status', '!=', 'cancelled'))
                     ->sum('quantity');
+                $orderReturn = (float) OrderReturnItem::where('product_id', $productId)
+                    ->when($variationId, fn($q) => $q->where('variation_id', $variationId))
+                    ->sum('returned_qty');
+                $netOnline = max(0, $onlineSold - $orderReturn);
 
-                $totalSold = min((float)($posSold + $onlineSold), (float)$pItem->quantity);
-                if ($totalSold <= 0) continue;
+                $remSold = $netPos + $netOnline;
 
-                $unitCost = (float) $pItem->unit_price;
-                $soldCost = round($totalSold * $unitCost, 2);
+                foreach ($group['items'] as $pi) {
+                    if ($remSold <= 0) break;
 
-                $billId = $bill->id;
-                if (!isset($billPayableMap[$billId])) {
-                    $billPayableMap[$billId] = ['bill' => $bill, 'payable' => 0.0];
+                    $piReturned = (float) PurchaseReturnItem::where('purchase_item_id', $pi->id)->sum('returned_qty');
+                    $piNetQty   = max(0, $pi->quantity - $piReturned);
+                    if ($piNetQty <= 0) continue;
+
+                    $allocSold = min($remSold, $piNetQty);
+                    $allocCost = round($allocSold * (float)$pi->unit_price, 2);
+
+                    $bill = $pi->purchase?->bill;
+                    if ($bill && (float)$bill->due_amount > 0) {
+                        $billTotal = (float)$bill->total_amount;
+                        $billPaid  = (float)$bill->paid_amount;
+                        $piGross   = (float)($pi->quantity * $pi->unit_price);
+
+                        $piPaidShare = $billTotal > 0 ? round($billPaid * ($piGross / $billTotal), 2) : 0;
+                        $allocNetDue = max(0, round($allocCost - $piPaidShare, 2));
+
+                        if ($allocNetDue > 0) {
+                            $billId = $bill->id;
+                            if (!isset($billPayableMap[$billId])) {
+                                $billPayableMap[$billId] = ['bill' => $bill, 'payable' => 0.0];
+                            }
+                            $billPayableMap[$billId]['payable'] += $allocNetDue;
+                        }
+                    }
+
+                    $remSold -= $allocSold;
                 }
-                $billPayableMap[$billId]['payable'] += $soldCost;
             }
 
             // Sort by bill id DESCENDING: newest purchase bill first.
