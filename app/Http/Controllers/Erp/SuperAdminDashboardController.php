@@ -664,8 +664,8 @@ class SuperAdminDashboardController extends Controller
                     })->orWhere('sale_returns.return_to_id', (int)$selectedBranchId);
                 });
             })
-            ->selectRaw("COALESCE(CASE WHEN sale_returns.return_to_type = "branch" THEN sale_returns.return_to_id ELSE NULL END, pos.branch_id, sale_returns.return_to_id) as branch_id, COALESCE(SUM(sale_return_items.returned_qty * COALESCE(products.cost, 0)), 0) as return_cogs")
-            ->groupBy(DB::raw("COALESCE(CASE WHEN sale_returns.return_to_type = "branch" THEN sale_returns.return_to_id ELSE NULL END, pos.branch_id, sale_returns.return_to_id)"))
+            ->selectRaw("COALESCE(CASE WHEN sale_returns.return_to_type = 'branch' THEN sale_returns.return_to_id ELSE NULL END, pos.branch_id, sale_returns.return_to_id) as branch_id, COALESCE(SUM(sale_return_items.returned_qty * COALESCE(products.cost, 0)), 0) as return_cogs")
+            ->groupBy(DB::raw("COALESCE(CASE WHEN sale_returns.return_to_type = 'branch' THEN sale_returns.return_to_id ELSE NULL END, pos.branch_id, sale_returns.return_to_id)"))
             ->pluck('return_cogs', 'branch_id');
 
         $statementRows = [];
