@@ -838,7 +838,7 @@ class DashboardController extends Controller
         $monthEnd = Carbon::now()->endOfMonth();
 
         return $branches->map(function($branch) use ($today, $monthStart, $monthEnd) {
-            // Today's Sales Amount
+            // Today's Sales Amount (POS Gross + Exchanges New - Returns)
             $grossTodaySales = (float) (DB::table('pos')
                 ->where('branch_id', $branch->id)
                 ->whereDate('sale_date', $today)
@@ -846,14 +846,31 @@ class DashboardController extends Controller
                 ->selectRaw('SUM(total_amount - COALESCE(delivery, 0)) as amount')
                 ->value('amount') ?? 0);
 
+            $todayExchSales = (float) (DB::table('pos_exchange_items')
+                ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
+                ->where('pos_exchanges.branch_id', $branch->id)
+                ->whereDate('pos_exchanges.exchange_date', $today)
+                ->where('pos_exchanges.status', 'completed')
+                ->where('pos_exchange_items.type', 'new')
+                ->sum('pos_exchange_items.total_price') ?? 0);
+
             $todayReturnSales = (float) DB::table('sale_returns')
                 ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
-                ->where('sale_returns.return_to_id', $branch->id)
+                ->leftJoin('pos', 'sale_returns.pos_sale_id', '=', 'pos.id')
+                ->where(function($sq) use ($branch) {
+                    $sq->where(function($bSq) use ($branch) {
+                        $bSq->where('sale_returns.return_to_type', 'branch')
+                            ->where('sale_returns.return_to_id', $branch->id);
+                    })->orWhere(function($pSq) use ($branch) {
+                        $pSq->whereNull('sale_returns.return_to_type')
+                            ->where('pos.branch_id', $branch->id);
+                    })->orWhere('sale_returns.return_to_id', $branch->id);
+                })
                 ->whereDate('sale_returns.return_date', $today)
                 ->where('sale_returns.status', '!=', 'rejected')
                 ->sum('sale_return_items.total_price');
 
-            $todaySales = max(0, $grossTodaySales - $todayReturnSales);
+            $todaySales = max(0, ($grossTodaySales + $todayExchSales) - $todayReturnSales);
 
             // Today's Sales Qty
             $grossTodayQty = (float) DB::table('pos_items')
@@ -863,14 +880,31 @@ class DashboardController extends Controller
                 ->where('pos.status', '!=', 'cancelled')
                 ->sum('pos_items.quantity');
 
+            $todayExchQty = (float) DB::table('pos_exchange_items')
+                ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
+                ->where('pos_exchanges.branch_id', $branch->id)
+                ->whereDate('pos_exchanges.exchange_date', $today)
+                ->where('pos_exchanges.status', 'completed')
+                ->where('pos_exchange_items.type', 'new')
+                ->sum('pos_exchange_items.quantity');
+
             $todayReturnQty = (float) DB::table('sale_returns')
                 ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
-                ->where('sale_returns.return_to_id', $branch->id)
+                ->leftJoin('pos', 'sale_returns.pos_sale_id', '=', 'pos.id')
+                ->where(function($sq) use ($branch) {
+                    $sq->where(function($bSq) use ($branch) {
+                        $bSq->where('sale_returns.return_to_type', 'branch')
+                            ->where('sale_returns.return_to_id', $branch->id);
+                    })->orWhere(function($pSq) use ($branch) {
+                        $pSq->whereNull('sale_returns.return_to_type')
+                            ->where('pos.branch_id', $branch->id);
+                    })->orWhere('sale_returns.return_to_id', $branch->id);
+                })
                 ->whereDate('sale_returns.return_date', $today)
                 ->where('sale_returns.status', '!=', 'rejected')
                 ->sum('sale_return_items.returned_qty');
 
-            $todayQty = max(0, $grossTodayQty - $todayReturnQty);
+            $todayQty = max(0, ($grossTodayQty + $todayExchQty) - $todayReturnQty);
 
             // Monthly Sales Amount
             $grossMonthSales = (float) (DB::table('pos')
@@ -880,14 +914,31 @@ class DashboardController extends Controller
                 ->selectRaw('SUM(total_amount - COALESCE(delivery, 0)) as amount')
                 ->value('amount') ?? 0);
 
+            $monthExchSales = (float) (DB::table('pos_exchange_items')
+                ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
+                ->where('pos_exchanges.branch_id', $branch->id)
+                ->whereBetween('pos_exchanges.exchange_date', [$monthStart, $monthEnd])
+                ->where('pos_exchanges.status', 'completed')
+                ->where('pos_exchange_items.type', 'new')
+                ->sum('pos_exchange_items.total_price') ?? 0);
+
             $monthReturnSales = (float) DB::table('sale_returns')
                 ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
-                ->where('sale_returns.return_to_id', $branch->id)
+                ->leftJoin('pos', 'sale_returns.pos_sale_id', '=', 'pos.id')
+                ->where(function($sq) use ($branch) {
+                    $sq->where(function($bSq) use ($branch) {
+                        $bSq->where('sale_returns.return_to_type', 'branch')
+                            ->where('sale_returns.return_to_id', $branch->id);
+                    })->orWhere(function($pSq) use ($branch) {
+                        $pSq->whereNull('sale_returns.return_to_type')
+                            ->where('pos.branch_id', $branch->id);
+                    })->orWhere('sale_returns.return_to_id', $branch->id);
+                })
                 ->whereBetween('sale_returns.return_date', [$monthStart, $monthEnd])
                 ->where('sale_returns.status', '!=', 'rejected')
                 ->sum('sale_return_items.total_price');
 
-            $monthSales = max(0, $grossMonthSales - $monthReturnSales);
+            $monthSales = max(0, ($grossMonthSales + $monthExchSales) - $monthReturnSales);
 
             // Monthly Sales Qty
             $grossMonthQty = (float) DB::table('pos_items')
@@ -897,14 +948,31 @@ class DashboardController extends Controller
                 ->where('pos.status', '!=', 'cancelled')
                 ->sum('pos_items.quantity');
 
+            $monthExchQty = (float) DB::table('pos_exchange_items')
+                ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
+                ->where('pos_exchanges.branch_id', $branch->id)
+                ->whereBetween('pos_exchanges.exchange_date', [$monthStart, $monthEnd])
+                ->where('pos_exchanges.status', 'completed')
+                ->where('pos_exchange_items.type', 'new')
+                ->sum('pos_exchange_items.quantity');
+
             $monthReturnQty = (float) DB::table('sale_returns')
                 ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
-                ->where('sale_returns.return_to_id', $branch->id)
+                ->leftJoin('pos', 'sale_returns.pos_sale_id', '=', 'pos.id')
+                ->where(function($sq) use ($branch) {
+                    $sq->where(function($bSq) use ($branch) {
+                        $bSq->where('sale_returns.return_to_type', 'branch')
+                            ->where('sale_returns.return_to_id', $branch->id);
+                    })->orWhere(function($pSq) use ($branch) {
+                        $pSq->whereNull('sale_returns.return_to_type')
+                            ->where('pos.branch_id', $branch->id);
+                    })->orWhere('sale_returns.return_to_id', $branch->id);
+                })
                 ->whereBetween('sale_returns.return_date', [$monthStart, $monthEnd])
                 ->where('sale_returns.status', '!=', 'rejected')
                 ->sum('sale_return_items.returned_qty');
 
-            $monthQty = max(0, $grossMonthQty - $monthReturnQty);
+            $monthQty = max(0, ($grossMonthQty + $monthExchQty) - $monthReturnQty);
 
             return [
                 'name' => $branch->name,
@@ -1019,7 +1087,7 @@ class DashboardController extends Controller
         $startDate = Carbon::today()->subDays(6)->startOfDay();
         $endDate = Carbon::today()->endOfDay();
         
-        // Daily gross sales
+        // Daily gross POS sales
         $grossResults = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
             ->where('pos.sale_date', '>=', $startDate)
@@ -1031,13 +1099,37 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('date');
 
+        // Daily POS exchanges (New Items)
+        $exchangeResults = DB::table('pos_exchange_items')
+            ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
+            ->where('pos_exchanges.exchange_date', '>=', $startDate)
+            ->where('pos_exchanges.exchange_date', '<=', $endDate)
+            ->where('pos_exchanges.status', 'completed')
+            ->where('pos_exchange_items.type', 'new')
+            ->when($branchId, fn($q) => $q->where('pos_exchanges.branch_id', $branchId))
+            ->selectRaw('DATE(pos_exchanges.exchange_date) as date, SUM(pos_exchange_items.quantity) as exch_qty, SUM(pos_exchange_items.total_price) as exch_rev')
+            ->groupBy(DB::raw('DATE(pos_exchanges.exchange_date)'))
+            ->get()
+            ->keyBy('date');
+
         // Daily sale returns
         $returnResults = DB::table('sale_returns')
             ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->leftJoin('pos', 'sale_returns.pos_sale_id', '=', 'pos.id')
             ->where('sale_returns.return_date', '>=', $startDate)
             ->where('sale_returns.return_date', '<=', $endDate)
             ->where('sale_returns.status', '!=', 'rejected')
-            ->when($branchId, fn($q) => $q->where('sale_returns.return_to_id', $branchId))
+            ->when($branchId, function($q) use ($branchId) {
+                $q->where(function($sq) use ($branchId) {
+                    $sq->where(function($bSq) use ($branchId) {
+                        $bSq->where('sale_returns.return_to_type', 'branch')
+                            ->where('sale_returns.return_to_id', $branchId);
+                    })->orWhere(function($pSq) use ($branchId) {
+                        $pSq->whereNull('sale_returns.return_to_type')
+                            ->where('pos.branch_id', $branchId);
+                    })->orWhere('sale_returns.return_to_id', $branchId);
+                });
+            })
             ->selectRaw('DATE(sale_returns.return_date) as date, SUM(sale_return_items.returned_qty) as ret_qty, SUM(sale_return_items.total_price) as ret_rev')
             ->groupBy(DB::raw('DATE(sale_returns.return_date)'))
             ->get()
@@ -1053,15 +1145,18 @@ class DashboardController extends Controller
             $labels[] = $date->format('D, M d');
             
             $gross = $grossResults->get($dateStr);
+            $exch = $exchangeResults->get($dateStr);
             $ret = $returnResults->get($dateStr);
 
             $gQty = (float)($gross->total_qty ?? 0);
             $gRev = (float)($gross->total_rev ?? 0);
+            $eQty = (float)($exch->exch_qty ?? 0);
+            $eRev = (float)($exch->exch_rev ?? 0);
             $rQty = (float)($ret->ret_qty ?? 0);
             $rRev = (float)($ret->ret_rev ?? 0);
 
-            $qtyData[] = (int) max(0, $gQty - $rQty);
-            $revData[] = (float) max(0, $gRev - $rRev);
+            $qtyData[] = (int) max(0, ($gQty + $eQty) - $rQty);
+            $revData[] = (float) max(0, ($gRev + $eRev) - $rRev);
         }
 
         return [
@@ -1076,18 +1171,37 @@ class DashboardController extends Controller
         $branchId = $this->getRestrictedBranchId();
         $today = Carbon::today()->toDateString();
 
-        // 1. Today's Net Sales (POS active sales minus POS returns + online non-cancelled orders)
+        // 1. Today's Net Sales (POS active sales + POS exchanges new items - POS returns + online non-cancelled orders)
         $posSalesQuery = DB::table('pos')
             ->whereDate('sale_date', $today)
             ->where('status', '!=', 'cancelled');
         if ($branchId) $posSalesQuery->where('branch_id', $branchId);
         $posSales = (float) $posSalesQuery->sum('total_amount');
 
+        $posExchangeQuery = DB::table('pos_exchange_items')
+            ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
+            ->whereDate('pos_exchanges.exchange_date', $today)
+            ->where('pos_exchanges.status', 'completed')
+            ->where('pos_exchange_items.type', 'new');
+        if ($branchId) $posExchangeQuery->where('pos_exchanges.branch_id', $branchId);
+        $posExchanges = (float) $posExchangeQuery->sum('pos_exchange_items.total_price');
+
         $posReturnQuery = DB::table('sale_returns')
             ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->leftJoin('pos', 'sale_returns.pos_sale_id', '=', 'pos.id')
             ->whereDate('sale_returns.return_date', $today)
             ->where('sale_returns.status', '!=', 'rejected');
-        if ($branchId) $posReturnQuery->where('sale_returns.return_to_id', $branchId);
+        if ($branchId) {
+            $posReturnQuery->where(function($sq) use ($branchId) {
+                $sq->where(function($bSq) use ($branchId) {
+                    $bSq->where('sale_returns.return_to_type', 'branch')
+                        ->where('sale_returns.return_to_id', $branchId);
+                })->orWhere(function($pSq) use ($branchId) {
+                    $pSq->whereNull('sale_returns.return_to_type')
+                        ->where('pos.branch_id', $branchId);
+                })->orWhere('sale_returns.return_to_id', $branchId);
+            });
+        }
         $posReturns = (float) $posReturnQuery->sum('sale_return_items.total_price');
 
         $onlineSales = 0;
@@ -1097,7 +1211,7 @@ class DashboardController extends Controller
                 ->where('status', '!=', 'cancelled')
                 ->sum('total');
         }
-        $totalSalesValue = max(0, ($posSales - $posReturns) + $onlineSales);
+        $totalSalesValue = max(0, ($posSales + $posExchanges - $posReturns) + $onlineSales);
 
         // 2. Today's Total Collection (Customer payments received today)
         $collectionQuery = DB::table('payments')->whereDate('payment_date', $today);
