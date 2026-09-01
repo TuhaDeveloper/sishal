@@ -19,6 +19,18 @@ class SuperAdminDashboardController extends Controller
         }
     }
 
+    public static function clearCache()
+    {
+        $ranges = ['this_month', 'today', 'this_quarter', 'this_year', 'week'];
+        $branches = Branch::pluck('id')->push('all')->push(0)->toArray();
+        
+        foreach ($branches as $bId) {
+            foreach ($ranges as $r) {
+                Cache::forget("super_admin_dash_v26_{$bId}_{$r}");
+            }
+        }
+    }
+
     public function index(Request $request)
     {
         $this->checkSuperAdminAccess();
@@ -60,7 +72,7 @@ class SuperAdminDashboardController extends Controller
      */
     private function fetchDashboardData($selectedBranchId, $dateRange, $branches)
     {
-        $cacheKey = "super_admin_dash_v25_{$selectedBranchId}_{$dateRange}";
+        $cacheKey = "super_admin_dash_v26_{$selectedBranchId}_{$dateRange}";
 
         return Cache::remember($cacheKey, 180, function () use ($selectedBranchId, $dateRange, $branches) {
             $monthsWindow = $this->getMonthsArrayForRange($dateRange);
@@ -71,7 +83,7 @@ class SuperAdminDashboardController extends Controller
                 'topSellingProducts' => $this->getTopSellingProducts($selectedBranchId, $dateRange),
                 'branchSalesStatement' => $this->getBranchSalesStatement($branches, $selectedBranchId, $monthsWindow),
                 'grossSalesStatement' => $this->getGrossSalesStatement($selectedBranchId, $monthsWindow),
-                'expenseStatement' => $this->getExpenseStatement($selectedBranchId, $monthsWindow),
+                'expenseStatement' => $this->getExpenseStatement($branches, $selectedBranchId, $monthsWindow),
             ];
         });
     }
@@ -942,22 +954,18 @@ class SuperAdminDashboardController extends Controller
     }
 
     /**
-     * Section 6: Expense Statement (Dynamic Month Columns)
+     * Section 6: Expense Statement — Branch Wise (Dynamic Month Columns)
      */
-    private function getExpenseStatement($selectedBranchId, $months)
+    private function getExpenseStatement($branches, $selectedBranchId, $months)
     {
         $monthHeadings = array_column($months, 'label');
+        $activeBranches = $branches;
+        if ($selectedBranchId !== 'all' && is_numeric($selectedBranchId)) {
+            $activeBranches = $branches->where('id', (int)$selectedBranchId);
+        }
+
         $startDate = $months[0]['start'];
         $endDate = $months[count($months) - 1]['end'];
-
-        $allCategories = DB::table('chart_of_accounts')
-            ->join('chart_of_account_types', 'chart_of_accounts.type_id', '=', 'chart_of_account_types.id')
-            ->where('chart_of_account_types.name', 'like', 'Expense%')
-            ->where('chart_of_accounts.name', 'not like', '%Purchase%')
-            ->pluck('chart_of_accounts.name')
-            ->unique()
-            ->values()
-            ->toArray();
 
         $expenseJournalQuery = DB::table('journal_entries')
             ->join('journals', 'journal_entries.journal_id', '=', 'journals.id')
@@ -973,18 +981,20 @@ class SuperAdminDashboardController extends Controller
         }
 
         $expenseData = $expenseJournalQuery
-            ->selectRaw("chart_of_accounts.name as category_name, DATE_FORMAT(journals.entry_date, '%Y-%m') as ym_code, COALESCE(SUM(journal_entries.debit) - SUM(journal_entries.credit), 0) as amount")
-            ->groupBy('chart_of_accounts.name', DB::raw("DATE_FORMAT(journals.entry_date, '%Y-%m')"))
+            ->selectRaw("journals.branch_id, DATE_FORMAT(journals.entry_date, '%Y-%m') as ym_code, COALESCE(SUM(journal_entries.debit) - SUM(journal_entries.credit), 0) as amount")
+            ->groupBy('journals.branch_id', DB::raw("DATE_FORMAT(journals.entry_date, '%Y-%m')"))
             ->get()
-            ->groupBy('category_name');
+            ->groupBy(function($item) {
+                return (string)($item->branch_id ?? 'head_office');
+            });
 
-        $categoryRows = [];
+        $branchRows = [];
         $monthlyTotals = array_fill(0, count($months), 0);
         $totalYearExpense = 0;
 
-        foreach ($allCategories as $catName) {
-            $catMonthlyData = $expenseData->get($catName) ?? collect();
-            $mappedByMonth = $catMonthlyData->keyBy('ym_code');
+        foreach ($activeBranches as $b) {
+            $branchMonthlyData = $expenseData->get((string)$b->id) ?? collect();
+            $mappedByMonth = $branchMonthlyData->keyBy('ym_code');
 
             $monthlyVals = [];
             $yearTotal = 0;
@@ -1000,16 +1010,43 @@ class SuperAdminDashboardController extends Controller
 
             $totalYearExpense += $yearTotal;
 
-            $categoryRows[] = [
-                'category' => $catName,
+            $branchRows[] = [
+                'branch' => $b->name,
                 'months' => $monthlyVals,
                 'year_total' => $yearTotal
             ];
         }
 
+        // Also check if there are expenses with null branch_id (Head Office/General) when viewing all branches
+        if (($selectedBranchId === 'all' || $selectedBranchId === 'null') && $expenseData->has('head_office')) {
+            $hoMonthlyData = $expenseData->get('head_office') ?? collect();
+            $mappedByMonth = $hoMonthlyData->keyBy('ym_code');
+
+            $monthlyVals = [];
+            $yearTotal = 0;
+
+            foreach ($months as $mIdx => $mMeta) {
+                $ymKey = $mMeta['ym_code'];
+                $val = (float) ($mappedByMonth->has($ymKey) ? max(0, $mappedByMonth->get($ymKey)->amount) : 0);
+
+                $monthlyVals[] = $val;
+                $yearTotal += $val;
+                $monthlyTotals[$mIdx] += $val;
+            }
+
+            if ($yearTotal > 0) {
+                $totalYearExpense += $yearTotal;
+                $branchRows[] = [
+                    'branch' => 'Head Office / General',
+                    'months' => $monthlyVals,
+                    'year_total' => $yearTotal
+                ];
+            }
+        }
+
         return [
             'months' => $monthHeadings,
-            'categories' => $categoryRows,
+            'branches' => $branchRows,
             'total' => [
                 'months' => $monthlyTotals,
                 'year_total' => $totalYearExpense

@@ -181,6 +181,37 @@
     box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.02);
 }
 
+/* Sticky Left Column for Horizontal Scrolling Tables */
+.sa-table-sticky-col th:first-child {
+    position: sticky;
+    left: 0;
+    top: 0;
+    z-index: 10;
+    background: #f8fafc;
+    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.08);
+}
+
+.sa-table-sticky-col tbody td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #ffffff;
+    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.08);
+}
+
+.sa-table-sticky-col tbody tr:hover td:first-child {
+    background-color: #f8fafc;
+}
+
+.sa-table-sticky-col tfoot td:first-child {
+    position: sticky;
+    left: 0;
+    bottom: 0;
+    z-index: 10;
+    background: #f8fafc;
+    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.08);
+}
+
 /* Rank Badges */
 .rank-badge {
     width: 28px;

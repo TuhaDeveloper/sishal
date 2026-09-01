@@ -3,7 +3,7 @@
 @section('title', 'Super Admin Dashboard')
 
 @push('css')
-    <link href="{{ asset('css/super_admin_dashboard.css') }}?v=1.0.1" rel="stylesheet">
+    <link href="{{ asset('css/super_admin_dashboard.css') }}?v=1.0.2" rel="stylesheet">
 @endpush
 
 @section('body')
@@ -23,11 +23,11 @@
                 @include('erp.components.super_admin.sales_chart')
             </div>
 
-            <!-- SECTION 3 & SECTION 4 ROW -->
-            <div class="row g-4 mb-4">
-                @include('erp.components.super_admin.top_products')
-                @include('erp.components.super_admin.branch_statement')
-            </div>
+            <!-- SECTION 3: Branch Sales Statement (Full Width 100%) -->
+            @include('erp.components.super_admin.branch_statement')
+
+            <!-- SECTION 4: Top Selling Products (Full Width 100%) -->
+            @include('erp.components.super_admin.top_products')
 
             <!-- SECTION 5: Gross Sales Statement -->
             @include('erp.components.super_admin.gross_statement')

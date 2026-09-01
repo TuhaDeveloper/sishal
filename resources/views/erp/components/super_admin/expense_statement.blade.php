@@ -4,7 +4,7 @@
     <div class="sa-card-header">
         <h2 class="sa-card-title">
             <i class="fas fa-wallet sa-icon-expense"></i>
-            Expense Statement (Chart of Accounts)
+            Expense Statement (Branch Wise)
         </h2>
         <div class="d-flex align-items-center gap-2">
             <a href="{{ route('vouchers.index') }}" class="btn btn-sm btn-outline-danger font-semibold">
@@ -14,10 +14,10 @@
     </div>
 
     <div class="table-container-scroll">
-        <table class="sa-table">
+        <table class="sa-table sa-table-sticky-col">
             <thead>
                 <tr id="expenseStatementHead">
-                    <th>Expense Category</th>
+                    <th>Branch</th>
                     @foreach($expenseStatement['months'] as $m)
                         <th class="text-end">{{ $m }}</th>
                     @endforeach
@@ -25,15 +25,15 @@
                 </tr>
             </thead>
             <tbody id="expenseStatementBody">
-                @foreach($expenseStatement['categories'] as $cat)
+                @foreach(($expenseStatement['branches'] ?? $expenseStatement['categories'] ?? []) as $bRow)
                 <tr>
                     <td class="fw-bold text-dark">
-                        <i class="fas fa-tag text-muted me-2 opacity-50"></i>{{ $cat['category'] }}
+                        <i class="fas fa-building text-danger me-2 opacity-75"></i>{{ $bRow['branch'] ?? $bRow['category'] ?? '' }}
                     </td>
-                    @foreach($cat['months'] as $mVal)
+                    @foreach($bRow['months'] as $mVal)
                         <td class="text-end">৳{{ number_format($mVal) }}</td>
                     @endforeach
-                    <td class="text-end fw-bold text-danger">৳{{ number_format($cat['year_total']) }}</td>
+                    <td class="text-end fw-bold text-danger">৳{{ number_format($bRow['year_total']) }}</td>
                 </tr>
                 @endforeach
             </tbody>

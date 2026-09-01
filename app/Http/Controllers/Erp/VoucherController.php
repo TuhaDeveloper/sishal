@@ -247,7 +247,7 @@ class VoucherController extends Controller
                 ]);
             }
 
-            \App\Http\Controllers\Erp\DashboardController::clearCache();
+            \App\Http\Controllers\Erp\SuperAdminDashboardController::clearCache();
             DB::commit();
             return redirect()->route('vouchers.index')->with('success', 'Voucher created successfully.');
         } catch (\Exception $e) {
@@ -267,7 +267,7 @@ class VoucherController extends Controller
             // Delete associated entries first (though database cascade should handle it)
             $journal->entries()->delete();
             $journal->delete();
-            \App\Http\Controllers\Erp\DashboardController::clearCache();
+            \App\Http\Controllers\Erp\SuperAdminDashboardController::clearCache();
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Voucher deleted successfully.']);
         } catch (\Exception $e) {

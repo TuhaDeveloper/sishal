@@ -185,6 +185,16 @@
     }
 
     function updateDashboardDOM(data) {
+        // Update Timeframe Badge in Branch Sales Statement
+        const rangeVal = document.getElementById('rangeSelect').value;
+        let badgeText = '6 Months Qty Overview';
+        if (rangeVal === 'this_year') badgeText = '12 Months Overview (This Year)';
+        else if (rangeVal === 'this_quarter') badgeText = '3 Months Overview (This Quarter)';
+        else if (rangeVal === 'today') badgeText = 'Today (6 Months Trend)';
+        else if (rangeVal === 'this_month') badgeText = 'This Month (6 Months Trend)';
+        const badgeEl = document.getElementById('branchStatementTimeframeBadge');
+        if (badgeEl) badgeEl.innerText = badgeText;
+
         // 1. Today's Sales Branch Wise
         if (data.todaySalesBranchWise) {
             let tbodyHtml = '';
@@ -238,8 +248,10 @@
                         <span class="rank-badge ${rankClass}">${tp.rank}</span>
                     </td>
                     <td>
-                        <div class="fw-bold text-dark text-truncate" style="max-width: 180px;" title="${tp.product}">${tp.product}</div>
-                        <div class="small text-muted"><i class="fas fa-code-branch me-1"></i>${tp.branch}</div>
+                        <div class="fw-bold text-dark">${tp.product}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-code-branch me-1 text-primary"></i>${tp.branch}</span>
                     </td>
                     <td class="text-center fw-semibold">${formatNumber(tp.sold_qty)} pcs</td>
                     <td class="text-end fw-bold text-dark">৳${formatNumber(tp.sales_amount)}</td>
@@ -331,7 +343,7 @@
 
         // 6. Expense Statement
         if (data.expenseStatement) {
-            let eHead = '<th>Expense Category</th>';
+            let eHead = '<th>Branch</th>';
             data.expenseStatement.months.forEach(m => {
                 eHead += `<th class="text-end">${m}</th>`;
             });
@@ -339,12 +351,14 @@
             document.getElementById('expenseStatementHead').innerHTML = eHead;
 
             let eBody = '';
-            data.expenseStatement.categories.forEach(cat => {
-                eBody += `<tr><td class="fw-bold text-dark"><i class="fas fa-tag text-muted me-2 opacity-50"></i>${cat.category}</td>`;
-                cat.months.forEach(mv => {
+            const expenseRows = data.expenseStatement.branches || data.expenseStatement.categories || [];
+            expenseRows.forEach(bRow => {
+                const rowLabel = bRow.branch || bRow.category || '';
+                eBody += `<tr><td class="fw-bold text-dark"><i class="fas fa-building text-danger me-2 opacity-75"></i>${rowLabel}</td>`;
+                bRow.months.forEach(mv => {
                     eBody += `<td class="text-end">৳${formatNumber(mv)}</td>`;
                 });
-                eBody += `<td class="text-end fw-bold text-danger">৳${formatNumber(cat.year_total)}</td></tr>`;
+                eBody += `<td class="text-end fw-bold text-danger">৳${formatNumber(bRow.year_total)}</td></tr>`;
             });
             document.getElementById('expenseStatementBody').innerHTML = eBody;
 

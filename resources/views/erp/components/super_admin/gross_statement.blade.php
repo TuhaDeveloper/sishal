@@ -12,7 +12,7 @@
     </div>
 
     <div class="table-container-scroll">
-        <table class="sa-table">
+        <table class="sa-table sa-table-sticky-col">
             <thead>
                 <tr id="grossStatementHead">
                     <th>Financial Metric</th>
