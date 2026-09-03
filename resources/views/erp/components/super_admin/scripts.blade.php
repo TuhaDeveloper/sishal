@@ -297,7 +297,7 @@
             document.getElementById('branchStatementFoot').innerHTML = mFoot;
         }
 
-        // 5. Gross Sales Statement
+        // 5. Net Sales & Profit Statement
         if (data.grossSalesStatement) {
             let gHead = '<th>Financial Metric</th>';
             data.grossSalesStatement.months.forEach(m => {
@@ -309,20 +309,29 @@
             let gBody = '';
             Object.keys(data.grossSalesStatement.rows).forEach(key => {
                 const row = data.grossSalesStatement.rows[key];
-                const trClass = key === 'gross_profit' ? 'table-light fw-bold' : '';
-                const tdClass = key === 'gross_profit' ? 'text-primary' : 'text-dark';
+                const trClass = key === 'net_profit' ? 'table-light fw-bold' : (key === 'gross_profit' ? 'bg-light-subtle' : '');
+                const tdClass = key === 'net_profit' ? 'text-success' : (key === 'gross_profit' ? 'text-primary' : (key === 'operating_expenses' ? 'text-danger' : 'text-dark'));
+                let iconPrefix = '';
+                if (key === 'operating_expenses') iconPrefix = '<i class="fas fa-wallet text-danger me-1 opacity-75"></i>';
+                else if (key === 'net_profit') iconPrefix = '<i class="fas fa-trophy text-success me-1"></i>';
+                else if (key === 'gross_profit') iconPrefix = '<i class="fas fa-coins text-primary me-1"></i>';
 
-                gBody += `<tr class="${trClass}"><td class="fw-bold ${tdClass}">${row.label}</td>`;
+                gBody += `<tr class="${trClass}"><td class="fw-bold ${tdClass}">${iconPrefix}${row.label}</td>`;
 
                 row.values.forEach(val => {
                     if (row.format === 'qty') {
                         gBody += `<td class="text-end"><span class="fw-semibold text-secondary">${formatNumber(val)} pcs</span></td>`;
                     } else if (row.format === 'currency') {
                         gBody += `<td class="text-end">৳${formatNumber(val)}</td>`;
+                    } else if (row.format === 'currency_expense') {
+                        gBody += `<td class="text-end"><span class="text-danger fw-semibold">৳${formatNumber(val)}</span></td>`;
                     } else if (row.format === 'currency_highlight') {
-                        gBody += `<td class="text-end"><span class="amount-positive">৳${formatNumber(val)}</span></td>`;
+                        gBody += `<td class="text-end"><span class="text-primary fw-bold">৳${formatNumber(val)}</span></td>`;
+                    } else if (row.format === 'currency_net') {
+                        const netClass = val >= 0 ? 'amount-positive' : 'amount-negative';
+                        gBody += `<td class="text-end"><span class="${netClass} fw-bold">৳${formatNumber(val)}</span></td>`;
                     } else if (row.format === 'percent') {
-                        const pillClass = val >= 40 ? 'profit-pill-high' : (val >= 25 ? 'profit-pill-mid' : 'profit-pill-low');
+                        const pillClass = val >= 25 ? 'profit-pill-high' : (val >= 10 ? 'profit-pill-mid' : 'profit-pill-low');
                         gBody += `<td class="text-end"><span class="profit-pill ${pillClass}">${val}%</span></td>`;
                     }
                 });
@@ -331,10 +340,16 @@
                     gBody += `<td class="text-end fw-bold text-dark">${formatNumber(row.year_total)} pcs</td>`;
                 } else if (row.format === 'currency') {
                     gBody += `<td class="text-end fw-bold">৳${formatNumber(row.year_total)}</td>`;
+                } else if (row.format === 'currency_expense') {
+                    gBody += `<td class="text-end fw-bold text-danger">৳${formatNumber(row.year_total)}</td>`;
                 } else if (row.format === 'currency_highlight') {
-                    gBody += `<td class="text-end fw-bold"><span class="amount-positive fs-6">৳${formatNumber(row.year_total)}</span></td>`;
+                    gBody += `<td class="text-end fw-bold text-primary">৳${formatNumber(row.year_total)}</td>`;
+                } else if (row.format === 'currency_net') {
+                    const netClass = row.year_total >= 0 ? 'amount-positive' : 'amount-negative';
+                    gBody += `<td class="text-end fw-bold"><span class="${netClass} fs-6">৳${formatNumber(row.year_total)}</span></td>`;
                 } else if (row.format === 'percent') {
-                    gBody += `<td class="text-end fw-bold"><span class="profit-pill profit-pill-high fs-6">${row.year_total}%</span></td>`;
+                    const pillClass = row.year_total >= 25 ? 'profit-pill-high' : (row.year_total >= 10 ? 'profit-pill-mid' : 'profit-pill-low');
+                    gBody += `<td class="text-end fw-bold"><span class="profit-pill ${pillClass} fs-6">${row.year_total}%</span></td>`;
                 }
                 gBody += '</tr>';
             });

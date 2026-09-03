@@ -25,7 +25,7 @@ class DashboardController extends Controller
         $branchId = $this->getRestrictedBranchId() ?? 0;
         
         // Cache dashboard for 5 minutes (300 seconds)
-        $cacheKey = "dash_v3_{$branchId}_{$dateRange}";
+        $cacheKey = "dash_v4_{$branchId}_{$dateRange}";
         
         $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function() use ($dateRange) {
             $startDate = $this->getStartDate($dateRange);
@@ -847,14 +847,21 @@ class DashboardController extends Controller
                 ->selectRaw('COALESCE(SUM(invoices.total_amount), 0) as amount')
                 ->value('amount') ?? 0);
 
-            // Today's Sales Qty (Parent items only, avoiding double-counting combo items)
+            // Today's Sales Qty (Physical pieces: single items + combo child items)
             $grossTodayQty = (float) DB::table('pos_items')
                 ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-                ->whereNull('pos_items.parent_item_id')
+                ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
                 ->where('pos.branch_id', $branch->id)
                 ->whereDate('pos.sale_date', $today)
                 ->where('pos.status', '!=', 'cancelled')
-                ->sum('pos_items.quantity');
+                ->selectRaw('COALESCE(SUM(
+                    CASE 
+                        WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity
+                        WHEN (products.type != "combo" OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity
+                        ELSE 0
+                    END
+                ), 0) as qty')
+                ->value('qty');
 
             $todayExchQty = (float) DB::table('pos_exchange_items')
                 ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
@@ -891,14 +898,21 @@ class DashboardController extends Controller
                 ->selectRaw('COALESCE(SUM(invoices.total_amount), 0) as amount')
                 ->value('amount') ?? 0);
 
-            // Monthly Sales Qty (Parent items only)
+            // Monthly Sales Qty (Physical pieces: single items + combo child items)
             $grossMonthQty = (float) DB::table('pos_items')
                 ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-                ->whereNull('pos_items.parent_item_id')
+                ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
                 ->where('pos.branch_id', $branch->id)
                 ->whereBetween('pos.sale_date', [$monthStart, $monthEnd])
                 ->where('pos.status', '!=', 'cancelled')
-                ->sum('pos_items.quantity');
+                ->selectRaw('COALESCE(SUM(
+                    CASE 
+                        WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity
+                        WHEN (products.type != "combo" OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity
+                        ELSE 0
+                    END
+                ), 0) as qty')
+                ->value('qty');
 
             $monthExchQty = (float) DB::table('pos_exchange_items')
                 ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
@@ -989,6 +1003,7 @@ class DashboardController extends Controller
                 foreach ($ranges as $r) {
                     \Illuminate\Support\Facades\Cache::forget("dash_v2_{$b}_{$r}");
                     \Illuminate\Support\Facades\Cache::forget("dash_v3_{$b}_{$r}");
+                    \Illuminate\Support\Facades\Cache::forget("dash_v4_{$b}_{$r}");
                 }
             }
         } catch (\Exception $e) {
@@ -1051,15 +1066,21 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('date');
 
-        // Daily gross POS sales qty (Parent items only)
+        // Daily gross POS sales qty (Physical pieces: single items + combo child items)
         $grossResults = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-            ->whereNull('pos_items.parent_item_id')
+            ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
             ->where('pos.sale_date', '>=', $startDate)
             ->where('pos.sale_date', '<=', $endDate)
             ->where('pos.status', '!=', 'cancelled')
             ->when($branchId, fn($q) => $q->where('pos.branch_id', $branchId))
-            ->selectRaw('DATE(pos.sale_date) as date, SUM(pos_items.quantity) as total_qty')
+            ->selectRaw('DATE(pos.sale_date) as date, COALESCE(SUM(
+                CASE 
+                    WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity
+                    WHEN (products.type != "combo" OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity
+                    ELSE 0
+                END
+            ), 0) as total_qty')
             ->groupBy(DB::raw('DATE(pos.sale_date)'))
             ->get()
             ->keyBy('date');

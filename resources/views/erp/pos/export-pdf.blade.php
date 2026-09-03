@@ -146,7 +146,13 @@
                     <td class="fw-bold">{{ $sale->sale_number ?? '-' }}</td>
                     <td class="text-center">{{ $sale->sale_date ? \Carbon\Carbon::parse($sale->sale_date)->format('d/m/y') : '-' }}</td>
                     <td>{{ substr($sale->customer->name ?? 'Walk-in', 0, 10) }}</td>
-                    <td>{{ substr($product->name ?? '-', 0, 15) }}<br><small>{{ $product->style_number ?? '-' }}</small></td>
+                    <td>
+                        {{ substr($product->name ?? '-', 0, 15) }}
+                        @if(($product->type ?? '') === 'combo')
+                            <br><strong style="color: #0284c7; font-size: 5px;">[COMBO: {{ $item->childItems?->sum('quantity') ?: $item->quantity }} pcs]</strong>
+                        @endif
+                        <br><small>{{ $product->style_number ?? '-' }}</small>
+                    </td>
                     <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
                     <td class="text-center">{{ $item->quantity }}</td>
                     <td class="text-center fw-bold">{{ $invTSQty }}</td>

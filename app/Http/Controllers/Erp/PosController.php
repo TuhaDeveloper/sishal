@@ -722,9 +722,31 @@ class PosController extends Controller
         $totalQty = $itemTotals->total_qty ?? 0;
         $totalAmount = $itemTotals->total_amount ?? 0;
 
+        // Accurate Physical Piece Totals for Single and Combo items
+        $filteredItemIdsForChild = clone $query;
+        $childQtySum = (float) \DB::table('pos_items')
+            ->whereIn('parent_item_id', $filteredItemIdsForChild->select('pos_items.id'))
+            ->sum('quantity');
+
+        $filteredItemIdsForCombo = clone $query;
+        $comboParentQty = (float) \DB::table('pos_items')
+            ->join('products', 'pos_items.product_id', '=', 'products.id')
+            ->whereIn('pos_items.id', $filteredItemIdsForCombo->select('pos_items.id'))
+            ->where('products.type', 'combo')
+            ->sum('pos_items.quantity');
+
+        $singleParentQty = max(0, $totalQty - $comboParentQty);
+        $totalPhysicalQty = $singleParentQty + $childQtySum;
+        $actPhysicalQty = $totalPhysicalQty - ($returnTotals->reg_ret_qty ?? 0) - ($returnTotals->exch_ret_qty ?? 0) + $exchangeNewTotals;
+
         // Pass all totals to the view
         $reportTotals = [
             'sell_qty' => $totalQty,
+            'combo_qty' => $comboParentQty,
+            'single_qty' => $singleParentQty,
+            'combo_child_qty' => $childQtySum,
+            'total_physical_qty' => $totalPhysicalQty,
+            'act_physical_qty' => $actPhysicalQty,
             'gross_amt' => $itemTotals->gross_amount ?? 0,
             'sell_amt' => $totalAmount,
             'delivery' => $saleTotals->total_delivery ?? 0,
@@ -859,6 +881,19 @@ class PosController extends Controller
                     $q->where('status', $status);
                 }
             });
+        }
+
+        // Filter by Product Type (Single / Combo)
+        if ($request->filled('product_type')) {
+            if ($request->product_type === 'combo') {
+                $query->whereHas('product', function ($q) {
+                    $q->where('type', 'combo');
+                });
+            } elseif ($request->product_type === 'single') {
+                $query->whereHas('product', function ($q) {
+                    $q->where('type', '!=', 'combo');
+                });
+            }
         }
 
         // Filter by Product/Style/Category/Brand/Season/Gender
@@ -1851,6 +1886,8 @@ class PosController extends Controller
                 'product.season',
                 'product.gender',
                 'variation.attributeValues.attribute',
+                'childItems.product',
+                'childItems.variation.attributeValues',
                 'returnItems'
             ]);
 
@@ -1876,7 +1913,8 @@ class PosController extends Controller
             'Color',
             'Size',
             'Unit Price',
-            'Sales Qty',
+            'Billed Qty',
+            'Physical Pcs',
             'Total S-Qty',
             'Sales Amount',
             'Total Sales Amount',
@@ -1902,10 +1940,11 @@ class PosController extends Controller
         ];
 
         $sheet->fromArray([$headers], NULL, 'A1');
-        $sheet->getStyle('A1:AH1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:AM1')->getFont()->setBold(true);
 
         // Initialize totals
         $totalSellQty = 0;
+        $totalPhysicalQty = 0;
         $totalGrossAmt = 0;
         $totalDelivery = 0;
         $totalVat = 0;
@@ -1942,6 +1981,12 @@ class PosController extends Controller
             $isFirst = ($index == 0 || $items[$index - 1]->pos_sale_id != $item->pos_sale_id);
 
             // Item Level
+            $isCombo = ($product?->type === 'combo');
+            $childItems = $item->childItems ?? collect();
+            $comboItemsQty = $childItems->sum('quantity');
+            $physicalQty = $isCombo ? ($comboItemsQty > 0 ? $comboItemsQty : $item->quantity) : $item->quantity;
+            $totalPhysicalQty += $physicalQty;
+
             $grossAmt = $item->quantity * $item->unit_price;
             $regRetItems = $item->returnItems->filter(fn($ri) => ($ri->saleReturn?->refund_type ?? '') !== 'exchange');
             $exchRetItems = $item->returnItems->filter(fn($ri) => ($ri->saleReturn?->refund_type ?? '') === 'exchange');
@@ -2034,6 +2079,11 @@ class PosController extends Controller
                 $invExchRetAmt = $i_ExchRetAmt;
             }
 
+            $productDisplayName = ($product->name ?? '-');
+            if ($isCombo) {
+                $productDisplayName .= " [COMBO: {$physicalQty} pcs]";
+            }
+
             $data = [
                 $index + 1,
                 $sale->sale_number ?? '-',
@@ -2045,12 +2095,13 @@ class PosController extends Controller
                 $product->brand->name ?? '-',
                 $product->season->name ?? '-',
                 $product->gender->name ?? '-',
-                $product->name ?? '-',
+                $productDisplayName,
                 $product->style_number ?? '-',
                 $color,
                 $size,
                 $item->unit_price,
                 $item->quantity,
+                $physicalQty,
                 $invTotalQty,
                 $grossAmt,
                 $invTotalSalesAmt,
@@ -2097,27 +2148,28 @@ class PosController extends Controller
         }
 
         // Add footer row with totals
-        // 38 columns total: A(0) to AL(37)
-        $footerData = array_fill(0, 38, '');
+        // 39 columns total: A(0) to AM(38)
+        $footerData = array_fill(0, 39, '');
         $footerData[0] = 'Total';
-        $footerData[15] = $totalSellQty; // Sales Qty
-        $footerData[17] = $totalGrossAmt; // Sales Amount
-        $footerData[20] = $totalRegRetQty; // Total SR-Qty (U)
-        $footerData[24] = $totalExchRetQty; // Total Exch-Qty (Y)
-        $footerData[28] = $totalSellQty - $totalRegRetQty - $totalExchRetQty + $totalExchNewQty; // Total AS-Qty (AC)
-        $footerData[29] = $totalDelivery; // Delivery Charge Amount
-        $footerData[30] = $totalVat; // VAT Amount
-        $footerData[31] = $totalDiscount; // Discount Amount
-        $footerData[32] = $totalExchange; // Exchange Amount
-        $footerData[33] = $totalRefund; // Refund
-        $footerData[34] = $totalFinalTotal; // Gross Amount (with vat)
-        $footerData[35] = $totalActualAmt; // Net Amount (without vat)
-        $footerData[36] = $totalPaid; // Total Received Amount
-        $footerData[37] = $totalDue; // Total Due Amount
+        $footerData[15] = $totalSellQty; // Billed Qty
+        $footerData[16] = $totalPhysicalQty; // Physical Pcs
+        $footerData[18] = $totalGrossAmt; // Sales Amount
+        $footerData[21] = $totalRegRetQty; // Total SR-Qty
+        $footerData[25] = $totalExchRetQty; // Total Exch-Qty
+        $footerData[29] = $totalSellQty - $totalRegRetQty - $totalExchRetQty + $totalExchNewQty; // Total AS-Qty
+        $footerData[30] = $totalDelivery; // Delivery Charge Amount
+        $footerData[31] = $totalVat; // VAT Amount
+        $footerData[32] = $totalDiscount; // Discount Amount
+        $footerData[33] = $totalExchange; // Exchange Amount
+        $footerData[34] = $totalRefund; // Refund
+        $footerData[35] = $totalFinalTotal; // Gross Amount (with vat)
+        $footerData[36] = $totalActualAmt; // Net Amount (without vat)
+        $footerData[37] = $totalPaid; // Total Received Amount
+        $footerData[38] = $totalDue; // Total Due Amount
 
         $sheet->fromArray([$footerData], NULL, 'A' . $rowNum);
-        $sheet->getStyle('A' . $rowNum . ':AL' . $rowNum)->getFont()->setBold(true);
-        $sheet->getStyle('A' . $rowNum . ':AL' . $rowNum)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFF8F9FA');
+        $sheet->getStyle('A' . $rowNum . ':AM' . $rowNum)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $rowNum . ':AM' . $rowNum)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFF8F9FA');
 
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $filename = 'pos_sales_report_' . date('Ymd_His') . '.xlsx';
@@ -2157,6 +2209,8 @@ class PosController extends Controller
                 'product.season',
                 'product.gender',
                 'variation.attributeValues.attribute',
+                'childItems.product',
+                'childItems.variation.attributeValues',
                 'returnItems'
             ]);
 

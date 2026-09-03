@@ -238,6 +238,15 @@
                             </div>
 
                             <div class="col-md-2">
+                                <label class="form-label small fw-bold text-muted text-uppercase mb-1">Product Type</label>
+                                <select name="product_type" class="form-select select2-simple">
+                                    <option value="">All Types</option>
+                                    <option value="combo" {{ request('product_type') == 'combo' ? 'selected' : '' }}>Combos Only</option>
+                                    <option value="single" {{ request('product_type') == 'single' ? 'selected' : '' }}>Single Products Only</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-2">
                                 <label class="form-label small fw-bold text-muted text-uppercase mb-1">Payment
                                     Status</label>
                                 <select name="payment_status" class="form-select select2-simple">

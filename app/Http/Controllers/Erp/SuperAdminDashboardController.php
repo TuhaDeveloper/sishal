@@ -26,7 +26,7 @@ class SuperAdminDashboardController extends Controller
         
         foreach ($branches as $bId) {
             foreach ($ranges as $r) {
-                Cache::forget("super_admin_dash_v26_{$bId}_{$r}");
+                Cache::forget("super_admin_dash_v29_{$bId}_{$r}");
             }
         }
     }
@@ -72,7 +72,7 @@ class SuperAdminDashboardController extends Controller
      */
     private function fetchDashboardData($selectedBranchId, $dateRange, $branches)
     {
-        $cacheKey = "super_admin_dash_v26_{$selectedBranchId}_{$dateRange}";
+        $cacheKey = "super_admin_dash_v29_{$selectedBranchId}_{$dateRange}";
 
         return Cache::remember($cacheKey, 180, function () use ($selectedBranchId, $dateRange, $branches) {
             $monthsWindow = $this->getMonthsArrayForRange($dateRange);
@@ -183,16 +183,22 @@ class SuperAdminDashboardController extends Controller
             ->groupBy('pos.branch_id')
             ->pluck('today_amount', 'pos.branch_id');
 
-        // 1b. Gross Today POS Sales Qty (Parent items only, avoids double-counting combo items)
+        // 1b. Gross Today POS Sales Qty (Physical pieces: single items + combo child items)
         $todayPosQtyAggregates = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-            ->whereNull('pos_items.parent_item_id')
+            ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
             ->whereDate('pos.sale_date', $today)
             ->where('pos.status', '!=', 'cancelled')
             ->when($selectedBranchId !== 'all' && is_numeric($selectedBranchId), function ($q) use ($selectedBranchId) {
                 return $q->where('pos.branch_id', (int)$selectedBranchId);
             })
-            ->selectRaw('pos.branch_id, COALESCE(SUM(pos_items.quantity), 0) as today_qty')
+            ->selectRaw('pos.branch_id, COALESCE(SUM(
+                CASE 
+                    WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity
+                    WHEN (products.type != "combo" OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity
+                    ELSE 0
+                END
+            ), 0) as today_qty')
             ->groupBy('pos.branch_id')
             ->pluck('today_qty', 'pos.branch_id');
 
@@ -243,17 +249,23 @@ class SuperAdminDashboardController extends Controller
             ->groupBy('pos.branch_id')
             ->pluck('month_amount', 'pos.branch_id');
 
-        // 2b. Gross Period POS Sales Qty (Parent items only)
+        // 2b. Gross Period POS Sales Qty (Physical pieces: single items + combo child items)
         $periodPosQtyAggregates = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-            ->whereNull('pos_items.parent_item_id')
+            ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
             ->where('pos.sale_date', '>=', $startBound)
             ->where('pos.sale_date', '<=', $endBound)
             ->where('pos.status', '!=', 'cancelled')
             ->when($selectedBranchId !== 'all' && is_numeric($selectedBranchId), function ($q) use ($selectedBranchId) {
                 return $q->where('pos.branch_id', (int)$selectedBranchId);
             })
-            ->selectRaw('pos.branch_id, COALESCE(SUM(pos_items.quantity), 0) as month_qty')
+            ->selectRaw('pos.branch_id, COALESCE(SUM(
+                CASE 
+                    WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity
+                    WHEN (products.type != "combo" OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity
+                    ELSE 0
+                END
+            ), 0) as month_qty')
             ->groupBy('pos.branch_id')
             ->pluck('month_qty', 'pos.branch_id');
 
@@ -359,17 +371,23 @@ class SuperAdminDashboardController extends Controller
             ->groupBy(DB::raw('DATE(pos.sale_date)'))
             ->pluck('total_amount', 'sale_day');
 
-        // Gross daily POS sales qty (Parent items only)
+        // Gross daily POS sales qty (Physical pieces: single items + combo child items)
         $dailyPosQty = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-            ->whereNull('pos_items.parent_item_id')
+            ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
             ->where('pos.sale_date', '>=', $startDate)
             ->where('pos.sale_date', '<=', $endDate)
             ->where('pos.status', '!=', 'cancelled')
             ->when($selectedBranchId !== 'all' && is_numeric($selectedBranchId), function ($q) use ($selectedBranchId) {
                 return $q->where('pos.branch_id', (int)$selectedBranchId);
             })
-            ->selectRaw('DATE(pos.sale_date) as sale_day, COALESCE(SUM(pos_items.quantity), 0) as total_qty')
+            ->selectRaw('DATE(pos.sale_date) as sale_day, COALESCE(SUM(
+                CASE 
+                    WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity
+                    WHEN (products.type != "combo" OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity
+                    ELSE 0
+                END
+            ), 0) as total_qty')
             ->groupBy(DB::raw('DATE(pos.sale_date)'))
             ->pluck('total_qty', 'sale_day');
 
@@ -561,17 +579,23 @@ class SuperAdminDashboardController extends Controller
         $startDate = $months[0]['start'];
         $endDate = $months[count($months) - 1]['end'];
 
-        // 1. Monthly POS Quantity Aggregates (Parent items only)
+        // 1. Monthly POS Quantity Aggregates (Physical pieces: single items + combo child items)
         $monthlyBranchAggregates = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-            ->whereNull('pos_items.parent_item_id')
+            ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
             ->where('pos.sale_date', '>=', $startDate)
             ->where('pos.sale_date', '<=', $endDate)
             ->where('pos.status', '!=', 'cancelled')
             ->when($selectedBranchId !== 'all' && is_numeric($selectedBranchId), function ($q) use ($selectedBranchId) {
                 return $q->where('pos.branch_id', (int)$selectedBranchId);
             })
-            ->selectRaw("pos.branch_id, DATE_FORMAT(pos.sale_date, '%Y-%m') as ym_code, COALESCE(SUM(pos_items.quantity), 0) as monthly_qty")
+            ->selectRaw("pos.branch_id, DATE_FORMAT(pos.sale_date, '%Y-%m') as ym_code, COALESCE(SUM(
+                CASE 
+                    WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity
+                    WHEN (products.type != 'combo' OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity
+                    ELSE 0
+                END
+            ), 0) as monthly_qty")
             ->groupBy('pos.branch_id', DB::raw("DATE_FORMAT(pos.sale_date, '%Y-%m')"))
             ->get()
             ->groupBy('branch_id');
@@ -627,18 +651,23 @@ class SuperAdminDashboardController extends Controller
             ->groupBy('pos.branch_id')
             ->pluck('total_value', 'pos.branch_id');
 
-        // 3. Branch Total POS COGS for the range (Parent items only)
+        // 3. Branch Total POS COGS for the range (Physical items cost)
         $branchCogsValues = DB::table('pos')
             ->join('pos_items', 'pos.id', '=', 'pos_items.pos_sale_id')
-            ->join('products', 'pos_items.product_id', '=', 'products.id')
-            ->whereNull('pos_items.parent_item_id')
+            ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
             ->where('pos.sale_date', '>=', $startDate)
             ->where('pos.sale_date', '<=', $endDate)
             ->where('pos.status', '!=', 'cancelled')
             ->when($selectedBranchId !== 'all' && is_numeric($selectedBranchId), function ($q) use ($selectedBranchId) {
                 return $q->where('pos.branch_id', (int)$selectedBranchId);
             })
-            ->selectRaw("pos.branch_id, COALESCE(SUM(pos_items.quantity * COALESCE(products.cost, 0)), 0) as total_cogs")
+            ->selectRaw("pos.branch_id, COALESCE(SUM(
+                CASE 
+                    WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity * COALESCE(products.cost, 0)
+                    WHEN (products.type != 'combo' OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity * COALESCE(products.cost, 0)
+                    ELSE 0
+                END
+            ), 0) as total_cogs")
             ->groupBy('pos.branch_id')
             ->pluck('total_cogs', 'branch_id');
 
@@ -774,17 +803,23 @@ class SuperAdminDashboardController extends Controller
             ->groupBy(DB::raw("DATE_FORMAT(pos.sale_date, '%Y-%m')"))
             ->pluck('month_amount', 'ym_code');
 
-        // 2. Gross POS Sales Qty per month (Parent items only)
+        // 2. Gross POS Sales Qty per month (Physical pieces: single items + combo child items)
         $salesQtyAggregates = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-            ->whereNull('pos_items.parent_item_id')
+            ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
             ->where('pos.sale_date', '>=', $startDate)
             ->where('pos.sale_date', '<=', $endDate)
             ->where('pos.status', '!=', 'cancelled')
             ->when($selectedBranchId !== 'all' && is_numeric($selectedBranchId), function ($q) use ($selectedBranchId) {
                 return $q->where('pos.branch_id', (int)$selectedBranchId);
             })
-            ->selectRaw("DATE_FORMAT(pos.sale_date, '%Y-%m') as ym_code, COALESCE(SUM(pos_items.quantity), 0) as month_qty")
+            ->selectRaw("DATE_FORMAT(pos.sale_date, '%Y-%m') as ym_code, COALESCE(SUM(
+                CASE 
+                    WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity
+                    WHEN (products.type != 'combo' OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity
+                    ELSE 0
+                END
+            ), 0) as month_qty")
             ->groupBy(DB::raw("DATE_FORMAT(pos.sale_date, '%Y-%m')"))
             ->pluck('month_qty', 'ym_code');
 
@@ -802,18 +837,23 @@ class SuperAdminDashboardController extends Controller
             ->groupBy(DB::raw("DATE_FORMAT(pos_exchanges.exchange_date, '%Y-%m')"))
             ->pluck('month_qty', 'ym_code');
 
-        // 3. Gross POS COGS per month (Parent items only)
+        // 3. Gross POS COGS per month (Physical items cost)
         $cogsAggregates = DB::table('pos_items')
             ->join('pos', 'pos_items.pos_sale_id', '=', 'pos.id')
-            ->join('products', 'pos_items.product_id', '=', 'products.id')
-            ->whereNull('pos_items.parent_item_id')
+            ->leftJoin('products', 'pos_items.product_id', '=', 'products.id')
             ->where('pos.sale_date', '>=', $startDate)
             ->where('pos.sale_date', '<=', $endDate)
             ->where('pos.status', '!=', 'cancelled')
             ->when($selectedBranchId !== 'all' && is_numeric($selectedBranchId), function ($q) use ($selectedBranchId) {
                 return $q->where('pos.branch_id', (int)$selectedBranchId);
             })
-            ->selectRaw("DATE_FORMAT(pos.sale_date, '%Y-%m') as ym_code, COALESCE(SUM(pos_items.quantity * COALESCE(products.cost, 0)), 0) as total_cogs")
+            ->selectRaw("DATE_FORMAT(pos.sale_date, '%Y-%m') as ym_code, COALESCE(SUM(
+                CASE 
+                    WHEN pos_items.parent_item_id IS NOT NULL THEN pos_items.quantity * COALESCE(products.cost, 0)
+                    WHEN (products.type != 'combo' OR products.type IS NULL) AND pos_items.parent_item_id IS NULL THEN pos_items.quantity * COALESCE(products.cost, 0)
+                    ELSE 0
+                END
+            ), 0) as total_cogs")
             ->groupBy(DB::raw("DATE_FORMAT(pos.sale_date, '%Y-%m')"))
             ->pluck('total_cogs', 'ym_code');
 
@@ -878,11 +918,33 @@ class SuperAdminDashboardController extends Controller
             ->groupBy(DB::raw("DATE_FORMAT(sale_returns.return_date, '%Y-%m')"))
             ->pluck('return_cogs', 'ym_code');
 
+        // 6. Monthly Operating Expenses from Journal Entries
+        $expenseQuery = DB::table('journal_entries')
+            ->join('journals', 'journal_entries.journal_id', '=', 'journals.id')
+            ->join('chart_of_accounts', 'journal_entries.chart_of_account_id', '=', 'chart_of_accounts.id')
+            ->join('chart_of_account_types', 'chart_of_accounts.type_id', '=', 'chart_of_account_types.id')
+            ->where('chart_of_account_types.name', 'like', 'Expense%')
+            ->where('chart_of_accounts.name', 'not like', '%Purchase%')
+            ->where('journals.entry_date', '>=', $startDate)
+            ->where('journals.entry_date', '<=', $endDate);
+
+        if ($selectedBranchId !== 'all' && is_numeric($selectedBranchId)) {
+            $expenseQuery->where('journals.branch_id', (int)$selectedBranchId);
+        }
+
+        $expenseAggregates = $expenseQuery
+            ->selectRaw("DATE_FORMAT(journals.entry_date, '%Y-%m') as ym_code, COALESCE(SUM(journal_entries.debit) - SUM(journal_entries.credit), 0) as total_expense")
+            ->groupBy(DB::raw("DATE_FORMAT(journals.entry_date, '%Y-%m')"))
+            ->pluck('total_expense', 'ym_code');
+
         $salesQtys = [];
         $salesAmounts = [];
         $cogsAmounts = [];
         $grossProfits = [];
         $grossProfitPcts = [];
+        $operatingExpenses = [];
+        $netProfits = [];
+        $netProfitPcts = [];
 
         foreach ($months as $mMeta) {
             $ymKey = $mMeta['ym_code'];
@@ -901,13 +963,20 @@ class SuperAdminDashboardController extends Controller
             $netCogs = max(0, ($grossCogs + $exchCogs) - $retCogs);
 
             $gp = $netAmt - $netCogs;
-            $pct = $netAmt > 0 ? round(($gp / $netAmt) * 100, 2) : 0;
+            $gpPct = $netAmt > 0 ? round(($gp / $netAmt) * 100, 2) : 0;
+
+            $exp = max(0, (float) ($expenseAggregates->get($ymKey) ?? 0));
+            $np = $gp - $exp;
+            $npPct = $netAmt > 0 ? round(($np / $netAmt) * 100, 2) : 0;
 
             $salesQtys[] = $netQty;
             $salesAmounts[] = $netAmt;
             $cogsAmounts[] = $netCogs;
             $grossProfits[] = $gp;
-            $grossProfitPcts[] = $pct;
+            $grossProfitPcts[] = $gpPct;
+            $operatingExpenses[] = $exp;
+            $netProfits[] = $np;
+            $netProfitPcts[] = $npPct;
         }
 
         $totalQty = array_sum($salesQtys);
@@ -915,6 +984,9 @@ class SuperAdminDashboardController extends Controller
         $totalCogsAmt = array_sum($cogsAmounts);
         $totalGrossProfit = $totalSalesAmt - $totalCogsAmt;
         $totalGrossProfitPct = $totalSalesAmt > 0 ? round(($totalGrossProfit / $totalSalesAmt) * 100, 2) : 0;
+        $totalExpense = array_sum($operatingExpenses);
+        $totalNetProfit = $totalGrossProfit - $totalExpense;
+        $totalNetProfitPct = $totalSalesAmt > 0 ? round(($totalNetProfit / $totalSalesAmt) * 100, 2) : 0;
 
         return [
             'months' => $monthHeadings,
@@ -937,16 +1009,22 @@ class SuperAdminDashboardController extends Controller
                     'year_total' => $totalCogsAmt,
                     'format' => 'currency'
                 ],
-                'gross_profit' => [
-                    'label' => 'Gross Profit',
-                    'values' => $grossProfits,
-                    'year_total' => $totalGrossProfit,
-                    'format' => 'currency_highlight'
+                'operating_expenses' => [
+                    'label' => 'Operating Expenses',
+                    'values' => $operatingExpenses,
+                    'year_total' => $totalExpense,
+                    'format' => 'currency_expense'
                 ],
-                'gross_profit_pct' => [
-                    'label' => 'Gross Profit %',
-                    'values' => $grossProfitPcts,
-                    'year_total' => $totalGrossProfitPct,
+                'net_profit' => [
+                    'label' => 'Net Profit',
+                    'values' => $netProfits,
+                    'year_total' => $totalNetProfit,
+                    'format' => 'currency_net'
+                ],
+                'net_profit_pct' => [
+                    'label' => 'Net Profit %',
+                    'values' => $netProfitPcts,
+                    'year_total' => $totalNetProfitPct,
                     'format' => 'percent'
                 ],
             ]
