@@ -179,12 +179,14 @@
                             @endif
 
                             <div class="col-md-12">
-                                <div class="form-check form-switch p-3 bg-light rounded-3 border">
-                                    <input class="form-check-input ms-0 me-3" type="checkbox" name="is_direct" id="is_direct" value="1" {{ isset($originalTransfer) ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-bold text-dark" for="is_direct">
-                                        <i class="fas fa-bolt text-warning me-2"></i>Direct Transfer (Skip pending and approve instantly)
-                                        <div class="small text-muted fw-normal">Stock will be deducted from source and added to destination immediately.</div>
-                                    </label>
+                                <div class="p-3 bg-light rounded-3 border d-flex align-items-center gap-3">
+                                    <div class="bg-primary text-white rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; min-width: 38px;">
+                                        <i class="fas fa-truck-loading"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark small">Dispatch & Receipt Workflow</div>
+                                        <div class="text-muted" style="font-size: 0.8rem;">Stock will be deducted from source location upon creating this transfer. The destination branch will inspect items and click <strong>Confirm Receipt</strong> to add to their stock.</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

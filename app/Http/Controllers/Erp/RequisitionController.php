@@ -24,7 +24,7 @@ class RequisitionController extends Controller
         }
 
         $restrictedBranchId = $this->getRestrictedBranchId();
-        $query = Requisition::with(['branch', 'warehouse', 'creator']);
+        $query = Requisition::with(['branch', 'warehouse', 'creator', 'transfers']);
 
         if ($restrictedBranchId) {
             $query->where(function ($q) use ($restrictedBranchId) {
@@ -235,6 +235,7 @@ class RequisitionController extends Controller
             'branch',
             'warehouse',
             'creator',
+            'transfers',
         ])->findOrFail($id);
         return view('erp.requisition.show', compact('requisition'));
     }
@@ -543,20 +544,17 @@ class RequisitionController extends Controller
                         'unit_price'           => $unitPrice,
                         'total_price'          => $qty * $unitPrice,
                         'due_amount'           => $qty * $unitPrice,
-                        'status'               => 'delivered',
+                        'status'               => 'approved',
                         'requested_at'         => now(),
                         'requested_by'         => auth()->id(),
                         'approved_at'          => now(),
                         'approved_by'          => auth()->id(),
-                        'delivered_at'         => now(),
-                        'delivered_by'         => auth()->id(),
                         'invoice_number'       => $invoiceNumber,
                         'requisition_item_id'  => $reqItem->id,
                     ]);
 
-                    // Automatically deduct stock from source warehouse/branch and add to target branch
+                    // Deduct stock immediately from source warehouse/branch upon dispatch
                     $this->deductStock($transfer);
-                    $this->addStock($transfer);
 
                     $reqItem->increment('fulfilled_quantity', $qty);
                 }
@@ -576,7 +574,7 @@ class RequisitionController extends Controller
             DB::commit();
 
             $msg = !empty($transferItems)
-                ? 'Requisition fulfilled and stock transfer delivered successfully.'
+                ? 'Requisition dispatched via transfer (' . $invoiceNumber . '). Source stock deducted — awaiting destination branch to confirm receipt.'
                 : 'Requisition saved (no items were transferred).';
 
             return redirect()->route('requisition.show', $id)->with('success', $msg);

@@ -27,15 +27,26 @@
                     <td>{{ \Carbon\Carbon::parse($req->requisition_date)->format('M d, Y') }}</td>
                     <td>
                         @php
-                            $statusClass = [
-                                'pending' => 'bg-warning text-dark',
-                                'partially_fulfilled' => 'bg-info text-white',
+                            $dispStatus = $req->display_status;
+                            $statusClass = match ($dispStatus) {
+                                'dispatched' => 'bg-info text-white',
+                                'partially_dispatched' => 'bg-info text-white',
                                 'fulfilled' => 'bg-success text-white',
+                                'partially_fulfilled' => 'bg-primary text-white',
                                 'rejected' => 'bg-danger text-white',
-                            ][$req->status] ?? 'bg-secondary text-white';
+                                default => 'bg-warning text-dark'
+                            };
+                            $statusLabel = match ($dispStatus) {
+                                'dispatched' => 'Dispatched',
+                                'partially_dispatched' => 'Partially Dispatched',
+                                'fulfilled' => 'Fulfilled',
+                                'partially_fulfilled' => 'Partially Fulfilled',
+                                'rejected' => 'Rejected',
+                                default => 'Pending'
+                            };
                         @endphp
                         <span class="badge {{ $statusClass }} px-3 py-2 rounded-pill text-uppercase" style="font-size: 0.7rem;">
-                            {{ str_replace('_', ' ', $req->status) }}
+                            {{ $statusLabel }}
                         </span>
                     </td>
                     <td>

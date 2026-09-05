@@ -174,7 +174,22 @@
             <table class="info-table">
                 <tr>
                     <td class="info-label">Date:</td>
-                    <td>{{ \Carbon\Carbon::parse($pos->sale_date)->format('d-m-Y | h:i A') }}</td>
+                    <td>
+                        @php
+                            $tz = config('app.timezone', 'Asia/Dhaka');
+                            $createdAtLocal = $pos->created_at ? \Carbon\Carbon::parse($pos->created_at)->timezone($tz) : null;
+                            if ($pos->sale_date && $createdAtLocal) {
+                                $displayDate = \Carbon\Carbon::parse($pos->sale_date)->format('d-m-Y') . ' | ' . $createdAtLocal->format('h:i A');
+                            } elseif ($createdAtLocal) {
+                                $displayDate = $createdAtLocal->format('d-m-Y | h:i A');
+                            } elseif ($pos->sale_date) {
+                                $displayDate = \Carbon\Carbon::parse($pos->sale_date)->format('d-m-Y');
+                            } else {
+                                $displayDate = \Carbon\Carbon::now($tz)->format('d-m-Y | h:i A');
+                            }
+                        @endphp
+                        {{ $displayDate }}
+                    </td>
                 </tr>
                 <tr>
                     <td class="info-label">Invoice No.:</td>

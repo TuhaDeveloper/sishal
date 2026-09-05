@@ -134,7 +134,22 @@
         </tr>
         <tr>
             <td class="info-label">Date:</td>
-            <td>{{ \Carbon\Carbon::parse($exchange->exchange_date)->format('d-m-Y') }}</td>
+            <td>
+                @php
+                    $tz = config('app.timezone', 'Asia/Dhaka');
+                    $createdAtLocal = $exchange->created_at ? \Carbon\Carbon::parse($exchange->created_at)->timezone($tz) : null;
+                    if ($exchange->exchange_date && $createdAtLocal) {
+                        $displayExcDate = \Carbon\Carbon::parse($exchange->exchange_date)->format('d-m-Y') . ' | ' . $createdAtLocal->format('h:i A');
+                    } elseif ($createdAtLocal) {
+                        $displayExcDate = $createdAtLocal->format('d-m-Y | h:i A');
+                    } elseif ($exchange->exchange_date) {
+                        $displayExcDate = \Carbon\Carbon::parse($exchange->exchange_date)->format('d-m-Y');
+                    } else {
+                        $displayExcDate = \Carbon\Carbon::now($tz)->format('d-m-Y | h:i A');
+                    }
+                @endphp
+                {{ $displayExcDate }}
+            </td>
         </tr>
         <tr>
             <td class="info-label">Original Sale:</td>

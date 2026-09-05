@@ -707,7 +707,9 @@ class PosController extends Controller
             ->whereIn('sale_return_items.sale_item_id', $filteredItemIds->select('pos_items.id'))
             ->selectRaw("
                 SUM(CASE WHEN sale_returns.refund_type != 'exchange' THEN sale_return_items.returned_qty ELSE 0 END) as reg_ret_qty,
-                SUM(CASE WHEN sale_returns.refund_type = 'exchange' THEN sale_return_items.returned_qty ELSE 0 END) as exch_ret_qty
+                SUM(CASE WHEN sale_returns.refund_type != 'exchange' THEN sale_return_items.total_price ELSE 0 END) as reg_ret_amt,
+                SUM(CASE WHEN sale_returns.refund_type = 'exchange' THEN sale_return_items.returned_qty ELSE 0 END) as exch_ret_qty,
+                SUM(CASE WHEN sale_returns.refund_type = 'exchange' THEN sale_return_items.total_price ELSE 0 END) as exch_ret_amt
             ")
             ->first();
 
@@ -758,7 +760,9 @@ class PosController extends Controller
             'paid' => $saleTotals->total_paid ?? 0,
             'due' => $saleTotals->total_due ?? 0,
             'reg_ret_qty' => $returnTotals->reg_ret_qty ?? 0,
+            'reg_ret_amt' => $returnTotals->reg_ret_amt ?? 0,
             'exch_ret_qty' => $returnTotals->exch_ret_qty ?? 0,
+            'exch_ret_amt' => $returnTotals->exch_ret_amt ?? 0,
             'exch_new_qty' => $exchangeNewTotals,
             'act_qty' => $totalQty - ($returnTotals->reg_ret_qty ?? 0) - ($returnTotals->exch_ret_qty ?? 0) + $exchangeNewTotals,
         ];
@@ -1892,7 +1896,73 @@ class PosController extends Controller
             ]);
 
         $query = $this->applyFilters($query, $request, $startDate, $endDate);
-        $items = $query->orderBy('sort_order')->get();
+        
+        // Exact SQL totals matching the web table 100%
+        $itemTotals = \DB::table(\DB::raw("({$query->toSql()}) as sub"))
+            ->mergeBindings($query->getQuery())
+            ->selectRaw("
+                SUM(quantity) as total_qty, 
+                SUM(quantity * unit_price) as gross_amount,
+                SUM(total_price) as total_amount
+            ")
+            ->first();
+
+        $filteredPosIds = clone $query;
+        $saleTotals = \DB::table('pos')
+            ->join('invoices', 'pos.invoice_id', '=', 'invoices.id')
+            ->whereIn('pos.id', $filteredPosIds->select('pos_sale_id')->distinct())
+            ->selectRaw("
+                SUM(pos.delivery) as total_delivery,
+                SUM(pos.discount) as total_discount,
+                SUM(pos.vat_amount) as total_vat,
+                SUM(pos.exchange_amount) as total_exchange,
+                SUM(pos.refund_amount) as total_refund,
+                SUM(invoices.total_amount) as final_total,
+                SUM(LEAST(invoices.paid_amount, invoices.total_amount)) as total_paid,
+                SUM(GREATEST(0, invoices.total_amount - LEAST(invoices.paid_amount, invoices.total_amount))) as total_due
+            ")
+            ->first();
+
+        $filteredItemIds = clone $query;
+        $returnTotals = \DB::table('sale_return_items')
+            ->join('sale_returns', 'sale_return_items.sale_return_id', '=', 'sale_returns.id')
+            ->whereIn('sale_return_items.sale_item_id', $filteredItemIds->select('pos_items.id'))
+            ->selectRaw("
+                SUM(CASE WHEN sale_returns.refund_type != 'exchange' THEN sale_return_items.returned_qty ELSE 0 END) as reg_ret_qty,
+                SUM(CASE WHEN sale_returns.refund_type != 'exchange' THEN sale_return_items.total_price ELSE 0 END) as reg_ret_amt,
+                SUM(CASE WHEN sale_returns.refund_type = 'exchange' THEN sale_return_items.returned_qty ELSE 0 END) as exch_ret_qty,
+                SUM(CASE WHEN sale_returns.refund_type = 'exchange' THEN sale_return_items.total_price ELSE 0 END) as exch_ret_amt
+            ")
+            ->first();
+
+        $filteredPosIdsForExchange = clone $query;
+        $exchangeNewTotals = \DB::table('pos_exchange_items')
+            ->join('pos_exchanges', 'pos_exchange_items.pos_exchange_id', '=', 'pos_exchanges.id')
+            ->whereIn('pos_exchanges.original_pos_id', $filteredPosIdsForExchange->select('pos_items.pos_sale_id')->distinct())
+            ->where('pos_exchange_items.type', 'new')
+            ->where('pos_exchanges.status', 'completed')
+            ->sum('pos_exchange_items.quantity');
+
+        $totalQty = $itemTotals->total_qty ?? 0;
+        $totalAmount = $itemTotals->total_amount ?? 0;
+
+        $filteredItemIdsForChild = clone $query;
+        $childQtySum = (float) \DB::table('pos_items')
+            ->whereIn('parent_item_id', $filteredItemIdsForChild->select('pos_items.id'))
+            ->sum('quantity');
+
+        $filteredItemIdsForCombo = clone $query;
+        $comboParentQty = (float) \DB::table('pos_items')
+            ->join('products', 'pos_items.product_id', '=', 'products.id')
+            ->whereIn('pos_items.id', $filteredItemIdsForCombo->select('pos_items.id'))
+            ->where('products.type', 'combo')
+            ->sum('pos_items.quantity');
+
+        $singleParentQty = max(0, $totalQty - $comboParentQty);
+        $totalPhysicalQty = $singleParentQty + $childQtySum;
+        $actPhysicalQty = $totalPhysicalQty - ($returnTotals->reg_ret_qty ?? 0) - ($returnTotals->exch_ret_qty ?? 0) + $exchangeNewTotals;
+
+        $items = $query->orderBy('pos_items.pos_sale_id', 'desc')->orderBy('pos_items.sort_order')->get();
 
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -1913,8 +1983,7 @@ class PosController extends Controller
             'Color',
             'Size',
             'Unit Price',
-            'Billed Qty',
-            'Physical Pcs',
+            'Sales Qty',
             'Total S-Qty',
             'Sales Amount',
             'Total Sales Amount',
@@ -1928,36 +1997,20 @@ class PosController extends Controller
             'Total Exchange Return Amount',
             'Actual Sales Qty',
             'Total AS-Qty',
+            'Combo Qty',
             'Delivery Charge Amount',
             'VAT Amount',
             'Discount Amount',
             'Exchange Amount',
             'Refund',
-            'Gross Amount (with vat)',
-            'Net Amount (without vat)',
+            'Gross Amount',
+            'Net Amount (Final)',
             'Total Received Amount',
             'Total Due Amount'
         ];
 
         $sheet->fromArray([$headers], NULL, 'A1');
         $sheet->getStyle('A1:AM1')->getFont()->setBold(true);
-
-        // Initialize totals
-        $totalSellQty = 0;
-        $totalPhysicalQty = 0;
-        $totalGrossAmt = 0;
-        $totalDelivery = 0;
-        $totalVat = 0;
-        $totalDiscount = 0;
-        $totalExchange = 0;
-        $totalRefund = 0;
-        $totalFinalTotal = 0;
-        $totalActualAmt = 0;
-        $totalRegRetQty = 0;
-        $totalExchRetQty = 0;
-        $totalExchNewQty = 0;
-        $totalPaid = 0;
-        $totalDue = 0;
 
         $rowNum = 2;
         foreach ($items as $index => $item) {
@@ -1985,7 +2038,6 @@ class PosController extends Controller
             $childItems = $item->childItems ?? collect();
             $comboItemsQty = $childItems->sum('quantity');
             $physicalQty = $isCombo ? ($comboItemsQty > 0 ? $comboItemsQty : $item->quantity) : $item->quantity;
-            $totalPhysicalQty += $physicalQty;
 
             $grossAmt = $item->quantity * $item->unit_price;
             $regRetItems = $item->returnItems->filter(fn($ri) => ($ri->saleReturn?->refund_type ?? '') !== 'exchange');
@@ -2004,7 +2056,9 @@ class PosController extends Controller
                 })
                 ->sum('quantity');
 
-            $actualQty = $item->quantity - $retQty + $itemExchNewQty;
+            // Actual Qty including physical items for combo
+            $actualQty = $physicalQty - $retQty + $itemExchNewQty;
+            $comboQtyCell = $isCombo ? "{$item->quantity} Combo" : '-';
 
             // Invoice Level (Calculate once per sale)
             $invTotalQty = '';
@@ -2020,6 +2074,16 @@ class PosController extends Controller
                 $i_TotalQty = $invItems->sum('quantity');
                 $i_GrossAmt = $invItems->sum(fn($i) => $i->quantity * $i->unit_price);
 
+                // Physical Qty at invoice level
+                $i_PhysicalQty = 0;
+                foreach ($invItems as $invIt) {
+                    $itIsCombo = ($invIt->product?->type === 'combo');
+                    $itChilds = $invIt->childItems ?? collect();
+                    $itComboChildsQty = $itChilds->sum('quantity');
+                    $itPhys = $itIsCombo ? ($itComboChildsQty > 0 ? $itComboChildsQty : $invIt->quantity) : $invIt->quantity;
+                    $i_PhysicalQty += $itPhys;
+                }
+
                 $i_RegRetQty = $invItems->sum(fn($i) => $i->returnItems->filter(fn($ri) => ($ri->saleReturn?->refund_type ?? '') !== 'exchange')->sum('returned_qty'));
                 $i_RegRetAmt = $invItems->sum(fn($i) => $i->returnItems->filter(fn($ri) => ($ri->saleReturn?->refund_type ?? '') !== 'exchange')->sum('total_price'));
 
@@ -2034,7 +2098,7 @@ class PosController extends Controller
 
                 $i_RetQty = $i_RegRetQty + $i_ExchRetQty;
                 $i_RetAmt = $i_RegRetAmt + $i_ExchRetAmt;
-                $i_ActualQty = $i_TotalQty - $i_RetQty + $i_ExchNewQty;
+                $i_ActualQty = $i_PhysicalQty - $i_RetQty + $i_ExchNewQty;
 
                 // Calculate proportional returned VAT and discount
                 $i_ReturnedVat = 0;
@@ -2101,71 +2165,62 @@ class PosController extends Controller
                 $size,
                 $item->unit_price,
                 $item->quantity,
-                $physicalQty,
                 $invTotalQty,
                 $grossAmt,
                 $invTotalSalesAmt,
-                $regRetQty,
-                $invRetQty,
-                $regRetAmt,
-                $invRetAmt,
-                $exchRetQty,
-                $invExchRetQty,
-                $exchRetAmt,
-                $invExchRetAmt,
+                $regRetQty ?: '-',
+                $invRetQty ?: '-',
+                $regRetAmt ? number_format($regRetAmt, 2) : '-',
+                $invRetAmt ? number_format($invRetAmt, 2) : '-',
+                $exchRetQty ?: '-',
+                $invExchRetQty ?: '-',
+                $exchRetAmt ? number_format($exchRetAmt, 2) : '-',
+                $invExchRetAmt ? number_format($invExchRetAmt, 2) : '-',
                 $actualQty,
                 $invActualQty,
+                $comboQtyCell,
                 $isFirst ? ($sale->delivery ?? 0) : '',
                 $isFirst ? $invNetVat : '',
                 $isFirst ? $invNetDiscount : '',
                 $isFirst ? ($sale->exchange_amount ?? 0) : '',
                 $isFirst ? ($sale->refund_amount ?? 0) : '',
-                $invTotal,
-                $invActualAmt,
+                $isFirst ? $invTotal : '',
+                $isFirst ? $invActualAmt : '',
                 $isFirst ? ($invoice->paid_amount ?? 0) : '',
                 $isFirst ? ($invoice->due_amount ?? 0) : ''
             ];
             $sheet->fromArray([$data], NULL, 'A' . $rowNum);
             $rowNum++;
-
-            // Accumulate totals (only for first row of each invoice)
-            if ($isFirst) {
-                $totalSellQty += $i_TotalQty;
-                $totalGrossAmt += $i_GrossAmt;
-                $totalDelivery += ($sale->delivery ?? 0);
-                $totalVat += $i_NetVat;
-                $totalDiscount += $i_NetDiscount;
-                $totalExchange += ($sale->exchange_amount ?? 0);
-                $totalRefund += ($sale->refund_amount ?? 0);
-                $totalFinalTotal += $i_GrossAmount;
-                $totalActualAmt += $i_ActualAmt;
-                $totalRegRetQty += $i_RegRetQty;
-                $totalExchRetQty += $i_ExchRetQty;
-                $totalExchNewQty += $i_ExchNewQty;
-                $totalPaid += ($invoice->paid_amount ?? 0);
-                $totalDue += ($invoice->due_amount ?? 0);
-            }
         }
 
-        // Add footer row with totals
+        // Add footer row with exact totals matching the web table
         // 39 columns total: A(0) to AM(38)
         $footerData = array_fill(0, 39, '');
-        $footerData[0] = 'Total';
-        $footerData[15] = $totalSellQty; // Billed Qty
-        $footerData[16] = $totalPhysicalQty; // Physical Pcs
-        $footerData[18] = $totalGrossAmt; // Sales Amount
-        $footerData[21] = $totalRegRetQty; // Total SR-Qty
-        $footerData[25] = $totalExchRetQty; // Total Exch-Qty
-        $footerData[29] = $totalSellQty - $totalRegRetQty - $totalExchRetQty + $totalExchNewQty; // Total AS-Qty
-        $footerData[30] = $totalDelivery; // Delivery Charge Amount
-        $footerData[31] = $totalVat; // VAT Amount
-        $footerData[32] = $totalDiscount; // Discount Amount
-        $footerData[33] = $totalExchange; // Exchange Amount
-        $footerData[34] = $totalRefund; // Refund
-        $footerData[35] = $totalFinalTotal; // Gross Amount (with vat)
-        $footerData[36] = $totalActualAmt; // Net Amount (without vat)
-        $footerData[37] = $totalPaid; // Total Received Amount
-        $footerData[38] = $totalDue; // Total Due Amount
+        $footerData[0] = 'Grand Total';
+        $footerData[15] = $totalQty; // Sales Qty
+        $footerData[16] = $totalQty; // Total S-Qty
+        $footerData[17] = number_format($itemTotals->gross_amount ?? 0, 2); // Sales Amount
+        $footerData[18] = number_format($itemTotals->gross_amount ?? 0, 2); // Total Sales Amount
+        $footerData[19] = ($returnTotals->reg_ret_qty ?? 0) ?: '-'; // Sales Return Qty
+        $footerData[20] = ($returnTotals->reg_ret_qty ?? 0) ?: '-'; // Total SR-Qty
+        $footerData[21] = ($returnTotals->reg_ret_amt ?? 0) > 0 ? number_format($returnTotals->reg_ret_amt, 2) : '-'; // Sales Return Amount
+        $footerData[22] = ($returnTotals->reg_ret_amt ?? 0) > 0 ? number_format($returnTotals->reg_ret_amt, 2) : '-'; // Total Sales Return Amount
+        $footerData[23] = ($returnTotals->exch_ret_qty ?? 0) ?: '-'; // Exchange Qty
+        $footerData[24] = ($returnTotals->exch_ret_qty ?? 0) ?: '-'; // Total Exch-Qty
+        $footerData[25] = ($returnTotals->exch_ret_amt ?? 0) > 0 ? number_format($returnTotals->exch_ret_amt, 2) : '-'; // Exchange Return Amount
+        $footerData[26] = ($returnTotals->exch_ret_amt ?? 0) > 0 ? number_format($returnTotals->exch_ret_amt, 2) : '-'; // Total Exchange Return Amount
+        $footerData[27] = $actPhysicalQty; // Actual Sales Qty
+        $footerData[28] = $actPhysicalQty; // Total AS-Qty
+        $footerData[29] = $comboParentQty > 0 ? "{$comboParentQty} Combos ({$childQtySum} pcs)" : '-'; // Combo Qty
+        $footerData[30] = number_format($saleTotals->total_delivery ?? 0, 2); // Delivery Charge Amount
+        $footerData[31] = number_format($saleTotals->total_vat ?? 0, 2); // VAT Amount
+        $footerData[32] = number_format($saleTotals->total_discount ?? 0, 2); // Discount Amount
+        $footerData[33] = number_format($saleTotals->total_exchange ?? 0, 2); // Exchange Amount
+        $footerData[34] = number_format($saleTotals->total_refund ?? 0, 2); // Refund
+        $footerData[35] = number_format(($itemTotals->gross_amount ?? 0) + ($saleTotals->total_vat ?? 0) + ($saleTotals->total_delivery ?? 0), 2); // Gross Amount
+        $footerData[36] = number_format($saleTotals->final_total ?? 0, 2); // Net Amount (Final)
+        $footerData[37] = number_format($saleTotals->total_paid ?? 0, 2); // Total Received Amount
+        $footerData[38] = number_format($saleTotals->total_due ?? 0, 2); // Total Due Amount
 
         $sheet->fromArray([$footerData], NULL, 'A' . $rowNum);
         $sheet->getStyle('A' . $rowNum . ':AM' . $rowNum)->getFont()->setBold(true);

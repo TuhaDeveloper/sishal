@@ -111,13 +111,20 @@
                     <td class="text-center">
                         @php
                             $statusClass = match ($transfer->status) {
-                                'approved' => 'success',
+                                'approved' => 'info text-dark',
                                 'rejected' => 'danger',
-                                'delivered' => 'primary',
+                                'delivered' => 'success',
                                 default => 'warning'
                             };
+                            $statusLabel = match ($transfer->status) {
+                                'approved' => 'Dispatched',
+                                'delivered' => 'Delivered',
+                                'rejected' => 'Rejected',
+                                'pending' => 'Pending',
+                                default => ucfirst($transfer->status)
+                            };
                         @endphp
-                        <span class="badge bg-{{ $statusClass }}">{{ ucfirst($transfer->status) }}</span>
+                        <span class="badge bg-{{ $statusClass }}">{{ $statusLabel }}</span>
                     </td>
                     <td class="pe-3 text-center">
                         <div class="d-flex gap-2 justify-content-center">
@@ -125,16 +132,33 @@
                                 title="View Details">
                                 <i class="fas fa-eye text-primary"></i>
                             </a>
-                            @if($transfer->status === 'pending' && !$isReturn)
-                                @can('approve transfers')
-                                    <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
-                                        @csrf @method('PATCH')
-                                        <input type="hidden" name="status" value="delivered">
-                                        <button type="submit" class="action-circle border-0 bg-transparent" title="Confirm Receipt & Deliver" onclick="return confirm('Confirm receipt and deliver this stock transfer?')">
-                                            <i class="fas fa-check-circle text-success"></i>
-                                        </button>
-                                    </form>
-                                @endcan
+                            @php
+                                $userBranchId = auth()->user()->branch_id;
+                                $isSuperAdmin = auth()->user()->hasRole('Super Admin') || auth()->user()->id == 18;
+                                $isSender = $isSuperAdmin || (!$userBranchId) || ($transfer->from_type === 'branch' && $userBranchId == $transfer->from_id);
+                                $isReceiver = $isSuperAdmin || (!$userBranchId) || ($transfer->to_type === 'branch' && $userBranchId == $transfer->to_id);
+                            @endphp
+
+                            {{-- PENDING: Dispatch Action for Sender / Admin --}}
+                            @if($transfer->status === 'pending' && !$isReturn && $isSender && auth()->user()->can('approve transfers'))
+                                <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="approved">
+                                    <button type="submit" class="action-circle border-0 bg-transparent" title="Dispatch Transfer (Deduct from Source Stock)" onclick="return confirm('Dispatch this transfer invoice? Stock will be deducted from source inventory.')">
+                                        <i class="fas fa-paper-plane text-info"></i>
+                                    </button>
+                                </form>
+                            @endif
+
+                            {{-- APPROVED: Confirm Receipt Action for Receiver / Admin --}}
+                            @if($transfer->status === 'approved' && !$isReturn && $isReceiver && auth()->user()->can('approve transfers'))
+                                <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="delivered">
+                                    <button type="submit" class="action-circle border-0 bg-transparent" title="Confirm Receipt (Add to Stock)" onclick="return confirm('Confirm you have received these items? Stock will be added to your inventory.')">
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    </button>
+                                </form>
                             @endif
                             @if($transfer->status === 'delivered' && !$isReturn)
                                 @can('reconcile transfers')

@@ -81,10 +81,21 @@
                     $isFirst = ($index == 0 || $items[$index-1]->pos_sale_id != $item->pos_sale_id);
                     
                     // Item Level
+                    $isCombo = ($product?->type === 'combo');
+                    $childItems = $item->childItems ?? collect();
+                    $comboItemsQty = $childItems->sum('quantity');
+                    $physicalQty = $isCombo ? ($comboItemsQty > 0 ? $comboItemsQty : $item->quantity) : $item->quantity;
+
                     $itemGrossAmt = $item->quantity * $item->unit_price;
-                    $retQty = $item->returnItems->sum('returned_qty');
-                    $retAmt = $item->returnItems->sum('total_price');
-                    $actualQty = $item->quantity - $retQty;
+                    $regRetItems = $item->returnItems->filter(fn($ri) => ($ri->saleReturn?->refund_type ?? '') !== 'exchange');
+                    $exchRetItems = $item->returnItems->filter(fn($ri) => ($ri->saleReturn?->refund_type ?? '') === 'exchange');
+                    $regRetQty = $regRetItems->sum('returned_qty');
+                    $regRetAmt = $regRetItems->sum('total_price');
+                    $exchRetQty = $exchRetItems->sum('returned_qty');
+                    $exchRetAmt = $exchRetItems->sum('total_price');
+                    $retQty = $regRetQty + $exchRetQty;
+                    $retAmt = $regRetAmt + $exchRetAmt;
+                    $actualQty = $physicalQty - $retQty;
 
                     $gSellQty += $item->quantity; 
                     $gSellAmt += $itemGrossAmt;
@@ -102,9 +113,19 @@
                         $invItems = $sale->items->whereNull('parent_item_id');
                         $i_TotalQty = $invItems->sum('quantity');
                         $i_GrossAmt = $invItems->sum(fn($i) => $i->quantity * $i->unit_price);
+                        
+                        $i_PhysicalQty = 0;
+                        foreach ($invItems as $invIt) {
+                            $itIsCombo = ($invIt->product?->type === 'combo');
+                            $itChilds = $invIt->childItems ?? collect();
+                            $itComboChildsQty = $itChilds->sum('quantity');
+                            $itPhys = $itIsCombo ? ($itComboChildsQty > 0 ? $itComboChildsQty : $invIt->quantity) : $invIt->quantity;
+                            $i_PhysicalQty += $itPhys;
+                        }
+
                         $i_RetQty = $invItems->sum(fn($i) => $i->returnItems->sum('returned_qty'));
                         $i_RetAmt = $invItems->sum(fn($i) => $i->returnItems->sum('total_price'));
-                        $i_ActualQty = $i_TotalQty - $i_RetQty;
+                        $i_ActualQty = $i_PhysicalQty - $i_RetQty;
                         
                         $i_TotalSalesAmt = $i_GrossAmt;
                         $i_NetTotalValue = $i_TotalSalesAmt - $sale->discount;

@@ -35,4 +35,35 @@ class Requisition extends Model
     {
         return $this->hasMany(RequisitionItem::class);
     }
+
+    public function transfers()
+    {
+        return $this->hasManyThrough(StockTransfer::class, RequisitionItem::class, 'requisition_id', 'requisition_item_id');
+    }
+
+    public function getDisplayStatusAttribute()
+    {
+        if ($this->status === 'pending' || $this->status === 'rejected') {
+            return $this->status;
+        }
+
+        $transfers = $this->relationLoaded('transfers') ? $this->transfers : $this->transfers()->get();
+
+        if ($transfers->isEmpty()) {
+            return $this->status;
+        }
+
+        $allDelivered = $transfers->every(fn($t) => $t->status === 'delivered');
+        $hasInTransit = $transfers->contains(fn($t) => in_array($t->status, ['approved', 'pending']));
+
+        if ($this->status === 'fulfilled') {
+            return $allDelivered ? 'fulfilled' : 'dispatched';
+        }
+
+        if ($this->status === 'partially_fulfilled') {
+            return $hasInTransit ? 'partially_dispatched' : 'partially_fulfilled';
+        }
+
+        return $this->status;
+    }
 }

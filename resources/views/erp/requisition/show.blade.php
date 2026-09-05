@@ -95,14 +95,25 @@
                                 <div class="d-flex justify-content-between">
                                     <span class="text-muted small">Status:</span>
                                     @php
-                                        $statusClass = [
-                                            'pending' => 'bg-warning text-dark',
-                                            'partially_fulfilled' => 'bg-info text-white',
+                                        $dispStatus = $requisition->display_status;
+                                        $statusClass = match ($dispStatus) {
+                                            'dispatched' => 'bg-info text-white',
+                                            'partially_dispatched' => 'bg-info text-white',
                                             'fulfilled' => 'bg-success text-white',
+                                            'partially_fulfilled' => 'bg-primary text-white',
                                             'rejected' => 'bg-danger text-white',
-                                        ][$requisition->status] ?? 'bg-secondary text-white';
+                                            default => 'bg-warning text-dark'
+                                        };
+                                        $statusLabel = match ($dispStatus) {
+                                            'dispatched' => 'DISPATCHED',
+                                            'partially_dispatched' => 'PARTIALLY DISPATCHED',
+                                            'fulfilled' => 'FULFILLED',
+                                            'partially_fulfilled' => 'PARTIALLY FULFILLED',
+                                            'rejected' => 'REJECTED',
+                                            default => 'PENDING'
+                                        };
                                     @endphp
-                                    <span class="badge {{ $statusClass }} px-3 py-1 rounded-pill">{{ strtoupper($requisition->status) }}</span>
+                                    <span class="badge {{ $statusClass }} px-3 py-1 rounded-pill">{{ $statusLabel }}</span>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span class="text-muted small">Requesting Branch:</span>

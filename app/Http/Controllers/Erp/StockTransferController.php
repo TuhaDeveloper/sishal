@@ -634,9 +634,8 @@ class StockTransferController extends Controller
                 continue;
             }
 
-            // Create transfer record
+            // Create transfer record in pending status
             try {
-                $status = $request->is_direct ? 'delivered' : 'pending';
                 $transfer = StockTransfer::create([
                     'from_type' => $fromType,
                     'from_id' => $fromId,
@@ -656,25 +655,15 @@ class StockTransferController extends Controller
                     'receiver_account_type' => null,
                     'receiver_account_number' => null,
                     'type' => $request->return_of_id ? 'return' : 'transfer',
-                    'status' => $status,
+                    'status' => 'pending',
                     'requested_by' => auth()->id(),
-                    'requested_at' => $request->transfer_date,
+                    'requested_at' => $request->transfer_date ?? now(),
+                    'approved_by' => null,
+                    'approved_at' => null,
                     'notes' => $request->note ?? null,
                     'invoice_number' => $invoiceNumber,
                     'return_of_id' => $request->return_of_id ?? null,
                 ]);
-
-                if ($request->is_direct) {
-                    $transfer->approved_by = auth()->id();
-                    $transfer->approved_at = now();
-                    $transfer->delivered_by = auth()->id();
-                    $transfer->delivered_at = now();
-                    $transfer->save();
-
-                    // Movement
-                    $this->deductStock($transfer);
-                    $this->addStock($transfer);
-                }
 
                 $transfersCreated++;
             } catch (\Exception $e) {
@@ -683,8 +672,7 @@ class StockTransferController extends Controller
         }
 
         if ($transfersCreated > 0) {
-                // Financial accounting skipped for stock transfers as per request
-            $message = "Successfully created {$transfersCreated} transfer(s).";
+            $message = "Successfully created transfer ({$invoiceNumber}) with {$transfersCreated} item(s) in Pending status. Please dispatch it when ready to ship.";
             if (count($errors) > 0) {
                 $message .= " Errors: " . implode(', ', $errors);
             }

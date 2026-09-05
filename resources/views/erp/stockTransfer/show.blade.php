@@ -266,16 +266,20 @@
 
                             <div class="d-flex flex-wrap justify-content-center gap-3">
 
-                                {{-- PENDING STATUS ACTIONS --}}
+                                {{-- PENDING STATUS ACTIONS: Sender or Admin dispatches it --}}
                                 @if($transfer->status == 'pending')
-                                    @if($canConfirmDelivery || $canManageSending)
+                                    @if($canManageSending)
                                         <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
                                             @csrf @method('PATCH')
-                                            <input type="hidden" name="status" value="delivered">
-                                            <button type="submit" class="btn btn-success px-5 fw-bold" onclick="return confirm('Confirm and deliver this transfer? Source stock will be deducted and added to destination inventory.')">
-                                                <i class="fas fa-box-open me-2"></i>CONFIRM & DELIVER INVOICE
+                                            <input type="hidden" name="status" value="approved">
+                                            <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm" onclick="return confirm('Dispatch this transfer invoice? Stock will be deducted from source inventory.')">
+                                                <i class="fas fa-paper-plane me-2"></i>DISPATCH TRANSFER (DEDUCT SOURCE STOCK)
                                             </button>
                                         </form>
+                                    @else
+                                        <div class="alert alert-warning border-0 py-2 px-4 mb-0 small">
+                                            <i class="fas fa-clock me-2"></i>Pending — waiting for <strong>source ({{ $transfer->fromBranch->name ?? ($transfer->fromWarehouse->name ?? 'sender') }}) to dispatch</strong>.
+                                        </div>
                                     @endif
 
                                     @if($canManageSending || $canConfirmDelivery)
@@ -289,19 +293,31 @@
                                     @endif
                                 @endif
 
-                                {{-- CONFIRM DELIVERY: Receiver or Admin only (for legacy approved transfers) --}}
-                                @if($transfer->status == 'approved' && $canConfirmDelivery)
-                                    <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
-                                        @csrf @method('PATCH')
-                                        <input type="hidden" name="status" value="delivered">
-                                        <button type="submit" class="btn btn-primary px-5 fw-bold" onclick="return confirm('Confirm you have received these items? Stock will be added to your inventory.')">
-                                            <i class="fas fa-box-open me-2"></i>CONFIRM RECEIPT
-                                        </button>
-                                    </form>
-                                @elseif($transfer->status == 'approved' && !$canConfirmDelivery)
-                                    <div class="alert alert-info border-0 py-2 px-4 mb-0 small">
-                                        <i class="fas fa-clock me-2"></i>Approved — waiting for <strong>destination branch to confirm receipt</strong>.
-                                    </div>
+                                {{-- APPROVED / DISPATCHED STATUS ACTIONS --}}
+                                @if($transfer->status == 'approved')
+                                    @if($canConfirmDelivery)
+                                        <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
+                                            @csrf @method('PATCH')
+                                            <input type="hidden" name="status" value="delivered">
+                                            <button type="submit" class="btn btn-success px-5 fw-bold shadow-sm" onclick="return confirm('Confirm you have received these items? Stock will be added to your inventory.')">
+                                                <i class="fas fa-check-circle me-2"></i>CONFIRM RECEIPT & DELIVER
+                                            </button>
+                                        </form>
+                                    @else
+                                        <div class="alert alert-info border-0 py-2 px-4 mb-0 small">
+                                            <i class="fas fa-clock me-2"></i>Dispatched — waiting for <strong>destination branch ({{ $transfer->toBranch->name ?? ($transfer->toWarehouse->name ?? 'receiver') }}) to confirm receipt</strong>.
+                                        </div>
+                                    @endif
+
+                                    @if($canManageSending || $isSuperAdmin)
+                                        <form action="{{ route('stocktransfer.status', $transfer->id) }}" method="POST" class="d-inline">
+                                            @csrf @method('PATCH')
+                                            <input type="hidden" name="status" value="rejected">
+                                            <button type="submit" class="btn btn-outline-danger px-4 fw-bold" onclick="return confirm('Cancel/Reject this transfer invoice? Deducted stock will be restored back to source inventory.')">
+                                                <i class="fas fa-times-circle me-2"></i>CANCEL / REJECT
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endif
 
                                 {{-- RETURN ITEMS: Sender or Admin only (after delivery) --}}

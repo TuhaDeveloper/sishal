@@ -35,7 +35,7 @@
                     <td>{{ optional($req->branch)->name ?? '—' }}</td>
                     <td>{{ optional($req->warehouse)->name ?? '—' }}</td>
                     <td>{{ $req->requisition_date }}</td>
-                    <td>{{ strtoupper(str_replace('_', ' ', $req->status)) }}</td>
+                    <td>{{ strtoupper(str_replace('_', ' ', $req->display_status)) }}</td>
                     <td>{{ optional($req->creator)->name ?? '—' }}</td>
                 </tr>
             @endforeach

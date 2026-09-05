@@ -245,7 +245,20 @@
             <!-- Sale Number -->
             <div class="sale-number">
                 <h2>Sale #{{ $pos->sale_number }}</h2>
-                <p>Completed on {{ \Carbon\Carbon::parse($pos->sale_date)->format('F j, Y \a\t g:i A') }}</p>
+                @php
+                    $tz = config('app.timezone', 'Asia/Dhaka');
+                    $createdAtLocal = $pos->created_at ? \Carbon\Carbon::parse($pos->created_at)->timezone($tz) : null;
+                    if ($pos->sale_date && $createdAtLocal) {
+                        $emailCompletedDate = \Carbon\Carbon::parse($pos->sale_date)->format('F j, Y') . ' at ' . $createdAtLocal->format('g:i A');
+                    } elseif ($createdAtLocal) {
+                        $emailCompletedDate = $createdAtLocal->format('F j, Y \a\t g:i A');
+                    } elseif ($pos->sale_date) {
+                        $emailCompletedDate = \Carbon\Carbon::parse($pos->sale_date)->format('F j, Y');
+                    } else {
+                        $emailCompletedDate = \Carbon\Carbon::now($tz)->format('F j, Y \a\t g:i A');
+                    }
+                @endphp
+                <p>Completed on {{ $emailCompletedDate }}</p>
             </div>
             
             <!-- Customer Information -->

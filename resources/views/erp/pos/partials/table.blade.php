@@ -26,7 +26,6 @@
 
                 <!-- Granular Financial Columns -->
                 <th class="text-center bg-soft-primary" title="Billed Line Quantity">Sales Qty</th>
-                <th class="text-center bg-soft-primary text-primary" title="Total Physical Pieces Sold">Physical Pcs</th>
                 <th class="text-center bg-soft-primary">Total S-Qty</th>
                 <th class="text-end bg-soft-primary">Sales Amount</th>
                 <th class="text-end bg-soft-primary">Total Sales Amount</th>
@@ -43,6 +42,7 @@
 
                 <th class="text-center bg-soft-success">Actual Sales Qty</th>
                 <th class="text-center bg-soft-success">Total AS-Qty</th>
+                <th class="text-center bg-soft-primary" style="min-width: 95px;" title="Combo Packages Sold">Combo Qty</th>
 
                 <th class="text-end">Delivery Charge Amount</th>
                 <th class="text-end">VAT Amount</th>
@@ -99,14 +99,14 @@
                             })
                             ->sum('quantity');
 
-                        $actualQty = $item->quantity - $retQty + $itemExchNewQty;
-                        $actualAmt = $item->total_price - $retAmt;
-
                         // Combo & Physical Piece Calculation
                         $isCombo = ($product?->type === 'combo');
                         $childItems = $item->childItems ?? collect();
                         $comboItemsQty = $childItems->sum('quantity');
                         $physicalQty = $isCombo ? ($comboItemsQty > 0 ? $comboItemsQty : $item->quantity) : $item->quantity;
+
+                        $actualQty = $physicalQty - $retQty + $itemExchNewQty;
+                        $actualAmt = $item->total_price - $retAmt;
 
                         // Invoice level (calculated once per invoice change for efficiency)
                         $invItems = $sale->items->whereNull('parent_item_id');
@@ -137,7 +137,7 @@
 
                         $invRetQty = $invRegRetQty + $invExchRetQty;
                         $invRetAmt = $invRegRetAmt + $invExchRetAmt;
-                        $invActualQty = $invTotalQty - $invRetQty + $invExchNewQty;
+                        $invActualQty = $invPhysicalQty - $invRetQty + $invExchNewQty;
 
                         // Calculate proportional returned VAT and discount
                         $invReturnedVat = 0;
@@ -231,17 +231,6 @@
                             <span>{{ $item->quantity }}</span>
                         </td>
 
-                        <!-- Physical Pcs (Total Pieces) -->
-                        <td class="text-center bg-light fw-bold text-primary">
-                            @if($isCombo)
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" title="Physical pieces inside this combo">
-                                    <i class="fas fa-cube me-1"></i>{{ $physicalQty }} pcs
-                                </span>
-                            @else
-                                <span>{{ $physicalQty }} pcs</span>
-                            @endif
-                        </td>
-
                         <!-- Total S-Qty (Invoice Level) -->
                         <td class="text-center bg-light">
                             @if($isFirst)
@@ -278,7 +267,13 @@
                         </td>
 
                         <td class="text-center text-success fw-bold">
-                            {{ (int)$actualQty }}
+                            @if($isCombo)
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1" title="{{ $physicalQty }} physical pieces in this combo">
+                                    <i class="fas fa-cube me-1"></i>{{ (int)$actualQty }} pcs
+                                </span>
+                            @else
+                                <span>{{ (int)$actualQty }}</span>
+                            @endif
                             @if($itemExchNewQty > 0)
                                 <div class="text-muted fw-normal" style="font-size: 0.65rem;">(+{{ (int)$itemExchNewQty }} exch.)</div>
                             @endif
@@ -289,6 +284,17 @@
                                 @if($invExchNewQty > 0)
                                     <div class="text-muted" style="font-size: 0.65rem;">(+{{ (int)$invExchNewQty }} exch.)</div>
                                 @endif
+                            @endif
+                        </td>
+
+                        <!-- Combo Qty -->
+                        <td class="text-center bg-light">
+                            @if($isCombo)
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" title="Combo package quantity (contains {{ $physicalQty }} physical pcs)">
+                                    <i class="fas fa-cube me-1"></i>{{ (int)$item->quantity }} Combo
+                                </span>
+                            @else
+                                <span class="text-muted">-</span>
                             @endif
                         </td>
 
@@ -390,38 +396,47 @@
                     <span class="fw-bold fs-6">{{ $reportTotals['sell_qty'] }}</span>
                 </td>
 
-                <!-- Physical Pcs -->
-                <td class="text-center py-3 bg-primary-subtle text-primary">
-                    <span class="fw-extrabold fs-6">{{ $reportTotals['total_physical_qty'] ?? $reportTotals['sell_qty'] }} pcs</span>
-                    @if(($reportTotals['combo_qty'] ?? 0) > 0)
-                        <div class="text-muted small" style="font-size: 0.65rem;">
-                            ({{ $reportTotals['single_qty'] ?? 0 }} single + {{ $reportTotals['combo_child_qty'] ?? 0 }} combo pcs)
-                        </div>
-                    @endif
+                <!-- Total S-Qty -->
+                <td class="text-center py-3">
+                    <span class="fw-bold fs-6">{{ $reportTotals['sell_qty'] }}</span>
                 </td>
 
-                <td></td> <!-- Total S-Qty footer empty -->
-
                 <td class="text-end py-3">{{ number_format($reportTotals['gross_amt'], 2) }}</td>
-                <td></td>
-                <!-- Total Sales Amount footer empty -->
+                <!-- Total Sales Amount -->
+                <td class="text-end py-3 fw-bold">
+                    <span class="fw-bold fs-6">{{ number_format($reportTotals['gross_amt'], 2) }}</span>
+                </td>
 
                 <!-- Returns -->
-                <td></td>
-                <td class="text-center text-danger">{{ $reportTotals['reg_ret_qty'] ?: '-' }}</td>
-                <td></td>
-                <td></td>
+                <td class="text-center text-danger py-3">{{ $reportTotals['reg_ret_qty'] ?: '-' }}</td>
+                <td class="text-center text-danger py-3 fw-bold">{{ $reportTotals['reg_ret_qty'] ?: '-' }}</td>
+                <td class="text-end text-danger py-3">{{ ($reportTotals['reg_ret_amt'] ?? 0) > 0 ? number_format($reportTotals['reg_ret_amt'], 2) : '-' }}</td>
+                <td class="text-end text-danger py-3 fw-bold">{{ ($reportTotals['reg_ret_amt'] ?? 0) > 0 ? number_format($reportTotals['reg_ret_amt'], 2) : '-' }}</td>
 
                 <!-- Exchanges -->
-                <td></td>
-                <td class="text-center text-warning">{{ $reportTotals['exch_ret_qty'] ?: '-' }}</td>
-                <td></td>
-                <td></td>
+                <td class="text-center text-warning py-3" style="background-color: #fffdf5;">{{ $reportTotals['exch_ret_qty'] ?: '-' }}</td>
+                <td class="text-center text-warning py-3 fw-bold" style="background-color: #fffdf5;">{{ $reportTotals['exch_ret_qty'] ?: '-' }}</td>
+                <td class="text-end text-warning py-3" style="background-color: #fffdf5;">{{ ($reportTotals['exch_ret_amt'] ?? 0) > 0 ? number_format($reportTotals['exch_ret_amt'], 2) : '-' }}</td>
+                <td class="text-end text-warning py-3 fw-bold" style="background-color: #fffdf5;">{{ ($reportTotals['exch_ret_amt'] ?? 0) > 0 ? number_format($reportTotals['exch_ret_amt'], 2) : '-' }}</td>
 
                 <!-- Actual Qty -->
-                <td></td>
-                <td class="text-center text-success fw-bold">
-                    <span>{{ $reportTotals['act_qty'] }}</span>
+                <td class="text-center text-success fw-bold py-3">
+                    <span class="fs-6">{{ $reportTotals['act_physical_qty'] ?? $reportTotals['act_qty'] }}</span>
+                </td>
+                <td class="text-center text-success fw-bold py-3">
+                    <span class="fs-6">{{ $reportTotals['act_physical_qty'] ?? $reportTotals['act_qty'] }}</span>
+                </td>
+
+                <!-- Combo Qty Total -->
+                <td class="text-center py-3 bg-primary-subtle text-primary">
+                    @if(($reportTotals['combo_qty'] ?? 0) > 0)
+                        <span class="fw-extrabold fs-6">{{ (int)$reportTotals['combo_qty'] }} Combos</span>
+                        <div class="text-muted small" style="font-size: 0.65rem;">
+                            ({{ $reportTotals['combo_child_qty'] ?? 0 }} pcs)
+                        </div>
+                    @else
+                        <span class="text-muted fs-6">-</span>
+                    @endif
                 </td>
 
                 <td class="text-end py-3">{{ number_format($reportTotals['delivery'], 2) }}</td>
