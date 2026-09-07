@@ -56,9 +56,33 @@ class FinancialAccount extends Model
         return $this->belongsTo(Warehouse::class, 'warehouse_id');
     }
 
+    public function scopeWithCurrentBalance($query)
+    {
+        return $query->withSum(['journalEntries as total_debit' => function($q) {
+            $q->select(\Illuminate\Support\Facades\DB::raw("COALESCE(SUM(debit), 0)"));
+        }], 'debit')->withSum(['journalEntries as total_credit' => function($q) {
+            $q->select(\Illuminate\Support\Facades\DB::raw("COALESCE(SUM(credit), 0)"));
+        }], 'credit');
+    }
+
     public function getCurrentBalanceAttribute()
     {
-        // If balance column exists, use it; otherwise return 0 or calculate from journals
-        return $this->balance ?? 0;
+        if (isset($this->attributes['calculated_balance'])) {
+            return (float) $this->attributes['calculated_balance'];
+        }
+
+        if (array_key_exists('total_debit', $this->attributes) && array_key_exists('total_credit', $this->attributes)) {
+            return (float) (($this->total_debit ?? 0) - ($this->total_credit ?? 0));
+        }
+
+        if ($this->relationLoaded('journalEntries')) {
+            return (float) ($this->journalEntries->sum('debit') - $this->journalEntries->sum('credit'));
+        }
+
+        $movement = JournalEntry::where('financial_account_id', $this->id)
+            ->selectRaw('COALESCE(SUM(debit), 0) - COALESCE(SUM(credit), 0) as balance')
+            ->first();
+
+        return (float) ($movement->balance ?? 0);
     }
 }

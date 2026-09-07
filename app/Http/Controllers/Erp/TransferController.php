@@ -334,8 +334,8 @@ class TransferController extends Controller
         }
 
         // Verify from account has sufficient balance
-        if ($fromAccount->balance < $request->amount) {
-            return back()->with('error', 'Insufficient balance in source account. Available: ' . number_format($fromAccount->balance, 2));
+        if ($fromAccount->current_balance < $request->amount) {
+            return back()->with('error', 'Insufficient balance in source account. Available: ' . number_format($fromAccount->current_balance, 2));
         }
 
         DB::beginTransaction();
@@ -518,7 +518,7 @@ class TransferController extends Controller
                 'id' => $account->id,
                 'name' => $account->provider_name . ' - ' . $account->account_number,
                 'type' => $account->type,
-                'balance' => $account->balance,
+                'balance' => $account->current_balance,
                 'location' => $location,
             ];
         });

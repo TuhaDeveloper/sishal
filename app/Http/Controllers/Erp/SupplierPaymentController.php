@@ -551,7 +551,7 @@ class SupplierPaymentController extends Controller
         $endDate = $request->filled('end_date') ? \Carbon\Carbon::parse($request->end_date)->endOfDay() : null;
 
         $suppliers = Supplier::orderBy('name')->get();
-        $accounts = FinancialAccount::orderBy('type')->orderBy('provider_name')->get();
+        $accounts = FinancialAccount::withCurrentBalance()->orderBy('type')->orderBy('provider_name')->get();
 
         $summary = $service->getSupplierPayOnSaleSummary($supplierId, $startDate, $endDate);
 

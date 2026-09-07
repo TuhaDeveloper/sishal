@@ -239,7 +239,7 @@
                                             <select class="form-select" name="account_id" required>
                                                 <option value="">-- Choose Account --</option>
                                                 @foreach($accounts as $acc)
-                                                    <option value="{{ $acc->id }}">{{ $acc->account_name ?? $acc->provider_name }} (Bal: ৳{{ number_format($acc->balance, 2) }})</option>
+                                                    <option value="{{ $acc->id }}">{{ $acc->account_name ?? $acc->provider_name }} (Bal: ৳{{ number_format($acc->current_balance, 2) }})</option>
                                                 @endforeach
                                             </select>
                                         </div>
